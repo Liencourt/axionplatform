@@ -1,0 +1,161 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <title>Axiom Platform | Scientific Intelligence for Executive Decisions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="{% static 'css/app.min.css' %}" rel="stylesheet" />
+    <link href="{% static 'css/icons.min.css' %}" rel="stylesheet" />
+    <style>
+        .hero-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 100px 0; }
+        .feature-icon { font-size: 2.5rem; color: #3b82f6; margin-bottom: 1rem; }
+        .module-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .module-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important; }
+    </style>
+</head>
+<body data-bs-spy="scroll" data-bs-target="#navbar-landing">
+
+    <nav id="navbar-landing" class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="ti ti-chart-arcs text-primary fs-3 align-middle me-2"></i>AXIOM PLATFORM
+            </a>
+            <div class="ms-auto">
+                <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm me-2 px-4 rounded-pill">Login</a>
+                <a href="#contato" class="btn btn-primary btn-sm px-4 rounded-pill">Request a Demo</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero-section text-center mt-5">
+        <div class="container py-5">
+            <h1 class="display-4 fw-bold mb-3">Scientific Intelligence for Executive Decisions</h1>
+            <p class="lead mb-5 text-white-50 mx-auto" style="max-width: 700px;">
+                Construa modelos estatísticos de forma visual. Obtenha insights rápidos, precisos e explicáveis — sob demanda.
+            </p>
+            <div>
+                <a href="#contato" class="btn btn-primary btn-lg rounded-pill px-5 me-3 shadow">Request a Demo</a>
+                <a href="#how-it-works" class="btn btn-outline-light btn-lg rounded-pill px-5">See How It Works</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-5 bg-light">
+        <div class="container py-4 text-center">
+            <h2 class="fw-bold mb-4">Decisions demand speed.<br><span class="text-primary">Accuracy demands science.</span></h2>
+            <p class="text-muted fs-5 mb-4 mx-auto" style="max-width: 800px;">
+                A maioria das decisões estratégicas ainda depende de dashboards estáticos, análises manuais lentas ou modelos opacos que ninguém consegue explicar (dependência excessiva de times técnicos).<br><br>
+                <strong>Isso cria atraso, risco e perda de confiança.</strong>
+            </p>
+        </div>
+    </section>
+
+    <section class="py-5">
+        <div class="container py-4">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h2 class="fw-bold mb-3">Axiom Platform</h2>
+                    <p class="text-muted fs-5 mb-4">
+                        Um ambiente unificado de modelagem estatística e inteligência analítica, criado para transformar dados em decisões executivas claras. Aqui, estatística rigorosa encontra simplicidade operacional.
+                    </p>
+                    <ul class="list-unstyled fs-5 text-muted">
+                        <li class="mb-2"><i class="ti ti-check text-success me-2"></i> Configure modelos visualmente</li>
+                        <li class="mb-2"><i class="ti ti-check text-success me-2"></i> Controle variáveis e hipóteses</li>
+                        <li class="mb-2"><i class="ti ti-check text-success me-2"></i> Entenda os resultados</li>
+                        <li class="mb-2"><i class="ti ti-check text-success me-2"></i> Decide com confiança</li>
+                    </ul>
+                    <div class="mt-4 p-3 bg-light rounded border-start border-primary border-4">
+                        <span class="fw-bold text-dark">Sem caixas-pretas. Sem achismos.</span>
+                    </div>
+                </div>
+                <div class="col-lg-6 text-center mt-4 mt-lg-0">
+                    <div class="bg-light rounded p-5 border shadow-sm">
+                        <i class="ti ti-dashboard text-primary opacity-25" style="font-size: 8rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-5 bg-light" id="how-it-works">
+        <div class="container py-4">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold">From variables to decisions — in minutes.</h2>
+                <p class="text-muted">Conheça o core da plataforma.</p>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm module-card p-4">
+                        <i class="ti ti-chart-line feature-icon"></i>
+                        <h4 class="fw-bold">Regression Studio</h4>
+                        <p class="text-muted">Construa modelos de regressão linear e não-linear com total transparência.</p>
+                        <ul class="list-unstyled text-muted small mt-auto">
+                            <li>• Controle de variáveis independentes</li>
+                            <li>• Interpretação de coeficientes</li>
+                            <li>• Significância estatística</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm module-card p-4">
+                        <i class="ti ti-box-model feature-icon"></i>
+                        <h4 class="fw-bold">Classification Studio</h4>
+                        <p class="text-muted">Modele cenários, riscos e comportamentos com foco em decisão.</p>
+                        <ul class="list-unstyled text-muted small mt-auto">
+                            <li>• Classificação explicável</li>
+                            <li>• Métricas claras além da acurácia</li>
+                            <li>• Suporte direto à estratégia</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm module-card p-4 border-bottom border-primary border-4">
+                        <i class="ti ti-currency-dollar feature-icon"></i>
+                        <h4 class="fw-bold">Elasticity Studio</h4>
+                        <p class="text-muted">Transforme dados em decisões de preço e receita.</p>
+                        <ul class="list-unstyled text-muted small mt-auto">
+                            <li>• Modelagem de elasticidade-preço</li>
+                            <li>• Simulação de cenários</li>
+                            <li>• Conexão entre estatística e finanças</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-5 bg-dark text-white text-center">
+        <div class="container py-5">
+            <h2 class="fw-bold mb-4">Why Axiom Platform?</h2>
+            <div class="row justify-content-center mb-5">
+                <div class="col-md-8 d-flex justify-content-center flex-wrap gap-3">
+                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill">Explainable AI by design</span>
+                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill">Statistical rigor</span>
+                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill">User-controlled modeling</span>
+                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill">Built for executive clarity</span>
+                </div>
+            </div>
+            
+            <h3 class="fst-italic text-white-50 mb-4 mx-auto" style="max-width: 800px;">
+                "Complex models should not create complex decisions. Axiom Platform turns statistical science into executive clarity."
+            </h3>
+            
+            <div class="mt-5" id="contato">
+                <h4 class="mb-4">Ready to decide with confidence?</h4>
+                <a href="mailto:contato@suaempresa.com" class="btn btn-primary btn-lg rounded-pill px-5 me-2">Talk to a Specialist</a>
+                <a href="{% url 'login' %}" class="btn btn-outline-light btn-lg rounded-pill px-5">Login to Platform</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-black text-center text-white-50 py-4">
+        <div class="container">
+            <p class="mb-0 fw-bold text-white"><i class="ti ti-chart-arcs text-primary"></i> AXIOM PLATFORM</p>
+            <small>Scientific Intelligence for Executive Decisions</small>
+        </div>
+    </footer>
+
+</body>
+</html>

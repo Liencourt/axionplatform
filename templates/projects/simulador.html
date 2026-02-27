@@ -1,0 +1,536 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/pt-br.min.js"></script>
+
+<div class="container-fluid">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h3 class="page-title mb-1 fw-bold text-dark"><i class="fas fa-sliders-h text-primary"></i> Simulador Otimizado</h3>
+            <p class="text-muted mb-0">SKU: <strong>{{ resultado.codigo_produto }}</strong> | Projeto: {{ resultado.projeto.nome }}</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'dashboard_resultado' resultado.projeto.id %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="fas fa-arrow-left"></i> Voltar ao Painel
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-3 col-lg-4">
+            
+            <div class="card shadow-sm border-0 mb-3 border-top border-primary border-4">
+                <div class="card-body">
+                    <h6 class="fw-bold text-muted small text-uppercase mb-3"><i class="fas fa-database"></i> Base Matemática</h6>
+                    
+                    <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
+                        <span class="text-muted">Custo Unitário</span>
+                        <span class="fw-bold text-danger">R$ {{ resultado.custo_unitario|floatformat:2 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
+                        <span class="text-muted">Preço Atual (Base)</span>
+                        <span class="fw-bold text-dark">R$ {{ resultado.preco_atual|floatformat:2 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Elasticidade</span>
+                        <span class="fw-bold {% if resultado.elasticidade < -1.0 %}text-danger{% else %}text-success{% endif %}">
+                            {{ resultado.elasticidade|floatformat:3 }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-3 bg-light">
+                <div class="card-body">
+                    <h6 class="fw-bold text-primary small text-uppercase mb-3"><i class="fas fa-calendar-alt"></i> Configurar Campanha</h6>
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label text-muted" style="font-size: 0.75rem; font-weight: bold;">Início</label>
+                            <input type="date" id="dataInicio" class="form-control form-control-sm border-0 shadow-sm" onchange="calcularTudo()">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted" style="font-size: 0.75rem; font-weight: bold;">Fim</label>
+                            <input type="date" id="dataFim" class="form-control form-control-sm border-0 shadow-sm" onchange="calcularTudo()">
+                        </div>
+                    </div>
+
+                    <label class="form-label fw-bold small text-primary">Preço Simulado (R$)</label>
+                    <div class="input-group mb-3 shadow-sm">
+                        <span class="input-group-text bg-white border-0 text-primary fw-bold">R$</span>
+                        <input type="number" id="inputPrecoPromo" class="form-control border-0 fw-bold text-primary fs-5" step="0.01" onkeyup="calcularTudo()" onchange="calcularTudo()">
+                    </div>
+                    
+                    <div class="text-center small text-muted">
+                        <i class="fas fa-magic text-warning"></i> Sugestão Axiom carregada por padrão
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-3 border-top border-success border-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-muted small text-uppercase mb-4"><i class="ti ti-chart-line text-success"></i> Projeção Financeira</h6>
+                    
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="text-muted">Duração:</span>
+                        <span class="fw-bold text-body"><span id="resDias">--</span> dias</span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="text-muted">Volume Estimado:</span>
+                        <span class="fw-bold text-info" id="resQtd">-- un</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between border-top pt-3 mt-3">
+                        <span class="fs-6 text-muted">Faturamento:</span>
+                        <span class="fs-6 fw-bold text-body" id="resFat">R$ --</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between pt-2">
+                        <span class="fs-5 text-muted">Lucro Bruto:</span>
+                        <span class="fs-5 fw-bold text-success" id="resLucro">R$ --</span>
+                    </div>
+                    
+                    <div class="mt-4 pt-3 border-top text-center">
+                        <span class="text-muted small">Margem Projetada: </span>
+                        <strong id="resMargem" class="fs-5 text-body">-- %</strong>
+                        <div id="alertaMargem" class="small mt-1 mb-3"></div>
+                        
+                        {% csrf_token %} <button id="btnSalvarERP" class="btn btn-primary w-100 rounded-pill shadow-sm py-2 fw-bold" onclick="salvarPrecoERP()">
+                            <i class="ti ti-device-floppy me-2"></i> Confirmar Preço para ERP
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="col-xl-9 col-lg-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body p-0">
+                    
+                    <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center rounded-top">
+                        <ul class="nav nav-pills" id="simuladorTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active fw-bold px-4 rounded-pill" id="grafico-tab" data-bs-toggle="pill" data-bs-target="#grafico" type="button" role="tab">
+                                    <i class="fas fa-chart-area"></i> Curva de Preço
+                                </button>
+                            </li>
+                            <li class="nav-item ms-2" role="presentation">
+                                <button class="nav-link fw-bold text-secondary px-4 rounded-pill" id="diagnostico-tab" data-bs-toggle="pill" data-bs-target="#diagnostico" type="button" role="tab">
+                                    <i class="fas fa-microscope"></i> Raio-X do Modelo
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="tab-content p-4" id="simuladorTabsContent">
+                        
+                        <div class="tab-pane fade show active" id="grafico" role="tabpanel">
+                            <div id="plotDiv" style="width: 100%; height: 500px;"></div>
+                        </div>
+
+                        <div class="tab-pane fade" id="diagnostico" role="tabpanel">
+                            
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-3">
+                                    <div class="card bg-light border-0 shadow-none h-100 border-start border-primary border-3">
+                                        <div class="card-body text-center p-3">
+                                            <h6 class="text-muted mb-1 small text-uppercase">Aderência ($R^2$)</h6>
+                                            <h3 class="fw-bold text-primary mb-0">{{ resultado.r_squared|floatformat:2 }}</h3>
+                                            <small class="text-muted" style="font-size: 0.70rem;">Poder de explicação da IA</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-light border-0 shadow-none h-100 border-start border-dark border-3">
+                                        <div class="card-body text-center p-3">
+                                            <h6 class="text-muted mb-1 small text-uppercase">Força do Preço</h6>
+                                            <h3 class="fw-bold text-dark mb-0">{{ resultado.elasticidade|floatformat:2 }}</h3>
+                                            <small class="text-muted" style="font-size: 0.70rem;">Elasticidade Base</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-light border-0 shadow-none h-100 border-start border-info border-3">
+                                        <div class="card-body text-center p-3">
+                                            <h6 class="text-muted mb-1 small text-uppercase">Normalidade</h6>
+                                            <h3 class="fw-bold text-info mb-0">{% if resultado.shapiro_p_value > 0.05 %}Passou{% else %}Falhou{% endif %}</h3>
+                                            <small class="text-muted" style="font-size: 0.70rem;">Teste Shapiro-Wilk</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-light border-0 shadow-none h-100 border-start border-success border-3">
+                                        <div class="card-body text-center p-3">
+                                            <h6 class="text-muted mb-1 small text-uppercase">Status de Ruído</h6>
+                                            <h3 class="fw-bold text-success mb-0"><i class="fas fa-shield-alt"></i> Limpo</h3>
+                                            <small class="text-muted" style="font-size: 0.70rem;">Filtro Automático</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row align-items-start mt-4">
+                                <div class="col-lg-8 mb-3">
+                                    <h6 class="fw-bold text-secondary mb-0"><i class="fas fa-balance-scale"></i> Peso das Suas Hipóteses (Variáveis)</h6>
+                                    <p class="small text-muted mb-2">Impacto percentual de cada fator extra arrastado no modelo:</p>
+                                    <div id="plotPesos" style="width: 100%; height: 320px;"></div>
+                                </div>
+                                
+                                <div class="col-lg-4">
+                                    <div class="alert alert-primary border-0 shadow-sm h-100 p-4 rounded-3">
+                                        <h6 class="fw-bold text-primary mb-3"><i class="fas fa-robot"></i> Resumo da Inteligência</h6>
+                                        <p id="textoStorytelling" class="mb-0 small text-dark" style="line-height: 1.6;">
+                                            Processando o comportamento das covariáveis e traduzindo para linguagem de negócios...
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    
+    const ELASTICIDADE = parseFloat("{{ resultado.elasticidade|default:'0' }}".replace(',', '.'));
+    const PRECO_ATUAL = parseFloat("{{ resultado.preco_atual|default:'0' }}".replace(',', '.'));
+    const CUSTO = parseFloat("{{ resultado.custo_unitario|default:'0' }}".replace(',', '.'));
+    const DEMANDA_BASE = parseFloat("{{ demanda_base|default:'0' }}".replace(',', '.'));
+    const MARGEM_MINIMA = parseFloat("{{ margem_minima|default:'0' }}".replace(',', '.'));
+    const PRECO_SUGERIDO = parseFloat("{{ resultado.preco_sugerido|default:'0' }}".replace(',', '.'));
+    
+    // Tratamento JSON seguro
+    const variaveisModelo = {{ detalhes_json|default:"{}"|safe }};
+    const historicoDW = {{ historico_json|default:"{}"|safe }};
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Inicializa datas: Hoje até Hoje + 7 dias
+        document.getElementById('dataInicio').value = moment().format('YYYY-MM-DD');
+        document.getElementById('dataFim').value = moment().add(7, 'days').format('YYYY-MM-DD');
+        
+        // Injeta o preço sugerido no campo HTML usando o formato correto
+        document.getElementById('inputPrecoPromo').value = PRECO_SUGERIDO.toFixed(2);
+        
+        calcularTudo();
+
+        // Recalcula o tamanho dos gráficos ao trocar de aba
+        document.querySelectorAll('button[data-bs-toggle="pill"]').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', function (event) {
+                if (event.target.id === 'diagnostico-tab') { Plotly.Plots.resize('plotPesos'); }
+                if (event.target.id === 'grafico-tab') { Plotly.Plots.resize('plotDiv'); }
+            });
+        });
+    });
+
+    function calcularTudo() {
+        calcularMatematicaFinanceira();
+        renderizarGraficoParabola();
+        renderizarDiagnosticoRaiosX();
+    }
+
+    // --- FUNÇÃO 1: OS CÁLCULOS DO PAINEL PRETO (ESQUERDA) ---
+    function calcularMatematicaFinanceira() {
+        let precoSimulado = parseFloat(document.getElementById('inputPrecoPromo').value) || PRECO_ATUAL;
+        let dataInicio = moment(document.getElementById('dataInicio').value); 
+        let dataFim = moment(document.getElementById('dataFim').value); 
+        
+        if (dataFim.isBefore(dataInicio)) return;
+
+        let diasTotais = dataFim.diff(dataInicio, 'days') + 1;
+        let totalVolume = 0;
+
+        // O Motor Diário (Loop no tempo)
+        let dataAtual = dataInicio.clone();
+        
+        while (dataAtual.isSameOrBefore(dataFim)) {
+            let volumeDiario = DEMANDA_BASE;
+
+            // Aplica a Elasticidade Pura
+            let razaoPreco = precoSimulado / PRECO_ATUAL;
+            if (razaoPreco <= 0) razaoPreco = 1;
+            volumeDiario = volumeDiario * Math.pow(razaoPreco, ELASTICIDADE);
+
+            // Aplica os Pesos Sazonais/Variáveis Dinâmicas
+            let diaSemanaStr = dataAtual.format('dddd').toLowerCase().split('-')[0]; // ex: "segunda"
+            
+            for (const [chave, dados] of Object.entries(variaveisModelo)) {
+                let chaveMin = chave.toLowerCase();
+                // Se a variável arrastada pelo usuário for um dia da semana e for Relevante
+                if (chaveMin.includes(diaSemanaStr) && dados.status === "Relevante") {
+                    volumeDiario = volumeDiario * Math.exp(dados.coeficiente);
+                }
+            }
+
+            totalVolume += volumeDiario;
+            dataAtual.add(1, 'days');
+        }
+
+        // Resultados Finais
+        let faturamento = totalVolume * precoSimulado;
+        let lucroBruto = (precoSimulado - CUSTO) * totalVolume;
+        let margemPerc = ((precoSimulado - CUSTO) / precoSimulado) * 100;
+
+        // Atualizando o HTML
+        document.getElementById('resDias').innerText = diasTotais;
+        document.getElementById('resQtd').innerText = Math.round(totalVolume).toLocaleString('pt-BR');
+        document.getElementById('resFat').innerText = faturamento.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+        document.getElementById('resLucro').innerText = lucroBruto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+        
+        let elMargem = document.getElementById('resMargem');
+        let elAlerta = document.getElementById('alertaMargem');
+        elMargem.innerText = margemPerc.toFixed(1) + " %";
+
+        if (margemPerc < MARGEM_MINIMA) {
+            elMargem.className = "fs-5 text-danger";
+            elAlerta.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Abaixo do Piso Configurado!';
+        } else {
+            elMargem.className = "fs-5 text-success";
+            elAlerta.innerHTML = '<i class="fas fa-check-circle text-success"></i> Margem Saudável';
+        }
+    }
+
+    // --- FUNÇÃO 2: O GRÁFICO DA ABA 1 (PARÁBOLA + DEMANDA + BOLHAS REAIS) ---
+    function renderizarGraficoParabola() {
+        const precoSimulado = parseFloat(document.getElementById('inputPrecoPromo').value) || PRECO_ATUAL;
+        const preco_minimo = CUSTO * 1.05; 
+        const preco_maximo = PRECO_ATUAL * 1.50;
+        const step = (preco_maximo - preco_minimo) / 50; 
+
+        let precos = [], lucros = [], demandas = [];
+        let maxLucro = -Infinity, precoOtimoMax = PRECO_ATUAL;
+
+        for (let p = preco_minimo; p <= preco_maximo; p += step) {
+            precos.push(p);
+            let vol = DEMANDA_BASE * Math.pow((p / PRECO_ATUAL), ELASTICIDADE);
+            demandas.push(vol);
+            let L = (p - CUSTO) * vol;
+            lucros.push(L);
+            if (L > maxLucro) { maxLucro = L; precoOtimoMax = p; }
+        }
+
+        const traceLucro = {
+            x: precos, y: lucros, type: 'scatter', mode: 'lines', name: 'Curva de Lucro Bruto',
+            line: {color: '#2ecc71', width: 3, shape: 'spline'}
+        };
+
+        const traceDemanda = {
+            x: precos, y: demandas, type: 'scatter', mode: 'lines', name: 'Curva de Demanda Projetada',
+            yaxis: 'y2', line: {color: '#3498db', width: 2, shape: 'spline', dash: 'dot'}
+        };
+
+        const traceAtual = {
+            x: [PRECO_ATUAL], y: [(PRECO_ATUAL - CUSTO) * DEMANDA_BASE],
+            type: 'scatter', mode: 'markers', name: 'Preço Atual (Base)',
+            marker: {color: '#95a5a6', size: 12, symbol: 'square'}
+        };
+
+        const traceSimulado = {
+            x: [precoSimulado], y: [(precoSimulado - CUSTO) * (DEMANDA_BASE * Math.pow((precoSimulado / PRECO_ATUAL), ELASTICIDADE))],
+            type: 'scatter', mode: 'markers', name: 'Simulação de Preço',
+            marker: {color: '#e74c3c', size: 14, symbol: 'diamond'}
+        };
+
+        const traceEstrela = {
+            x: [precoOtimoMax], y: [maxLucro], type: 'scatter', mode: 'markers', name: 'Ponto Ótimo Teórico',
+            marker: {color: '#ffc107', size: 20, symbol: 'star', line: {color: '#000', width: 1.5}}
+        };
+
+        // Arrays para os traços do gráfico
+        let traces = [traceLucro, traceDemanda, traceAtual, traceSimulado, traceEstrela];
+
+        // INSERINDO AS BOLHAS DO DATA WAREHOUSE!
+        if (historicoDW.x_normal && historicoDW.x_normal.length > 0) {
+            const traceBolhas = {
+                x: historicoDW.x_normal,
+                y: historicoDW.y_normal,
+                mode: 'markers',
+                name: 'Histórico de Vendas',
+                yaxis: 'y2', // Fica no mesmo eixo do volume!
+                marker: {
+                    size: historicoDW.sizes,
+                    color: 'rgba(52, 152, 219, 0.4)', // Azul claro transparente
+                    line: {color: '#2980b9', width: 1}
+                },
+                customdata: historicoDW.freqs,
+                hovertemplate: '<b>Preço Praticado: R$ %{x:.2f}</b><br>Volume Médio: %{y:.0f} un<br>Frequência: %{customdata} vezes<extra></extra>'
+            };
+            traces.push(traceBolhas);
+        }
+
+        // INSERINDO OS OUTLIERS
+        if (historicoDW.x_outlier && historicoDW.x_outlier.length > 0) {
+            const traceOutliers = {
+                x: historicoDW.x_outlier,
+                y: historicoDW.y_outlier,
+                mode: 'markers',
+                name: 'Outliers (Picos)',
+                yaxis: 'y2',
+                marker: { symbol: 'x', color: 'rgba(231, 76, 60, 0.6)', size: 8 },
+                hovertemplate: '<b>Preço: R$ %{x:.2f}</b><br>Pico de Venda: %{y:.0f} un<extra></extra>'
+            };
+            traces.push(traceOutliers);
+        }
+
+        const layout = {
+            title: { text: 'Comportamento: Histórico vs IA vs Lucro', font: { color: '#888' } },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)', 
+            xaxis: { 
+                title: 'Preço (R$)', tickprefix: 'R$ ', 
+                gridcolor: 'rgba(128, 128, 128, 0.2)', tickfont: { color: '#888' }, titlefont: { color: '#888' }
+            },
+            yaxis: { 
+                title: 'Lucro Bruto (R$)', titlefont: {color: '#2ecc71'}, tickfont: {color: '#2ecc71'},
+                gridcolor: 'rgba(128, 128, 128, 0.2)'
+            },
+            yaxis2: { 
+                title: 'Volume (Unidades)', titlefont: {color: '#3498db'}, tickfont: {color: '#3498db'}, 
+                overlaying: 'y', side: 'right', gridcolor: 'rgba(128, 128, 128, 0.1)' 
+            },
+            hovermode: 'x unified',
+            margin: { t: 40, b: 40, r: 60 },
+            legend: { orientation: "h", y: -0.15, x: 0.5, xanchor: 'center', font: { color: '#888' } }
+        };
+
+        Plotly.newPlot('plotDiv', traces, layout, {responsive: true});
+    }
+
+    
+    // --- FUNÇÃO 3: O GRÁFICO DA ABA 2 (RAIO-X DAS VARIÁVEIS) ---
+    function renderizarDiagnosticoRaiosX() {
+        const impactos = [];
+        
+        // Converte os coeficientes logarítmicos em Impacto Percentual (%)
+        for (const [chave, dados] of Object.entries(variaveisModelo)) {
+            // IGNORA A VARIÁVEL DE PREÇO AQUI:
+            if (chave === 'log_p') continue; 
+            
+            let nomeLpo = chave.replace('C(', '').replace(')', '').replace('[T.', ' - ').replace(']', '');
+            let pctImpacto = (Math.exp(dados.coeficiente) - 1) * 100;
+            let isRelevante = dados.status === "Relevante";
+            
+            impactos.push({
+                nome: nomeLpo,
+                valor: pctImpacto,
+                relevante: isRelevante
+            });
+        }
+
+     
+            
+
+        if (impactos.length === 0) {
+            document.getElementById('plotPesos').innerHTML = '<div class="alert alert-warning mt-4 text-center">Nenhuma variável extra (como clima ou feriado) foi arrastada na construção deste modelo.</div>';
+            document.getElementById('textoStorytelling').innerHTML = `A inteligência artificial focou puramente na curva de preço vs quantidade. O comportamento de compra é governado pela elasticidade base de <strong>${ELASTICIDADE}</strong>.`;
+            return;
+        }
+
+        impactos.sort((a, b) => a.valor - b.valor); // Ordena do negativo pro positivo
+        
+        const xVals = impactos.map(i => i.valor);
+        const yVals = impactos.map(i => i.nome + (i.relevante ? '' : ' (Ruído)'));
+        const colors = impactos.map(i => {
+            if (!i.relevante) return 'rgba(169, 169, 169, 0.5)'; // Cinza pra ruído
+            return i.valor >= 0 ? 'rgba(32, 178, 170, 0.85)' : 'rgba(240, 128, 128, 0.85)'; // Verde e Vermelho
+        });
+
+        const tracePesos = {
+            x: xVals, y: yVals, type: 'bar', orientation: 'h', marker: { color: colors },
+            hovertemplate: "<b>%{y}</b><br>Impacto: %{x:.1f}%<extra></extra>"
+        };
+
+        const layoutPesos = {
+            paper_bgcolor: 'rgba(0,0,0,0)', 
+            plot_bgcolor: 'rgba(0,0,0,0)',  
+            margin: { l: 150, r: 20, t: 10, b: 30 },
+            xaxis: { 
+                ticksuffix: '%', zeroline: true, 
+                gridcolor: 'rgba(128, 128, 128, 0.2)', tickfont: { color: '#888' } 
+            },
+            yaxis: { automargin: true, tickfont: { color: '#888' } }
+        };
+
+        Plotly.newPlot('plotPesos', [tracePesos], layoutPesos, {responsive: true});
+
+        // Monta o Storytelling da IA
+        let impactosValidos = impactos.filter(i => i.relevante);
+        let texto = `Com base no histórico processado, o Axiom Pricing detectou padrões interessantes além do preço.<br><br>`;
+        
+        if (impactosValidos.length > 0) {
+            let maiorPositivo = impactosValidos.filter(i => i.valor > 0).pop(); 
+            let maiorNegativo = impactosValidos.filter(i => i.valor < 0)[0]; 
+
+            if (maiorPositivo) texto += `O fator <strong>${maiorPositivo.nome}</strong> é o seu maior aliado sazonal, elevando a demanda orgânica em até <strong>+${maiorPositivo.valor.toFixed(1)}%</strong>.<br><br>`;
+            if (maiorNegativo) texto += `Em contrapartida, atente-se ao fator <strong>${maiorNegativo.nome}</strong>. Ele atua como uma âncora invisível, retraindo vendas em cerca de <strong>${maiorNegativo.valor.toFixed(1)}%</strong>.`;
+        } else {
+            texto += `As variáveis extras que você incluiu parecem não ter efeito estatístico comprovado sobre a venda deste SKU. Concentre-se na precificação pura.`;
+        }
+
+        document.getElementById('textoStorytelling').innerHTML = texto;
+
+        
+    }
+
+    // --- FUNÇÃO 4: SALVAR PREÇO NO BANCO (AJAX) ---
+    function salvarPrecoERP() {
+        // Pega o valor e força a troca de vírgula por ponto para o Python não engasgar
+        let valorInput = document.getElementById('inputPrecoPromo').value.toString().replace(',', '.');
+        const precoSimulado = parseFloat(valorInput);
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const btn = document.getElementById('btnSalvarERP');
+        
+        if (!precoSimulado || precoSimulado <= 0) {
+            alert("Por favor, insira um preço válido antes de salvar.");
+            return;
+        }
+
+        const textoOriginal = btn.innerHTML;
+        btn.innerHTML = '<i class="ti ti-loader ti-spin me-2"></i> Gravando no Banco...';
+        btn.disabled = true;
+
+        fetch(`{% url 'salvar_preco_simulado' resultado.id %}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ preco: precoSimulado })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("Erro de comunicação com o servidor");
+            return response.json();
+        })
+        .then(data => {
+            if(data.status === 'success') {
+                btn.innerHTML = '<i class="ti ti-check me-2"></i> Preço Confirmado!';
+                btn.classList.replace('btn-primary', 'btn-success');
+                
+                // Redireciona de volta para o Dashboard automaticamente após 1.5 segundos!
+                // Isso resolve o problema de usar a "Seta de Voltar" do navegador.
+                setTimeout(() => {
+                    window.location.href = "{% url 'dashboard_resultado' resultado.projeto.id %}";
+                }, 1500);
+            } else {
+                alert("O banco de dados recusou a gravação: " + data.message);
+                btn.innerHTML = textoOriginal;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            alert("Erro crítico ao salvar: " + error.message);
+            btn.innerHTML = textoOriginal;
+            btn.disabled = false;
+        });
+    }
+</script>
+{% endblock page_content %}

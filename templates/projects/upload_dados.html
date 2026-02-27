@@ -1,0 +1,77 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="page-title">Novo Projeto de Pricing (AutoML)</h2>
+            <p class="text-muted">Faça o upload do seu histórico de vendas para treinarmos a Inteligência Artificial do Axiom.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-7">
+            <div class="card shadow-sm border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0"><i class="fas fa-cloud-upload-alt"></i> Importar Base de Dados</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'iniciar_projeto_upload' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="nome_projeto" class="form-label fw-bold">Nome do Projeto</label>
+                            <input type="text" class="form-control form-control-lg" id="nome_projeto" name="nome_projeto" placeholder="Ex: Elasticidade Cervejas - Q3 2026" required>
+                            <small class="text-muted">Dê um nome claro para encontrar este estudo depois no seu painel.</small>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="arquivo_dados" class="form-label fw-bold">Arquivo de Vendas (CSV ou Excel)</label>
+                            <input class="form-control form-control-lg" type="file" id="arquivo_dados" name="arquivo_dados" accept=".csv, .xls, .xlsx" required>
+                            <small class="text-muted">Tamanho máximo recomendado: 50MB.</small>
+                        </div>
+
+                       {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <div class="text-end mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                Avançar para Mapeamento <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <div class="card shadow-sm bg-light border-0">
+                <div class="card-body">
+                    <h5 class="card-title text-primary"><i class="fas fa-info-circle"></i> O que meu arquivo precisa ter?</h5>
+                    <p class="small text-muted mb-3">Para que o motor estatístico do <strong>Axiom Pricing</strong> funcione com precisão, sua planilha deve conter colunas que representem, no mínimo, estas 5 informações:</p>
+                    
+                    <ul class="list-group list-group-flush mb-3 small">
+                        <li class="list-group-item bg-transparent"><strong>1. SKU / Código:</strong> Identificador único do produto.</li>
+                        <li class="list-group-item bg-transparent"><strong>2. Data:</strong> O dia ou semana em que a venda ocorreu.</li>
+                        <li class="list-group-item bg-transparent"><strong>3. Quantidade:</strong> O volume total vendido (Variável Y).</li>
+                        <li class="list-group-item bg-transparent"><strong>4. Preço de Venda:</strong> O valor praticado (Variável X).</li>
+                        <li class="list-group-item bg-transparent"><strong>5. Custo Unitário:</strong> Fundamental para ativarmos a trava de proteção da sua Margem Mínima.</li>
+                    </ul>
+
+                    <div class="alert alert-warning small border-warning">
+                        <i class="fas fa-lightbulb"></i> <strong>Dica do Arquiteto:</strong> 
+                        Você também pode incluir colunas extras como <em>"Estoque", "Clima", "Feriado"</em> ou <em>"Dia de Pagamento"</em>. Na próxima tela, você poderá arrastá-las para testar se elas influenciam suas vendas!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends 'vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Apex Scatter Charts{% endblock title %}
+
+{% block extra_css %}
+
+{% endblock extra_css %}
+
+{% block page_title %}
+{% include 'partials/page-title.html' with title="Scatter Charts" subtitle="Apex" %}
+{% endblock page_title %}
+
+{% block page_content %}
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title">Scatter (XY) Chart</h4>
+                <div dir="ltr">
+                    <div id="basic-scatter" class="apex-charts" data-colors="#39afd1,#fbcc5c,#6b5eae">
+                    </div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title">Scatter Chart - Datetime</h4>
+                <div dir="ltr">
+                    <div id="datetime-scatter" class="apex-charts"
+                        data-colors="#35b8e0,#fbcc5c,#6b5eae,#31ce77,#fa5c7c"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+<!-- end row-->
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title">Scatter - Images</h4>
+                <div dir="ltr">
+                    <div id="scatter-images" class="apex-charts scatter-images-chart" data-colors="#3b5998,#e1306c">
+                    </div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+
+{% endblock page_content %}
+
+{% block extra_javascript %}
+<script src="{% static '/vendor/apexcharts/apexcharts.min.js' %}"></script>
+
+<!-- Apex Chart Scatter Demo js -->
+<script src="{% static '/js/components/chart-apex-scatter.js' %}"></script>
+{% endblock extra_javascript %}

@@ -1,0 +1,71 @@
+{% extends 'vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Apex Radar Charts{% endblock title %}
+
+{% block extra_css %}
+
+{% endblock extra_css %}
+
+{% block page_title %}
+{% include 'partials/page-title.html' with title="Radar Charts" subtitle="Apex" %}
+{% endblock page_title %}
+
+{% block page_content %}
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-3">Basic Radar Chart</h4>
+                <div dir="ltr">
+                    <div id="basic-radar" class="apex-charts" data-colors="#6b5eae"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-3">Radar with Polygon-fill</h4>
+                <div dir="ltr">
+                    <div id="radar-polygon" class="apex-charts" data-colors="#FF4560"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+<!-- end row-->
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-3">Radar – Multiple Series</h4>
+                <div dir="ltr">
+                    <div id="radar-multiple-series" class="apex-charts" data-colors="#6b5eae,#02a8b5,#fd7e14"></div>
+                    <div class="text-center mt-2">
+                        <button onclick="update()" class="btn btn-sm btn-primary">Update</button>
+                    </div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+
+{% endblock page_content %}
+
+{% block extra_javascript %}
+<script src="{% static '/vendor/apexcharts/apexcharts.min.js' %}"></script>
+<script src="{% static '/js/components/chart-apex-radar.js' %}"></script>
+{% endblock extra_javascript %}

@@ -1,0 +1,118 @@
+{% extends 'vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Leaflet Maps{% endblock title %}
+
+{% block extra_css %}
+<link href="{% static '/vendor/leaflet/leaflet.css' %}" rel="stylesheet" type="text/css" />
+{% endblock extra_css %}
+
+{% block page_title %}
+{% include 'partials/page-title.html' with title="Leaflet Maps" subtitle="Maps" %}
+{% endblock page_title %}
+
+{% block page_content %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-bottom border-dashed d-flex align-items-center">
+                <h4 class="header-title">Basic Map</h4>
+            </div>
+
+            <div class="card-body">
+                <div class="leaflet-map" id="basicMap"></div>
+            </div>
+        </div> <!-- end card-->
+    </div>
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-bottom border-dashed d-flex align-items-center">
+                <h4 class="header-title">Marker Circle & Polygon</h4>
+            </div>
+
+            <div class="card-body">
+                <div class="leaflet-map" id="shapeMap"></div>
+            </div>
+        </div> <!-- end card-->
+    </div>
+
+
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-bottom border-dashed d-flex align-items-center">
+                <h4 class="header-title">Draggable Marker With Popup</h4>
+            </div>
+
+            <div class="card-body">
+                <div class="leaflet-map" id="dragMap"></div>
+            </div>
+        </div> <!-- end card-->
+    </div>
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-bottom border-dashed d-flex align-items-center">
+                <h4 class="header-title">User Location</h4>
+            </div>
+
+            <div class="card-body">
+                <div class="leaflet-map" id="userLocation"></div>
+            </div>
+        </div> <!-- end card-->
+    </div>
+
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-bottom border-dashed d-flex align-items-center">
+                <h4 class="header-title">Custom Icons</h4>
+            </div>
+
+            <div class="card-body">
+                <div class="leaflet-map" id="customIcons"></div>
+            </div>
+        </div> <!-- end card-->
+    </div>
+
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-bottom border-dashed d-flex align-items-center">
+                <h4 class="header-title">Layer Control</h4>
+            </div>
+
+            <div class="card-body">
+                <div class="leaflet-map" id="layerControl"></div>
+            </div>
+        </div> <!-- end card-->
+    </div>
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-bottom border-dashed d-flex align-items-center">
+                <h4 class="header-title">Interactive Choropleth Map</h4>
+            </div>
+
+            <div class="card-body">
+                <div class="leaflet-map" id="geoJson"></div>
+            </div>
+        </div> <!-- end card-->
+    </div>
+
+
+
+</div>
+
+{% endblock page_content %}
+
+{% block extra_javascript %}
+<script src="{% static '/vendor/leaflet/leaflet.js' %}"></script>
+
+<!-- leaflet map -->
+<script src="{% static '/js/maps/leaflet-data.js' %}"></script>
+<script src="{% static '/js/components/maps-leaflet.js' %}"></script>
+{% endblock extra_javascript %}

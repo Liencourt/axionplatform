@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% load static i18n %}
+
+{% block title %}Maintenance Page{% endblock title %}
+
+{% block body_attribute %}
+class="h-100"
+{% endblock body_attribute %}
+
+{% block page_title %}
+{% include 'partials/page-title.html' with title="Maintenance Page" subtitle="Base UI" %}
+{% endblock page_title %}
+
+{% block content %}
+
+<div class="auth-bg d-flex min-vh-100 justify-content-center align-items-center">
+    <div class="row g-0 justify-content-center w-100 m-xxl-5 px-xxl-4 m-3">
+        <div class="col-xl-4 col-lg-5 col-md-6">
+            <div class="card overflow-hidden text-center h-100 p-xxl-4 p-3 mb-0">
+
+                <a href="/" class="auth-brand mb-3">
+                    <img src="{% static '/images/logo-dark.png' %}" alt="dark logo" height="26" class="logo-dark">
+                    <img src="{% static '/images/logo.png' %}" alt="logo light" height="26" class="logo-light">
+                </a>
+
+                <div>
+                    <h3 class="fw-semibold text-dark">Ooop's ! </h3>
+                </div>
+
+                <img src="{% static '/images/png/maintenance.png' %}" alt="" class="img-fluid mt-3" height="320">
+
+                <h5 class="fw-semibold my-3 fs-20 text-dark lh-base">We are under scheduled maintenance</h5>
+
+                <a href="/" class="btn btn-primary fw-medium">Contact Site Owner</a>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

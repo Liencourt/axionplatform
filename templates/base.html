@@ -1,0 +1,40 @@
+{% load static i18n %}
+<!DOCTYPE html>
+{% get_current_language as LANGUAGE_CODE %}
+<html lang="{{ LANGUAGE_CODE }}" {% block html_attribute %}{% endblock html_attribute %}>
+
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}{% endblock title %} | Axiom Platform | Scientific Intelligence for Executive Decisions</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta content="Scientific Intelligence for Executive Decisions" property="og:title" />
+  <meta content="name="description" />
+  <meta content="Coderthemes" name="author" />
+
+  <!-- App favicon -->
+  <link rel="icon" href="{% static 'images/favicon.ico' %}" />
+
+  {% block css %}
+
+  {% block extra_css %}{% endblock extra_css %}
+
+  <script src="{% static 'js/config.js' %}"></script>
+  <link href="{% static 'css/app.min.css' %}" rel="stylesheet" />
+  <link href="{% static 'css/icons.min.css' %}" rel="stylesheet" />
+
+  {% endblock css %}
+
+</head>
+
+<body {% block body_attribute %}{% endblock body_attribute %}>
+
+  {% block content %}
+
+  {% endblock content %}
+
+  {% block modal %}{% endblock modal %}
+
+  {% block extra_javascript %}{% endblock extra_javascript %}
+</body>
+
+</html>

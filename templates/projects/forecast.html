@@ -1,0 +1,218 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+<div class="container-fluid">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h3 class="page-title mb-1 fw-bold text-dark"><i class="ti ti-chart-infographic text-primary"></i> Axiom Forecast</h3>
+            <p class="text-muted mb-0">Previsão de Demanda (XGBoost + SHAP) | Produto: <strong>{{ sku }} - {{ nome_produto }}</strong></p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'lista_projetos' %}" class="btn btn-outline-secondary shadow-sm rounded-pill px-4">
+                <i class="ti ti-arrow-left"></i> Voltar aos Projetos
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if not previsao %}
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-8 col-lg-6 text-center">
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="bg-primary p-4 text-white">
+                    <i class="ti ti-cpu text-white opacity-50 mb-3" style="font-size: 4rem;"></i>
+                    <h4 class="fw-bold text-white mb-0">Inteligência Preditiva Inativa</h4>
+                </div>
+                <div class="card-body p-5">
+                    <p class="text-muted mb-4 fs-5">
+                        A IA ainda não mapeou o comportamento futuro deste SKU. Pressione o botão abaixo para treinar o <strong>XGBoost</strong> com o histórico do Data Warehouse e extrair a explicabilidade do modelo.
+                    </p>
+                    <a href="{% url 'gerar_forecast_action' sku %}" class="btn btn-primary btn-lg rounded-pill px-5 shadow w-100" id="btnGerarIA" onclick="mostrarCarregamento()">
+                        <i class="ti ti-player-play me-2"></i> Inicializar Motor Preditivo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function mostrarCarregamento() {
+            const btn = document.getElementById('btnGerarIA');
+            btn.innerHTML = '<i class="ti ti-loader ti-spin me-2"></i> Treinando IA (Isso pode levar alguns segundos)...';
+            btn.classList.add('disabled');
+        }
+    </script>
+
+    {% else %}
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100 border-start border-primary border-4">
+                <div class="card-body p-3 d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3 text-primary">
+                        <i class="ti ti-target fs-2"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-1 small text-uppercase fw-bold">Acurácia (R²)</h6>
+                        <h3 class="fw-bold text-body mb-0">{{ previsao.acuracia_r2|floatformat:2 }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100 border-start border-success border-4">
+                <div class="card-body p-3 d-flex align-items-center">
+                    <div class="bg-success bg-opacity-10 p-3 rounded-3 me-3 text-success">
+                        <i class="ti ti-calendar-event fs-2"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-1 small text-uppercase fw-bold">Horizonte Projetado</h6>
+                        <h3 class="fw-bold text-body mb-0">30 Dias</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100 border-start border-info border-4">
+                <div class="card-body p-3 d-flex align-items-center">
+                    <div class="bg-info bg-opacity-10 p-3 rounded-3 me-3 text-info">
+                        <i class="ti ti-clock fs-2"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-1 small text-uppercase fw-bold">Última Execução</h6>
+                        <h4 class="fw-bold text-body mb-0">{{ previsao.data_geracao|date:"d/m/Y H:i" }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-transparent border-bottom p-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold text-body"><i class="ti ti-timeline text-primary me-2"></i> Projeção de Demanda Futura</h5>
+                    <a href="{% url 'gerar_forecast_action' sku %}" class="btn btn-sm btn-outline-primary rounded-pill">
+                        <i class="ti ti-refresh"></i> Recalcular Hoje
+                    </a>
+                </div>
+                <div class="card-body p-1">
+                    <div id="plotLinhaDoTempo" style="width: 100%; height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-transparent border-bottom p-3">
+                    <h5 class="mb-0 fw-bold text-body"><i class="ti ti-brain text-secondary me-2"></i> Explicabilidade da IA (SHAP Values)</h5>
+                    <small class="text-muted">Quais fatores estão impulsionando ou derrubando a demanda desta previsão?</small>
+                </div>
+                <div class="card-body p-1">
+                    <div id="plotShap" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Pega os JSONs salvos no banco de dados
+            const dadosPrevisao = {{ previsao.dados_previsao|safe }};
+            const dadosShap = {{ previsao.explicabilidade_shap|safe }};
+
+            // ==========================================
+            // GRÁFICO 1: LINHA DO TEMPO (PASSADO VS FUTURO)
+            // ==========================================
+            const traceHistorico = {
+                x: dadosPrevisao.datas_historicas,
+                y: dadosPrevisao.valores_historicos,
+                type: 'scatter', mode: 'lines+markers', name: 'Venda Realizada',
+                line: {color: '#95a5a6', width: 2}, marker: {size: 6}
+            };
+
+            const traceFuturo = {
+                x: dadosPrevisao.datas,
+                y: dadosPrevisao.valores_previstos,
+                type: 'scatter', mode: 'lines+markers', name: 'Previsão (XGBoost)',
+                line: {color: '#2ecc71', width: 3, dash: 'dot'}, marker: {size: 8, symbol: 'diamond'}
+            };
+
+            // Conecta a última linha do histórico com a primeira do futuro para não ficar um buraco no gráfico
+            if (dadosPrevisao.datas_historicas.length > 0 && dadosPrevisao.datas.length > 0) {
+                const tracoPonte = {
+                    x: [dadosPrevisao.datas_historicas[dadosPrevisao.datas_historicas.length - 1], dadosPrevisao.datas[0]],
+                    y: [dadosPrevisao.valores_historicos[dadosPrevisao.valores_historicos.length - 1], dadosPrevisao.valores_previstos[0]],
+                    type: 'scatter', mode: 'lines', name: 'Transição', showlegend: false,
+                    line: {color: '#2ecc71', width: 3, dash: 'dot'}
+                };
+                var dataLinha = [traceHistorico, tracoPonte, traceFuturo];
+            } else {
+                var dataLinha = [traceHistorico, traceFuturo];
+            }
+
+            const layoutLinha = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', // Transparente para Dark Mode
+                margin: { t: 20, b: 40, r: 20 },
+                xaxis: { gridcolor: 'rgba(128, 128, 128, 0.2)', tickfont: { color: '#888' } },
+                yaxis: { title: 'Volume (Un)', gridcolor: 'rgba(128, 128, 128, 0.2)', tickfont: { color: '#888' } },
+                hovermode: 'x unified',
+                legend: { orientation: "h", y: -0.15, x: 0.5, xanchor: 'center', font: { color: '#888' } }
+            };
+
+            Plotly.newPlot('plotLinhaDoTempo', dataLinha, layoutLinha, {responsive: true});
+
+            // ==========================================
+            // GRÁFICO 2: SHAP VALUES (IMPORTÂNCIA)
+            // ==========================================
+            // Prepara os dados do dicionário Python para o Plotly
+            let shapChaves = Object.keys(dadosShap).reverse(); // Inverte para o maior ficar no topo
+            let shapValores = Object.values(dadosShap).reverse();
+
+            // Embeleza o nome das variáveis para o cliente final
+            let nomesAmigaveis = shapChaves.map(nome => {
+                if (nome === 'dia_semana') return 'Dia da Semana';
+                if (nome === 'mes') return 'Mês do Ano';
+                if (nome === 'fim_de_semana') return 'É Fim de Semana?';
+                if (nome === 'venda_ontem') return 'Inércia (Venda Ontem)';
+                if (nome === 'venda_semana_passada') return 'Sazonalidade (Venda Há 7 dias)';
+                if (nome === 'media_movel_7d') return 'Tendência (Média Móvel 7d)';
+                return nome;
+            });
+
+            const traceShap = {
+                x: shapValores,
+                y: nomesAmigaveis,
+                type: 'bar',
+                orientation: 'h',
+                marker: { 
+                    color: shapValores, 
+                    colorscale: 'Blues', 
+                    reversescale: true 
+                },
+                hovertemplate: "<b>%{y}</b><br>Força de Decisão: %{x:.2f}<extra></extra>"
+            };
+
+            const layoutShap = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 200, r: 30, t: 20, b: 40 },
+                xaxis: { title: 'Impacto Médio na Previsão (Unidades)', gridcolor: 'rgba(128, 128, 128, 0.2)', tickfont: { color: '#888' } },
+                yaxis: { automargin: true, tickfont: { color: '#888', size: 13 } }
+            };
+
+            Plotly.newPlot('plotShap', [traceShap], layoutShap, {responsive: true});
+        });
+    </script>
+    {% endif %}
+</div>
+{% endblock page_content %}

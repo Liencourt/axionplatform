@@ -1,0 +1,200 @@
+{% extends 'vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Apex Line Charts{% endblock title %}
+
+{% block extra_css %}
+
+{% endblock extra_css %}
+
+{% block page_title %}
+{% include 'partials/page-title.html' with title="Line Charts" subtitle="Apex" %}
+{% endblock page_title %}
+
+{% block page_content %}
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-4">Simple line chart</h4>
+                <div dir="ltr">
+                    <div id="line-chart" class="apex-charts" data-colors="#fbcc5c"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-4">Line with Data Labels</h4>
+                <div dir="ltr">
+                    <div id="line-chart-datalabel" class="apex-charts" data-colors="#35b8e0,#6b5eae">
+                    </div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+<!-- end row-->
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-4">Zoomable Timeseries</h4>
+                <div dir="ltr">
+                    <div id="line-chart-zoomable" class="apex-charts" data-colors="#fa5c7c"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-4">Line Chart with Annotations</h4>
+                <div dir="ltr">
+                    <div id="line-chart-annotations" class="apex-charts" data-colors="#39afd1"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+<!-- end row-->
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-4">Syncing charts</h4>
+                <div id="line-chart-syncing2" data-colors="#6b5eae"></div>
+                <div dir="ltr">
+                    <div id="line-chart-syncing" class="apex-charts" data-colors="#35b8e0"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-4">Gradient Line Chart</h4>
+                <div dir="ltr">
+                    <div id="line-chart-gradient" class="apex-charts"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+<!-- end row-->
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-4">Missing / Null values</h4>
+                <div dir="ltr">
+                    <div id="line-chart-missing" class="apex-charts" data-colors="#fbcc5c,#31ce77,#39afd1"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-4">Dashed Line Chart</h4>
+                <div dir="ltr">
+                    <div id="line-chart-dashed" class="apex-charts" data-colors="#35b8e0,#31ce77,#39afd1"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+<!-- end row-->
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title mb-3">Stepline Chart</h4>
+                <div dir="ltr">
+                    <div id="line-chart-stepline" class="apex-charts" data-colors="#31ce77"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title">Brush Chart</h4>
+                <div dir="ltr">
+                    <div id="chart-line2" class="apex-charts" data-colors="#6b5eae"></div>
+                    <div id="chart-line" class="apex-charts" data-colors="#39afd1"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+<!-- end row-->
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title">Realtime Chart</h4>
+                <div dir="ltr">
+                    <div id="line-chart-realtime" class="apex-charts" data-colors="#39afd1"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+
+{% endblock page_content %}
+
+{% block extra_javascript %}
+<script src="{% static '/vendor/apexcharts/apexcharts.min.js' %}"></script>
+
+<!-- Apex Chart line Demo js -->
+<script src="https://apexcharts.com/samples/assets/stock-prices.js"></script>
+<script src="https://apexcharts.com/samples/assets/irregular-data-series.js"></script>
+<script src="{% static '/js/components/chart-apex-line.js' %}"></script>
+{% endblock extra_javascript %}

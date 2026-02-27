@@ -1,0 +1,80 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h3 class="page-title mb-1 fw-bold text-dark"><i class="fas fa-folder-open text-primary"></i> Meus Projetos de Pricing</h3>
+            <p class="text-muted mb-0">Gerencie seus estudos de elasticidade e otimização de preços.</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'iniciar_projeto_upload' %}" class="btn btn-primary shadow-sm">
+                <i class="fas fa-plus"></i> Novo Projeto
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-borderless align-middle mb-0">
+                            <thead class="bg-light text-muted small text-uppercase">
+                                <tr>
+                                    <th class="ps-4 py-3">ID</th>
+                                    <th>Nome do Projeto</th>
+                                    <th class="text-center">SKUs Analisados</th>
+                                    <th class="text-end pe-4">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for projeto in projetos %}
+                                <tr class="border-bottom">
+                                    <td class="ps-4 fw-bold text-muted">#{{ projeto.id }}</td>
+                                    
+                                    <td class="fw-bold text-dark">
+                                        <i class="fas fa-chart-line text-info me-2"></i> {{ projeto.nome }}
+                                    </td>
+                                    
+                                    <td class="text-center">
+                                        <span class="badge bg-primary rounded-pill px-3 py-1 shadow-sm">
+                                            {{ projeto.total_skus }} produtos
+                                        </span>
+                                    </td>
+                                    
+                                    <td class="text-end pe-4">
+                                        <a href="{% url 'dashboard_resultado' projeto.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 me-2">
+                                            <i class="fas fa-eye"></i> Abrir
+                                        </a>
+                                        
+                                        <form action="{% url 'excluir_projeto' projeto.id %}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir o projeto {{ projeto.nome }}? Todo o histórico de simulações dele será apagado.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                                                <i class="ti ti-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-5">
+                                        <div class="text-muted">
+                                            <i class="fas fa-box-open fs-1 mb-3 opacity-50"></i>
+                                            <h5>Nenhum projeto encontrado</h5>
+                                            <p>Você ainda não criou nenhum estudo de precificação.</p>
+                                            <a href="{% url 'iniciar_projeto_upload' %}" class="btn btn-primary mt-2">Criar meu primeiro Projeto</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock page_content %}

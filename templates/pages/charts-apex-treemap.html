@@ -1,0 +1,86 @@
+{% extends 'vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Apex Treemap Charts{% endblock title %}
+
+{% block extra_css %}
+
+{% endblock extra_css %}
+
+{% block page_title %}
+{% include 'partials/page-title.html' with title="Treemap Charts" subtitle="Apex" %}
+{% endblock page_title %}
+
+{% block page_content %}
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title">Basic Treemap</h4>
+                <div dir="ltr">
+                    <div id="basic-treemap" class="apex-charts" data-colors="#39afd1"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title">Treemap Multiple Series</h4>
+                <div dir="ltr">
+                    <div id="multiple-treemap" class="apex-charts" data-colors="#fa5c7c,#35b8e0"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+<!-- end row-->
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title">Distributed Treemap</h4>
+                <div dir="ltr">
+                    <div id="distributed-treemap" class="apex-charts"
+                        data-colors="#6b5eae,#31ce77,#fa5c7c,#35b8e0,#39afd1,#ffc35a, #eef2f7, #313a46">
+                    </div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title">Color Range Treemap</h4>
+                <div dir="ltr">
+                    <div id="color-range-treemap" class="apex-charts" data-colors="#6b5eae,#39afd1">
+                    </div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+
+{% endblock page_content %}
+
+{% block extra_javascript %}
+<script src="{% static '/vendor/apexcharts/apexcharts.min.js' %}"></script>
+<script src="{% static '/js/components/chart-apex-treemap.js' %}"></script>
+{% endblock extra_javascript %}

@@ -1,0 +1,95 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-12">
+            <h3 class="page-title mb-1 fw-bold text-dark"><i class="ti ti-settings text-primary"></i> Configurações da Conta</h3>
+            <p class="text-muted mb-0">Gerencie seu perfil e as regras financeiras da plataforma.</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-5 col-lg-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-light border-bottom p-3">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-user me-2"></i> Perfil Pessoal</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form action="{% url 'configuracoes_conta' %}" method="POST">
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted fw-bold small">Nome</label>
+                                <input type="text" name="first_name" class="form-control" value="{{ usuario.first_name }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted fw-bold small">Sobrenome</label>
+                                <input type="text" name="last_name" class="form-control" value="{{ usuario.last_name }}">
+                            </div>
+                            <div class="col-12 mt-3">
+                                <label class="form-label text-muted fw-bold small">E-mail de Acesso</label>
+                                <input type="email" name="email" class="form-control" value="{{ usuario.email }}">
+                                <small class="text-muted">Usado para login e notificações da Axiom.</small>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-end">
+                            <button type="submit" name="btn_salvar_perfil" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                                Atualizar Perfil
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-7 col-lg-6">
+            <div class="card shadow-sm border-0 h-100 border-start border-primary border-4">
+                <div class="card-header bg-light border-bottom p-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-building-store me-2"></i> Dados da Empresa</h5>
+                    <span class="badge bg-success-subtle text-success rounded-pill px-3">Plano Active</span>
+                </div>
+                <div class="card-body p-4">
+                    <form action="{% url 'configuracoes_conta' %}" method="POST">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label class="form-label text-muted fw-bold small">Nome da Organização</label>
+                            <input type="text" name="nome_empresa" class="form-control" value="{{ empresa.nome }}" required>
+                        </div>
+                        
+                        <h6 class="fw-bold text-dark mb-3"><i class="ti ti-target text-danger"></i> Parâmetros do Motor de Pricing</h6>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted fw-bold small">Margem Mínima Padrão (%)</label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" name="margem_minima" class="form-control" value="{{ empresa.margem_minima_padrao|stringformat:'f' }}">
+                                    <span class="input-group-text bg-light">%</span>
+                                </div>
+                                <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Dispara o alerta vermelho no simulador caso a margem caia abaixo deste nível.</small>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label text-muted fw-bold small">Limite Máx. de Oscilação (%)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">±</span>
+                                    <input type="number" step="0.01" name="limite_variacao" class="form-control" value="{{ empresa.limite_variacao_preco|stringformat:'f' }}">
+                                    <span class="input-group-text bg-light">%</span>
+                                </div>
+                                <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Trava de segurança da IA: impede que o sistema sugira preços muito fora da realidade atual.</small>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 text-end pt-3 border-top">
+                            <button type="submit" name="btn_salvar_empresa" class="btn btn-dark rounded-pill px-4 shadow-sm">
+                                Salvar Regras de Negócio
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock page_content %}

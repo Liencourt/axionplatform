@@ -1,0 +1,84 @@
+{% load static i18n %}
+<div class="sidenav-menu">
+
+    <a href="{% url 'iniciar_projeto_upload' %}" class="logo">
+        <span class="logo-light">
+            <span class="logo-lg"><img src="{% static '/images/logo.png' %}" alt="logo"></span>
+            <span class="logo-sm"><img src="{% static '/images/logo-sm.png' %}" alt="small logo"></span>
+        </span>
+
+        <span class="logo-dark">
+            <span class="logo-lg"><img src="{% static '/images/logo-dark.png' %}" alt="dark logo"></span>
+            <span class="logo-sm"><img src="{% static '/images/logo-sm.png' %}" alt="small logo"></span>
+        </span>
+    </a>
+    
+    <button class="button-sm-hover">
+        <i class="ti ti-circle align-middle"></i>
+    </button>
+
+    <button class="button-close-fullsidebar">
+        <i class="ti ti-x align-middle"></i>
+    </button>
+
+    <div data-simplebar>
+
+        <ul class="side-nav">
+            <li class="side-nav-title">Axiom Pricing Studio</li>
+
+            <li class="side-nav-item">
+                <a href="{% url 'lista_projetos' %}" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-folder"></i></span>
+                    <span class="menu-text"> Meus Projetos </span>
+                </a>
+            </li>           
+
+            <li class="side-nav-item">
+                <a href="{% url 'iniciar_projeto_upload' %}" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-upload"></i></span>
+                    <span class="menu-text"> Novo Estudo </span>
+                </a>
+            </li>
+            
+            <li class="side-nav-title">Axiom AI Studio</li>
+            
+            <li class="side-nav-item">
+                <a data-bs-toggle="collapse" href="#sidebarForecast" aria-expanded="false" aria-controls="sidebarForecast" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-chart-dots-3 text-success"></i></span>
+                    <span class="menu-text"> Axiom Forecast </span>
+                    <span class="menu-arrow"></span>
+                </a>
+                <div class="collapse" id="sidebarForecast">
+                    <ul class="side-nav-second-level">
+                        <li>
+                            <a href="{% url 'painel_macro_forecast' %}">Faturamento Global</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'lista_projetos' %}">Previsão por SKU (Micro)</a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            <li class="side-nav-item">
+                <a href="#" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-chart-bubble text-info"></i></span>
+                    <span class="menu-text"> Classification Studio </span>
+                    <span class="badge bg-danger rounded-pill float-end">Breve</span>
+                </a>
+            </li>
+            
+            <li class="side-nav-title">Administração</li>
+
+            <li class="side-nav-item">
+                <a href="{% url 'configuracoes_conta' %}" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-settings"></i></span>
+                    <span class="menu-text"> Configurações da Conta </span>
+                </a>
+            </li>
+            
+        </ul>
+
+        <div class="clearfix"></div>
+    </div>
+</div>

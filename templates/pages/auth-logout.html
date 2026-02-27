@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% load static i18n %}
+
+{% block title %}Log Out{% endblock title %}
+
+{% block body_attribute %}class="h-100"{% endblock body_attribute %}
+
+{% block content %}
+
+<div class="auth-bg d-flex min-vh-100 justify-content-center align-items-center">
+    <div class="row g-0 justify-content-center w-100 m-xxl-5 px-xxl-4 m-3">
+        <div class="col-xl-4 col-lg-5 col-md-6">
+            <div class="card overflow-hidden text-center h-100 p-xxl-4 p-3 mb-0">
+                <a href="/" class="auth-brand mb-4">
+                    <img src="{% static '/images/logo-dark.png' %}" alt="dark logo" height="26" class="logo-dark">
+                    <img src="{% static '/images/logo.png' %}" alt="logo light" height="26" class="logo-light">
+                </a>
+
+                <h4 class="fw-semibold mb-2 fs-18">You are Logged Out</h4>
+
+                <div class="d-flex align-items-center gap-2 my-3 mx-auto">
+                    <img src="{% static '/images/users/avatar-1.jpg' %}" alt=""
+                        class="avatar-lg rounded-circle img-thumbnail">
+                    <div>
+                        <h4 class="fw-semibold text-dark">Hi ! Dhanoo K.</h4>
+                    </div>
+                </div>
+
+                <div class="mb-3 text-start">
+                    <div class="bg-success-subtle p-3 rounded fst-italic fw-medium mb-0" role="alert">
+                        <p class="mb-0 text-success">You have been successfully logged out of your account. To continue
+                            using our services, please log in again with your credentials. If you encounter any issues,
+                            feel free to contact our support team for assistance.</p>
+                    </div>
+                </div>
+                <div class="d-grid">
+                    <button class="btn btn-primary fw-semibold" type="submit">Support Center</button>
+                </div>
+                <p class="text-muted fs-14 my-3">Back to <a href="{% url 'pages:dynamic_pages' template_name='auth-login' %}"
+                        class="text-danger fw-semibold ms-1">Login !</a>
+
+                <p class="mt-auto mb-0">
+                    <script>document.write(new Date().getFullYear())</script> © Greeva - By <span
+                        class="fw-bold text-decoration-underline text-uppercase text-reset fs-12">Coderthemes</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

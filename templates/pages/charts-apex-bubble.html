@@ -1,0 +1,52 @@
+{% extends 'vertical.html' %}
+
+{% load static i18n %}
+
+{% block title %}Apex Bubble Charts{% endblock title %}
+
+{% block extra_css %}
+
+{% endblock extra_css %}
+
+{% block page_title %}
+{% include 'partials/page-title.html' with title="Bubble Charts" subtitle="Apex" %}
+{% endblock page_title %}
+
+{% block page_content %}
+
+<div class="row">
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title">Simple Bubble Chart</h4>
+                <div dir="ltr">
+                    <div id="simple-bubble" class="apex-charts" data-colors="#6b5eae,#fbcc5c,#fa5c7c"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="header-title">3D Bubble Chart</h4>
+                <div dir="ltr">
+                    <div id="second-bubble" class="apex-charts" data-colors="#6b5eae,#31ce77,#fa5c7c,#39afd1"></div>
+                </div>
+            </div>
+            <!-- end card body-->
+        </div>
+        <!-- end card -->
+    </div>
+    <!-- end col-->
+</div>
+
+{% endblock page_content %}
+
+{% block extra_javascript %}
+<script src="{% static '/vendor/apexcharts/apexcharts.min.js' %}"></script>
+<script src="{% static '/js/components/chart-apex-bubble.js' %}"></script>
+{% endblock extra_javascript %}

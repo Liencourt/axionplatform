@@ -1,0 +1,259 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+<div class="container-fluid">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h3 class="page-title mb-1 fw-bold text-dark"><i class="ti ti-building-bank text-primary"></i> Axiom Macro Forecast</h3>
+            <p class="text-muted mb-0">Projeção Corporativa de Faturamento (IA: Facebook Prophet)</p>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if not previsao %}
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-8 col-lg-6 text-center">
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="bg-dark p-4 text-white">
+                    <i class="ti ti-chart-area-line text-white opacity-50 mb-3" style="font-size: 4rem;"></i>
+                    <h4 class="fw-bold text-white mb-0">Projeção Financeira Inativa</h4>
+                </div>
+                <div class="card-body p-5">
+                    <p class="text-muted mb-4 fs-5">
+                        O motor preditivo precisa processar todo o histórico de faturamento da empresa. Pressione o botão para treinar o <strong>Facebook Prophet</strong>.
+                    </p>
+                    <a href="{% url 'gerar_macro_forecast_action' %}" class="btn btn-dark btn-lg rounded-pill px-5 shadow w-100" id="btnGerarMacro" onclick="mostrarCarregamento()">
+                        <i class="ti ti-player-play me-2"></i> Processar Faturamento Global
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function mostrarCarregamento() {
+            const btn = document.getElementById('btnGerarMacro');
+            btn.innerHTML = '<i class="ti ti-loader ti-spin me-2"></i> Analisando Sazonalidade (Aguarde)...';
+            btn.classList.add('disabled');
+        }
+    </script>
+
+    {% else %}
+    <div class="row mb-4">
+        <div class="col-xl-4 col-md-6">
+            <div class="card shadow-sm border-0 border-start border-success border-4 h-100 bg-success bg-opacity-10">
+                <div class="card-body p-4">
+                    <h6 class="text-success mb-2 text-uppercase fw-bold"><i class="ti ti-cash"></i> Receita Projetada (Próx. 90 Dias)</h6>
+                    <h2 class="fw-bold text-success mb-0">R$ {{ previsao.faturamento_projetado_total|floatformat:2 }}</h2>
+                    <small class="text-muted mt-2 d-block">Soma total do volume financeiro previsto pela IA.</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-8 col-md-6 d-flex align-items-center justify-content-end">
+            <div class="text-end">
+                <p class="text-muted mb-2">Última atualização do modelo: <strong>{{ previsao.data_geracao|date:"d/m/Y H:i" }}</strong></p>
+                <a href="{% url 'gerar_macro_forecast_action' %}" class="btn btn-outline-dark rounded-pill px-4 shadow-sm">
+                    <i class="ti ti-refresh"></i> Recalcular Projeção
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-transparent border-bottom p-3">
+                    <h5 class="mb-0 fw-bold text-body"><i class="ti ti-trending-up text-primary me-2"></i> Curva de Faturamento Diário (R$)</h5>
+                </div>
+                <div class="card-body p-1">
+                    <div id="plotMacro" style="width: 100%; height: 450px;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-transparent border-bottom p-3">
+                    <h5 class="mb-0 fw-bold text-body"><i class="ti ti-calendar-stats text-secondary me-2"></i> Comportamento da Semana</h5>
+                    <small class="text-muted">Impacto de cada dia da semana na receita (Sazonalidade Extraída pelo Prophet)</small>
+                </div>
+                <div class="card-body p-1">
+                    <div id="plotSemana" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 mt-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-transparent border-bottom p-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold text-body"><i class="ti ti-table text-primary me-2"></i> Detalhamento Diário (Próximos 90 dias)</h5>
+                    <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm" onclick="exportarTabelaExcel()">
+                        <i class="ti ti-download me-1"></i> Exportar CSV
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover table-borderless table-striped align-middle mb-0 text-center" id="tabelaForecast">
+                            <thead class="bg-light text-muted small text-uppercase sticky-top shadow-sm">
+                                <tr>
+                                    <th class="py-3 text-start ps-4">Data Projetada</th>
+                                    <th class="text-danger">Cenário Pessimista</th>
+                                    <th class="text-primary fw-bold">Projeção Base (IA)</th>
+                                    <th class="text-success">Cenário Otimista</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpoTabelaForecast">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const dados = {{ previsao.dados_forecast|safe }};
+            const componentes = {{ previsao.componentes_sazonalidade|safe }};
+
+            // ==========================================
+            // GRÁFICO 1: LINHA DO TEMPO COM INTERVALO DE CONFIANÇA
+            // ==========================================
+            
+            // Faturamento Real (Pontos pretos)
+            const traceReal = {
+                x: dados.datas_reais, y: dados.valores_reais,
+                mode: 'markers', type: 'scatter', name: 'Faturamento Real',
+                marker: {color: '#2c3e50', size: 4}
+            };
+
+            // Linha da Previsão (Linha Azul)
+            const tracePrevisto = {
+                x: dados.datas, y: dados.previsao,
+                mode: 'lines', type: 'scatter', name: 'Previsão (Prophet)',
+                line: {color: '#3498db', width: 2}
+            };
+
+            // Zona de Sombra (Intervalo de Confiança - Upper e Lower)
+            const traceUpper = {
+                x: dados.datas, y: dados.limite_superior,
+                mode: 'lines', type: 'scatter', showlegend: false,
+                line: {width: 0}, hoverinfo: 'skip'
+            };
+            const traceLower = {
+                x: dados.datas, y: dados.limite_inferior,
+                mode: 'lines', type: 'scatter', fill: 'tonexty', fillcolor: 'rgba(52, 152, 219, 0.2)',
+                name: 'Margem de Erro (Confiança)', line: {width: 0}, hoverinfo: 'skip'
+            };
+
+            const layoutMacro = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { t: 20, b: 40, r: 20 },
+                xaxis: { gridcolor: 'rgba(128, 128, 128, 0.2)', tickfont: { color: '#888' } },
+                yaxis: { title: 'Faturamento (R$)', tickprefix: 'R$ ', gridcolor: 'rgba(128, 128, 128, 0.2)', tickfont: { color: '#888' } },
+                hovermode: 'x unified',
+                legend: { orientation: "h", y: -0.15, x: 0.5, xanchor: 'center', font: { color: '#888' } }
+            };
+
+            Plotly.newPlot('plotMacro', [traceUpper, traceLower, tracePrevisto, traceReal], layoutMacro, {responsive: true});
+
+            // ==========================================
+            // GRÁFICO 2: SAZONALIDADE DA SEMANA
+            // ==========================================
+            if(componentes.sazonalidade_semanal && componentes.sazonalidade_semanal.length > 0) {
+                // O Prophet gera dados diários, mas o ciclo semanal se repete a cada 7 dias
+                // Pegamos apenas os 7 primeiros dias gerados para desenhar a curva da semana (Dom a Sab)
+                const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+                
+                // Pega os 7 primeiros valores da componente semanal (geralmente começa no Domingo)
+                const valoresSemana = componentes.sazonalidade_semanal.slice(0, 7);
+
+                const traceSemana = {
+                    x: diasSemana, y: valoresSemana,
+                    type: 'bar', marker: {color: '#9b59b6'}
+                };
+
+                const layoutSemana = {
+                    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                    margin: { t: 20, b: 40, r: 20 },
+                    xaxis: { gridcolor: 'rgba(128, 128, 128, 0.2)', tickfont: { color: '#888' } },
+                    yaxis: { title: 'Impacto % no Faturamento', ticksuffix: '%', gridcolor: 'rgba(128, 128, 128, 0.2)', tickfont: { color: '#888' } }
+                };
+
+                Plotly.newPlot('plotSemana', [traceSemana], layoutSemana, {responsive: true});
+            } else {
+                document.getElementById('plotSemana').innerHTML = "<p class='text-muted text-center mt-5'>Histórico insuficiente para calcular padrão semanal.</p>";
+            }
+
+            // ==========================================
+            // TABELA DE DETALHAMENTO (Os 90 dias futuros)
+            // ==========================================
+            const corpoTabela = document.getElementById('corpoTabelaForecast');
+            
+            // O Prophet traz o passado e o futuro juntos. Nós queremos só os últimos 90 dias.
+            const diasProjetados = 90;
+            const totalLinhas = dados.datas.length;
+            const inicioFuturo = totalLinhas - diasProjetados;
+            
+            let htmlLinhas = '';
+
+            for (let i = inicioFuturo; i < totalLinhas; i++) {
+                // Formata a data de YYYY-MM-DD para DD/MM/YYYY
+                let dataOriginal = dados.datas[i].split('-');
+                let dataFormatada = `${dataOriginal[2]}/${dataOriginal[1]}/${dataOriginal[0]}`;
+                
+                // Formata para Moeda (R$)
+                let valorPessimista = dados.limite_inferior[i].toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                let valorBase = dados.previsao[i].toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                let valorOtimista = dados.limite_superior[i].toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+                htmlLinhas += `
+                    <tr>
+                        <td class="text-start ps-4 fw-bold text-muted">${dataFormatada}</td>
+                        <td class="text-danger">R$ ${valorPessimista}</td>
+                        <td class="text-primary fw-bold bg-primary bg-opacity-10">R$ ${valorBase}</td>
+                        <td class="text-success">R$ ${valorOtimista}</td>
+                    </tr>
+                `;
+            }
+            
+            corpoTabela.innerHTML = htmlLinhas;
+
+            // Função para exportar a tabela visível para CSV
+        function exportarTabelaExcel() {
+            let csv = [];
+            let linhas = document.querySelectorAll("table tr");
+            
+            for (let i = 0; i < linhas.length; i++) {
+                let row = [], cols = linhas[i].querySelectorAll("td, th");
+                for (let j = 0; j < cols.length; j++) 
+                    row.push(cols[j].innerText.replace('R$', '').trim());
+                csv.push(row.join(";")); // Ponto e vírgula pro Excel brasileiro ler bem
+            }
+
+            let csvFile = new Blob(["\uFEFF"+csv.join("\n")], {type: "text/csv;charset=utf-8;"});
+            let url = URL.createObjectURL(csvFile);
+            let link = document.createElement("a");
+            link.href = url;
+            link.setAttribute("download", "Axiom_Projecao_Financeira.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        });
+    </script>
+    {% endif %}
+</div>
+{% endblock page_content %}

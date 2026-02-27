@@ -1,0 +1,120 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h3 class="page-title mb-1 fw-bold text-dark">Dashboard de Pricing: {{ projeto.nome }}</h3>
+            <p class="text-muted mb-0">Visão executiva de sensibilidade e sugestões otimizadas pela IA.</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'exportar_erp' projeto.id %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="fas fa-file-excel"></i> Exportar Base ERP
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4 g-3">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 bg-primary text-white h-100 py-2">
+                <div class="card-body">
+                    <h6 class="text-white-50 mb-1 fw-bold">Total Analisado</h6>
+                    <small class="d-block mb-3 text-white-50">Base de dados processada</small>
+                    <h1 class="display-5 fw-bold mb-0 text-white">{{ total_analisados }}</h1>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 bg-danger text-white h-100 py-2">
+                <div class="card-body">
+                    <h6 class="text-white-50 mb-1 fw-bold">Alta Sensibilidade (Elásticos)</h6>
+                    <small class="d-block mb-3 text-white-50">Cuidado: Baixar preço explode volume</small>
+                    <h1 class="display-5 fw-bold mb-0 text-white">{{ elasticos_count }}</h1>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 bg-success text-white h-100 py-2">
+                <div class="card-body">
+                    <h6 class="text-white-50 mb-1 fw-bold">Clientes Fiéis (Inelásticos)</h6>
+                    <small class="d-block mb-3 text-white-50">Oportunidade de aumentar margem</small>
+                    <h1 class="display-5 fw-bold mb-0 text-white">{{ inelasticos_count }}</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-end mb-3 mt-2">
+                <h5 class="fw-bold text-primary mb-0">Curva de Produtos Analisados</h5>
+                <input type="text" class="form-control form-control-sm w-25" placeholder="Buscar produto...">
+            </div>
+            
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-borderless align-middle mb-0">
+                            <thead class="bg-light text-muted small text-uppercase">
+                                <tr>
+                                    <th class="ps-4 py-3">Produto (SKU)</th>
+                                    <th class="text-center">Comportamento</th>
+                                    <th class="text-center">Elasticidade</th>
+                                    <th class="text-center">Confiança</th>
+                                    <th class="text-end">Preço Atual</th>
+                                    <th class="text-end text-primary">Sugestão IA</th>
+                                    <th class="text-center pe-4">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in resultados %}
+                                <tr class="border-bottom">
+                                    <td class="ps-4 fw-bold text-dark">{{ item.sku }}</td>
+                                    
+                                    <td class="text-center">
+                                        <span class="badge border border-{{ item.cor_comp }} text-{{ item.cor_comp }} bg-transparent rounded-pill px-3 py-1">
+                                            {{ item.comportamento }}
+                                        </span>
+                                    </td>
+                                    
+                                    <td class="text-center text-muted">
+                                        {{ item.elasticidade|floatformat:3 }}
+                                    </td>
+                                    
+                                    <td class="text-center text-muted">
+                                        {{ item.confianca }}
+                                    </td>
+                                    
+                                    <td class="text-end text-muted">
+                                        R$ {{ item.preco_atual|floatformat:2 }}
+                                    </td>
+                                    
+                                    <td class="text-end fw-bold text-{{ item.cor_comp }}">
+                                        R$ {{ item.preco_sugerido|floatformat:2 }}
+                                    </td>
+                                    
+                                    <td class="text-end">
+                                        <a href="{% url 'simulador_produto' item.id %}" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm me-2">
+                                            <i class="ti ti-calculator"></i> Simular
+                                        </a>
+                                        
+                                        {% if item.sku %} <a href="{% url 'painel_forecast' item.sku %}" class="btn btn-outline-success btn-sm rounded-pill px-3 shadow-sm" title="Prever Demanda Futura">
+                                                <i class="ti ti-chart-infographic"></i> Prever
+                                            </a>
+                                        {% endif %}
+                                    </td>
+
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock page_content %}
