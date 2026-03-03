@@ -61,7 +61,7 @@
                     <label class="form-label fw-bold small text-primary">Preço Simulado (R$)</label>
                     <div class="input-group mb-3 shadow-sm">
                         <span class="input-group-text bg-white border-0 text-primary fw-bold">R$</span>
-                        <input type="number" id="inputPrecoPromo" class="form-control border-0 fw-bold text-primary fs-5" step="0.01" onkeyup="calcularTudo()" onchange="calcularTudo()">
+                        <input type="number" id="inputPrecoPromo" class="form-control border-0 fw-bold text-primary fs-5" step="0.01" onkeyup="calcularTudo()" onchange="calcularTudo()" data-url="{% url 'api_simular_preco' %}">
                     </div>
                     
                     <div class="text-center small text-muted">
@@ -237,65 +237,70 @@
         renderizarDiagnosticoRaiosX();
     }
 
-    // --- FUNÇÃO 1: OS CÁLCULOS DO PAINEL PRETO (ESQUERDA) ---
+    // --- FUNÇÃO 1: OS CÁLCULOS AGORA VÊM DO BACK-END (XGBOOST) ---
     function calcularMatematicaFinanceira() {
-        let precoSimulado = parseFloat(document.getElementById('inputPrecoPromo').value) || PRECO_ATUAL;
+        let inputPreco = document.getElementById('inputPrecoPromo');
+        
+        let valorDigitado = inputPreco.value.replace(',', '.');
+        let precoSimulado = parseFloat(valorDigitado) || PRECO_ATUAL;
+        
         let dataInicio = moment(document.getElementById('dataInicio').value); 
         let dataFim = moment(document.getElementById('dataFim').value); 
-        
         if (dataFim.isBefore(dataInicio)) return;
 
         let diasTotais = dataFim.diff(dataInicio, 'days') + 1;
-        let totalVolume = 0;
+        document.getElementById('resDias').innerText = diasTotais;
 
-        // O Motor Diário (Loop no tempo)
-        let dataAtual = dataInicio.clone();
-        
-        while (dataAtual.isSameOrBefore(dataFim)) {
-            let volumeDiario = DEMANDA_BASE;
+        // Pega a URL do Django e o Token de Segurança
+        const apiUrl = inputPreco.getAttribute('data-url');
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-            // Aplica a Elasticidade Pura
-            let razaoPreco = precoSimulado / PRECO_ATUAL;
-            if (razaoPreco <= 0) razaoPreco = 1;
-            volumeDiario = volumeDiario * Math.pow(razaoPreco, ELASTICIDADE);
+        // Chama o XGBoost no views.py
+        fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                projeto_id: "{{ resultado.projeto.id }}",
+                sku: "{{ resultado.codigo_produto }}",
+                novo_preco: precoSimulado,
+                custo: CUSTO,
+                // Podemos mandar os dias pro backend saber o tamanho da campanha!
+                dias_totais: diasTotais 
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'sucesso') {
+                // Multiplica a previsão diária do backend pelos dias da campanha
+                let totalVolume = data.quantidade_prevista * diasTotais;
+                let faturamento = data.faturamento_projetado * diasTotais;
+                let lucroBruto = data.lucro_projetado * diasTotais;
+                
+                // Atualiza o seu HTML com os IDs originais do seu template!
+                document.getElementById('resQtd').innerText = Math.round(totalVolume).toLocaleString('pt-BR') + ' un';
+                document.getElementById('resFat').innerText = faturamento.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                document.getElementById('resLucro').innerText = lucroBruto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                
+                // Lógica da Margem (Fica Verde ou Vermelha)
+                let elMargem = document.getElementById('resMargem');
+                let elAlerta = document.getElementById('alertaMargem');
+                
+                let margemPerc = data.margem_projetada;
+                elMargem.innerText = margemPerc.toFixed(1) + " %";
 
-            // Aplica os Pesos Sazonais/Variáveis Dinâmicas
-            let diaSemanaStr = dataAtual.format('dddd').toLowerCase().split('-')[0]; // ex: "segunda"
-            
-            for (const [chave, dados] of Object.entries(variaveisModelo)) {
-                let chaveMin = chave.toLowerCase();
-                // Se a variável arrastada pelo usuário for um dia da semana e for Relevante
-                if (chaveMin.includes(diaSemanaStr) && dados.status === "Relevante") {
-                    volumeDiario = volumeDiario * Math.exp(dados.coeficiente);
+                if (margemPerc < MARGEM_MINIMA) {
+                    elMargem.className = "fs-5 text-danger fw-bold";
+                    elAlerta.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Abaixo do Piso!';
+                } else {
+                    elMargem.className = "fs-5 text-success fw-bold";
+                    elAlerta.innerHTML = '<i class="fas fa-check-circle text-success"></i> Margem Segura';
                 }
             }
-
-            totalVolume += volumeDiario;
-            dataAtual.add(1, 'days');
-        }
-
-        // Resultados Finais
-        let faturamento = totalVolume * precoSimulado;
-        let lucroBruto = (precoSimulado - CUSTO) * totalVolume;
-        let margemPerc = ((precoSimulado - CUSTO) / precoSimulado) * 100;
-
-        // Atualizando o HTML
-        document.getElementById('resDias').innerText = diasTotais;
-        document.getElementById('resQtd').innerText = Math.round(totalVolume).toLocaleString('pt-BR');
-        document.getElementById('resFat').innerText = faturamento.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-        document.getElementById('resLucro').innerText = lucroBruto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-        
-        let elMargem = document.getElementById('resMargem');
-        let elAlerta = document.getElementById('alertaMargem');
-        elMargem.innerText = margemPerc.toFixed(1) + " %";
-
-        if (margemPerc < MARGEM_MINIMA) {
-            elMargem.className = "fs-5 text-danger";
-            elAlerta.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Abaixo do Piso Configurado!';
-        } else {
-            elMargem.className = "fs-5 text-success";
-            elAlerta.innerHTML = '<i class="fas fa-check-circle text-success"></i> Margem Saudável';
-        }
+        })
+        .catch(error => console.error('Erro ao chamar o XGBoost:', error));
     }
 
     // --- FUNÇÃO 2: O GRÁFICO DA ABA 1 (PARÁBOLA + DEMANDA + BOLHAS REAIS) ---
@@ -533,4 +538,5 @@
         });
     }
 </script>
+
 {% endblock page_content %}

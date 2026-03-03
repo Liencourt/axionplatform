@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import ProjetoPrecificacao, ResultadoPrecificacao, VendaHistoricaDW
+from .models import ProjetoPrecificacao, ResultadoPrecificacao, VendaHistoricaDW,FaturamentoEmpresaDW
+
 
 @admin.register(ProjetoPrecificacao)
 class ProjetoPrecificacaoAdmin(admin.ModelAdmin):
@@ -27,3 +28,10 @@ class VendaHistoricaDWAdmin(admin.ModelAdmin):
     list_per_page = 100
     # Ordena das vendas mais recentes para as mais antigas
     ordering = ('-data_venda',)
+
+@admin.register(FaturamentoEmpresaDW)
+class FaturamentoEmpresaDWAdmin(admin.ModelAdmin):
+    list_display = ('empresa', 'data_faturamento', 'faturamento_total')
+    list_filter = ('empresa', 'data_faturamento')
+    search_fields = ('empresa__nome',)
+    date_hierarchy = 'data_faturamento'

@@ -1,5 +1,6 @@
 {% extends 'vertical.html' %}
 {% load static %}
+{% load humanize %}
 
 {% block page_content %}
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
@@ -55,7 +56,7 @@
             <div class="card shadow-sm border-0 border-start border-success border-4 h-100 bg-success bg-opacity-10">
                 <div class="card-body p-4">
                     <h6 class="text-success mb-2 text-uppercase fw-bold"><i class="ti ti-cash"></i> Receita Projetada (Próx. 90 Dias)</h6>
-                    <h2 class="fw-bold text-success mb-0">R$ {{ previsao.faturamento_projetado_total|floatformat:2 }}</h2>
+                    <h2 class="fw-bold text-success mb-0">R$ {{ previsao.faturamento_projetado_total|floatformat:2|intcomma }}</h2>
                     <small class="text-muted mt-2 d-block">Soma total do volume financeiro previsto pela IA.</small>
                 </div>
             </div>
@@ -253,6 +254,15 @@
             document.body.removeChild(link);
         }
         });
+
+        // FORMATADOR DE MOEDA BRASILEIRA PARA GRÁFICOS
+        const formatarMoedaBR = (valor) => {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor);
+        };
+
     </script>
     {% endif %}
 </div>

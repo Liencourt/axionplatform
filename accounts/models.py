@@ -16,6 +16,26 @@ class Empresa(models.Model):
     limite_variacao_preco = models.FloatField(default=20.0)
     criado_em = models.DateTimeField(auto_now_add=True)
 
+    # ==========================================
+    # ASSINATURA E INTEGRAÇÃO STRIPE
+    # ==========================================
+    stripe_customer_id = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True, 
+        help_text="ID do cliente no Stripe (ex: cus_12345)"
+    )
+    stripe_subscription_id = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True, 
+        help_text="ID da assinatura ativa (ex: sub_12345)"
+    )
+    is_active_subscriber = models.BooleanField(
+        default=False, 
+        help_text="Verdadeiro se a empresa tem uma assinatura paga e ativa."
+    )
+
     def __str__(self):
         return self.nome
 

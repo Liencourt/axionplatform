@@ -8,10 +8,62 @@
     <link href="{% static 'css/app.min.css' %}" rel="stylesheet" />
     <link href="{% static 'css/icons.min.css' %}" rel="stylesheet" />
     <style>
-        .hero-section { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 100px 0; }
-        .feature-icon { font-size: 2.5rem; color: #3b82f6; margin-bottom: 1rem; }
-        .module-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
-        .module-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important; }
+        /* ==========================================
+           O CÉREBRO DAS CORES (MUDE AQUI PARA A SUA LOGO)
+           ========================================== */
+        :root {
+            --cor-principal: #0d6efd; /* Ex: Azul da logo */
+            --cor-secundaria: #ffc107; /* Ex: Dourado/Amarelo de destaque */
+            --cor-fundo-escuro: #0f172a;
+            --cor-texto-escuro: #1e293b;
+        }
+
+        /* FUNDOS MÁGICOS */
+        .hero-section { 
+            background: linear-gradient(135deg, var(--cor-fundo-escuro) 0%, #1e293b 100%); 
+            color: white; 
+            padding: 120px 0 80px 0; 
+        }
+        
+        .feature-icon { 
+            font-size: 2.5rem; 
+            color: var(--cor-principal); 
+            margin-bottom: 1rem; 
+        }
+
+        /* ==========================================
+           BOTÕES BLINDADOS (NUNCA MAIS VÃO SUMIR)
+           ========================================== */
+        .btn-axiom-principal {
+            background-color: var(--cor-principal);
+            color: #ffffff;
+            border: 2px solid var(--cor-principal);
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-axiom-principal:hover {
+            background-color: transparent;
+            color: var(--cor-principal);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-axiom-contorno {
+            background-color: transparent;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-axiom-contorno:hover {
+            background-color: #ffffff;
+            color: var(--cor-texto-escuro); /* O texto fica escuro para não sumir no fundo branco! */
+            border-color: #ffffff;
+        }
+
+        /* CARDS COM EFEITO SUAVE */
+        .module-card { transition: transform 0.3s ease, box-shadow 0.3s ease; border: 1px solid #e2e8f0 !important; }
+        .module-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important; border-color: var(--cor-principal) !important; }
+        .border-brand { border-color: var(--cor-principal) !important; }
     </style>
 </head>
 <body data-bs-spy="scroll" data-bs-target="#navbar-landing">
@@ -22,8 +74,8 @@
                 <i class="ti ti-chart-arcs text-primary fs-3 align-middle me-2"></i>AXIOM PLATFORM
             </a>
             <div class="ms-auto">
-                <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm me-2 px-4 rounded-pill">Login</a>
-                <a href="#contato" class="btn btn-primary btn-sm px-4 rounded-pill">Request a Demo</a>
+                <a href="{% url 'login' %}" class="btn btn-axiom-contorno btn-sm me-2 px-4 rounded-pill">Login</a>
+                <a href="#contato" class="btn btn-axiom-principal btn-sm px-4 rounded-pill">Request a Demo</a>
             </div>
         </div>
     </nav>
@@ -35,8 +87,8 @@
                 Construa modelos estatísticos de forma visual. Obtenha insights rápidos, precisos e explicáveis — sob demanda.
             </p>
             <div>
-                <a href="#contato" class="btn btn-primary btn-lg rounded-pill px-5 me-3 shadow">Request a Demo</a>
-                <a href="#how-it-works" class="btn btn-outline-light btn-lg rounded-pill px-5">See How It Works</a>
+                <a href="#contato" class="btn btn-axiom-principal btn-lg rounded-pill px-5 me-3 shadow">Request a Demo</a>
+                <a href="#how-it-works" class="btn btn-axiom-contorno btn-lg rounded-pill px-5">See How It Works</a>
             </div>
         </div>
     </section>
@@ -144,8 +196,8 @@
             
             <div class="mt-5" id="contato">
                 <h4 class="mb-4">Ready to decide with confidence?</h4>
-                <a href="mailto:contato@suaempresa.com" class="btn btn-primary btn-lg rounded-pill px-5 me-2">Talk to a Specialist</a>
-                <a href="{% url 'login' %}" class="btn btn-outline-light btn-lg rounded-pill px-5">Login to Platform</a>
+                <a href="mailto:contato@suaempresa.com" class="btn btn-axiom-principal btn-lg rounded-pill px-5 me-2">Talk to a Specialist</a>
+                <a href="{% url 'login' %}" class="btn btn-axiom-contorno btn-lg rounded-pill px-5">Login to Platform</a>
             </div>
         </div>
     </section>

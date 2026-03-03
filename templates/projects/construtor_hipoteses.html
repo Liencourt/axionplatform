@@ -23,7 +23,7 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Código do Produto (SKU)</label>
-                        <select class="form-select border-primary" name="sku_col" required>
+                        <select class="form-select border-primary select-coluna" name="sku_col" required>
                             <option value="">Selecione a coluna de SKU...</option>
                             {% for col in colunas_categoricas %}
                                 <option value="{{ col }}">{{ col }}</option>
@@ -36,7 +36,7 @@
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Data / Período</label>
-                        <select class="form-select border-primary" name="data_col" required>
+                        <select class="form-select border-primary select-coluna" name="data_col" required>
                             <option value="">Selecione a coluna de Data...</option>
                             {% for col in colunas_categoricas %}
                                 <option value="{{ col }}">{{ col }}</option>
@@ -50,7 +50,7 @@
 
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold text-success">Quantidade Vendida (Y)</label>
-                        <select class="form-select border-success" name="target_col" required>
+                        <select class="form-select border-success select-coluna" name="target_col" required>
                             <option value="">Selecione a Quantidade...</option>
                             {% for col in colunas_numericas %}
                                 <option value="{{ col }}">{{ col }}</option>
@@ -59,7 +59,7 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold text-success">Preço Praticado (X)</label>
-                        <select class="form-select border-success" name="preco_col" required>
+                        <select class="form-select border-success select-coluna" name="preco_col" required>
                             <option value="">Selecione o Preço...</option>
                             {% for col in colunas_numericas %}
                                 <option value="{{ col }}">{{ col }}</option>
@@ -68,7 +68,7 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold text-danger">Custo Unitário</label>
-                        <select class="form-select border-danger" name="custo_col" required>
+                        <select class="form-select border-danger select-coluna" name="custo_col" required>
                             <option value="">Selecione o Custo...</option>
                             {% for col in colunas_numericas %}
                                 <option value="{{ col }}">{{ col }}</option>
@@ -140,4 +140,55 @@
     });
 </script>
 <style>.cursor-move { cursor: grab; }</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Pega todos os dropdowns (selects)
+    const selects = document.querySelectorAll('.select-coluna');
+    // 2. Pega todas as caixinhas da lista de "Variáveis Disponíveis" e da caixa de "Arrastar"
+    const itensArrastaveis = document.querySelectorAll('.list-group-item');
+
+    function atualizarOpcoes() {
+        // A. Descobre quais valores já foram escolhidos nos dropdowns
+        const valoresEscolhidos = Array.from(selects)
+            .map(select => select.value)
+            .filter(valor => valor !== "");
+
+        // B. Atualiza as opções dentro dos outros dropdowns
+        selects.forEach(select => {
+            const opcoes = select.querySelectorAll('option');
+            
+            opcoes.forEach(opcao => {
+                if (opcao.value !== "" && valoresEscolhidos.includes(opcao.value) && select.value !== opcao.value) {
+                    opcao.hidden = true;     
+                    opcao.disabled = true;   
+                } else {
+                    opcao.hidden = false;    
+                    opcao.disabled = false;
+                }
+            });
+        });
+
+        // C. A NOVA MÁGICA: Esconde a variável do quadrado de "Variáveis Disponíveis"
+        itensArrastaveis.forEach(item => {
+            // O nome da coluna fica salvo dentro do 'data-nome' no HTML
+            const nomeDaVariavel = item.getAttribute('data-nome');
+            
+            // Se essa variável foi escolhida no dropdown, some com a caixinha dela!
+            if (valoresEscolhidos.includes(nomeDaVariavel)) {
+                item.style.display = 'none'; 
+            } else {
+                item.style.display = 'block'; // Se o usuário tirou do dropdown, a caixinha volta
+            }
+        });
+    }
+
+    // Coloca o espião para rodar a função toda vez que o usuário mudar um dropdown
+    selects.forEach(select => {
+        select.addEventListener('change', atualizarOpcoes);
+    });
+
+    // Roda a função uma vez logo que a página carrega
+    atualizarOpcoes();
+});
+</script>
 {% endblock %}

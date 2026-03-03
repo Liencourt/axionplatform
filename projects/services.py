@@ -3,8 +3,9 @@ import numpy as np
 import xgboost as xgb
 import shap
 from datetime import timedelta
-from .models import VendaHistoricaDW, PrevisaoDemanda,PrevisaoFaturamentoMacro
+from .models import VendaHistoricaDW, PrevisaoDemanda,PrevisaoFaturamentoMacro,FaturamentoEmpresaDW
 from prophet import Prophet
+
 
 
 def treinar_previsao_xgboost(empresa, codigo_produto, dias_futuros=30):
@@ -118,41 +119,48 @@ def treinar_previsao_xgboost(empresa, codigo_produto, dias_futuros=30):
 
 def treinar_previsao_macro_empresa(empresa, dias_futuros=90):
     """
-    O Motor Macro: Lê todo o DW da empresa, agrupa o faturamento (Qtd * Preco) por dia,
-    treina o Facebook Prophet (com feriados do Brasil) e gera a previsão corporativa.
+    O Motor Macro: Lê a tabela leve do CFO, treina o Prophet e gera a previsão.
     """
-    # 1. Busca todos os dados da empresa no DW
-    vendas = VendaHistoricaDW.objects.filter(empresa=empresa).values('data_venda', 'quantidade', 'preco_praticado')
+    # 1. Busca os dados na tabela NOVA e LEVE
+    faturamentos = FaturamentoEmpresaDW.objects.filter(empresa=empresa).values('data_faturamento', 'faturamento_total')
 
-    if not vendas:
-        return False, "Nenhum dado encontrado no Data Warehouse da empresa."
+    if not faturamentos:
+        return False, "Nenhum histórico macro financeiro encontrado. Por favor, faça o upload da planilha financeira."
 
-    # 2. Transforma em Pandas e calcula o Faturamento
-    df = pd.DataFrame.from_records(vendas)
-    df['data_venda'] = pd.to_datetime(df['data_venda']).dt.tz_localize(None) # Remove fuso horário para o Prophet não chorar
-    df['faturamento'] = df['quantidade'] * df['preco_praticado']
+    # 2. Transforma em Pandas (Já vem pronto, não precisa multiplicar quantidade x preço)
+    df = pd.DataFrame.from_records(faturamentos)
+    df['data_faturamento'] = pd.to_datetime(df['data_faturamento']).dt.tz_localize(None)
     
-    # 3. Agrupa por Dia (Obrigatoriedade do Prophet)
-    df_agrupado = df.groupby('data_venda')['faturamento'].sum().reset_index()
-    
-    # 4. Renomeia as colunas para o padrão de ferro do Prophet ('ds' para Data e 'y' para Valor)
-    df_agrupado.rename(columns={'data_venda': 'ds', 'faturamento': 'y'}, inplace=True)
-    df_agrupado.sort_values('ds', inplace=True)
+    # 3. Renomeia as colunas para o padrão de ferro do Prophet ('ds' para Data e 'y' para Valor)
+    df.rename(columns={'data_faturamento': 'ds', 'faturamento_total': 'y'}, inplace=True)
+    df_agrupado = df.sort_values('ds')
     
     if len(df_agrupado) < 30:
         return False, "O Prophet precisa de pelo menos 30 dias de histórico para achar padrões confiáveis."
-
     # ==========================================
     # TREINAMENTO DO FACEBOOK PROPHET
     # ==========================================
-    modelo = Prophet(
-        daily_seasonality=False, # Não queremos prever por hora, só por dia
-        yearly_seasonality=True, # Queremos entender se o verão é melhor que o inverno
-        weekly_seasonality=True, # Queremos entender se sexta vende mais que segunda
-        seasonality_mode='multiplicative' # Geralmente o varejo funciona em porcentagem (ex: 20% a mais na sexta)
-    )
+    modelo =  Prophet(
+    growth='linear',
+    # Deixe o Prophet achar os changepoints sozinho (padrão é 25)
+    changepoint_range=0.90, # Lê até os últimos 10% para captar tendências recentes
     
-    # A MÁGICA: Adicionamos os feriados do Brasil nativamente!
+    yearly_seasonality=True,  # Entende Janeiro x Dezembro
+    weekly_seasonality=True,  # Entende Segunda x Sábado
+    daily_seasonality=False,  # Correto, pois é dado diário e não por hora
+    
+    seasonality_mode='additive', 
+    
+    seasonality_prior_scale=10.0,
+    holidays_prior_scale=10.0,
+    
+    changepoint_prior_scale=0.60, # Subimos do padrão (0.05) para dar flexibilidade, mas sem o Overfitting do 0.90
+    
+    interval_width=0.90, # Ótimo, dá uma "sombra" azul de 90% de confiança para o CFO
+    uncertainty_samples=1000 # 1000 já é mais que suficiente e deixa o servidor mais rápido
+)
+
+# Apenas Feriados Nacionais. O yearly_seasonality já vai cuidar das vendas de Agosto sozinho!
     modelo.add_country_holidays(country_name='BR')
     
     # Treina a IA

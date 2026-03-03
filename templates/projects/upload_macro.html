@@ -1,0 +1,46 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="p-4 text-center border-bottom">
+                    <i class="ti ti-file-spreadsheet text-primary opacity-75 mb-3" style="font-size: 3rem;"></i>
+                    <h4 class="fw-bold text-body mb-0">Ingestão de Vendas (Macro)</h4>
+                    <p class="text-muted mt-2 mb-0">Suba de 2 a 3 anos de Vendas para o motor do Prophet.</p>
+                </div>
+                
+                <div class="card-body p-5">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="alert alert-primary bg-primary bg-opacity-10 border-0 mb-4 rounded-3">
+                        <h6 class="text-primary fw-bold"><i class="ti ti-bulb me-1"></i> Inteligência de Auto-Mapping</h6>
+                        <small class="text-muted">Não se preocupe em mapear colunas. Suba um CSV ou Excel contendo apenas duas informações principais: <strong>A Data do Fechamento</strong> e o <strong>Valor Faturado</strong>. Nossa IA detectará os campos automaticamente.</small>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label for="arquivo_macro" class="form-label fw-bold">Arquivo de Vendas (.csv ou .xlsx)</label>
+                            <input class="form-control form-control-lg" type="file" id="arquivo_macro" name="arquivo_macro" accept=".csv, .xlsx" required>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-dark btn-lg w-100 rounded-pill shadow-sm" id="btnUpload" onclick="this.innerHTML='<i class=\'ti ti-loader ti-spin me-2\'></i> Lendo arquivo e agrupando dados...';">
+                            <i class="ti ti-cloud-upload me-2"></i> Injetar Dados no Motor
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <a href="{% url 'painel_macro_forecast' %}" class="text-muted text-decoration-none"><i class="ti ti-arrow-left"></i> Voltar ao Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock page_content %}

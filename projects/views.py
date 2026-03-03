@@ -15,18 +15,23 @@ from django.shortcuts import get_object_or_404
 import csv
 from django.http import HttpResponse
 from django.http import JsonResponse
-import json
 from .services import treinar_previsao_xgboost,treinar_previsao_macro_empresa
 from .models import PrevisaoDemanda,PrevisaoFaturamentoMacro
+from .models import FaturamentoEmpresaDW
+import stripe
+from django.conf import settings
+from django.urls import reverse
+from accounts.models import Empresa
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Avg
+import math
+
 
 logger = logging.getLogger(__name__)
 @login_required
 def iniciar_projeto_upload(request):
     """Passo 1: Recebe o arquivo e extrai as colunas (Versão sem engolir erros de HTML)"""
-    if not hasattr(request.user, 'usuarioempresa'):
-        messages.error(request, "Seu usuário não está vinculado a uma Empresa.")
-        return redirect('admin:index')
-
+ 
     if request.method == 'POST' and request.FILES.get('arquivo_dados'):
         arquivo = request.FILES['arquivo_dados']
         nome_projeto = request.POST.get('nome_projeto', 'Novo Projeto')
@@ -124,7 +129,7 @@ def processar_modelo_dinamico(request):
             df[data_col] = pd.to_datetime(df[data_col], errors='coerce')
             df.dropna(subset=[data_col], inplace=True)
 
-            empresa_cliente = request.user.usuarioempresa.empresa
+            empresa_cliente = request.empresa
             projeto = ProjetoPrecificacao.objects.create(
                 empresa=empresa_cliente,
                 nome=nome_projeto,
@@ -236,7 +241,7 @@ def dashboard_resultado(request, projeto_id):
     """
     Passo 3: Exibe o resultado agregado no formato 'SaaS Executivo'.
     """
-    empresa_cliente = request.user.usuarioempresa.empresa
+    empresa_cliente = request.empresa
     projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=empresa_cliente)
     
     resultados_db = projeto.resultados.all()
@@ -299,7 +304,7 @@ def exportar_resultados_erp(request, projeto_id):
     """
     Gera o CSV final com os preços aprovados pelo cliente no Simulador.
     """
-    empresa = request.user.usuarioempresa.empresa
+    empresa = request.empresa
     projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=empresa)
     resultados = projeto.resultados.all()
 
@@ -351,7 +356,7 @@ def simulador_produto(request, resultado_id):
     Simulador Avançado: Lê o Data Warehouse para plotar o histórico real (Bolhas)
     e projeta cenários usando a regressão AutoML.
     """
-    empresa = request.user.usuarioempresa.empresa
+    empresa = request.empresa
     resultado = get_object_or_404(ResultadoPrecificacao, id=resultado_id, projeto__empresa=empresa)
     
     # Busca o histórico deste SKU no DW
@@ -417,7 +422,7 @@ def lista_projetos(request):
     """
     Hub de Projetos: Lista todos os estudos de precificação da empresa do usuário logado.
     """
-    empresa = request.user.usuarioempresa.empresa
+    empresa = request.empresa
     
     # Busca os projetos e já conta quantos 'resultados' (SKUs) cada um tem
     projetos = ProjetoPrecificacao.objects.filter(empresa=empresa).annotate(
@@ -434,7 +439,7 @@ def excluir_projeto(request, projeto_id):
     """
     Permite ao cliente apagar um estudo antigo para limpar o painel.
     """
-    empresa = request.user.usuarioempresa.empresa
+    empresa = request.empresa
     projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=empresa)
     
     if request.method == 'POST':
@@ -496,7 +501,7 @@ def salvar_preco_simulado(request, resultado_id):
             preco_limpo = str(data.get('preco')).replace(',', '.')
             novo_preco = float(preco_limpo)
             
-            empresa = request.user.usuarioempresa.empresa
+            empresa = request.empresa
             
             # Força o UPDATE direto no SQL, superando qualquer problema de cache
             linhas_afetadas = ResultadoPrecificacao.objects.filter(
@@ -523,7 +528,7 @@ def painel_forecast(request, sku):
     Carrega a tela do Axiom Forecast para um SKU específico.
     Se a IA já rodou, carrega os gráficos. Se não, mostra o botão para gerar.
     """
-    empresa = request.user.usuarioempresa.empresa
+    empresa = request.empresa
     
     # Pega a previsão mais recente gerada para este SKU
     previsao = PrevisaoDemanda.objects.filter(empresa=empresa, codigo_produto=sku).last()
@@ -544,7 +549,7 @@ def gerar_forecast_action(request, sku):
     """
     Ação do botão: Chama o Motor do XGBoost no services.py e salva no banco.
     """
-    empresa = request.user.usuarioempresa.empresa
+    empresa = request.empresa
     
     # Chama o motor que está no seu services.py
     sucesso, mensagem = treinar_previsao_xgboost(empresa, sku, dias_futuros=30)
@@ -561,7 +566,17 @@ def painel_macro_forecast(request):
     """
     O Dashboard do CFO: Mostra a projeção de faturamento da empresa inteira.
     """
-    empresa = request.user.usuarioempresa.empresa
+    empresa = request.empresa
+
+   
+    # ==========================================
+    # A BARREIRA VIP (PAYWALL)
+    # ==========================================
+    if not empresa.is_active_subscriber:
+        messages.warning(request, "🔒 Este módulo é exclusivo do plano Axiom Premium. Faça o upgrade para desbloquear o Motor Preditivo.")
+        return redirect('configuracoes_conta')     
+   
+    
     
     # Pega a última previsão gerada para a empresa
     previsao = PrevisaoFaturamentoMacro.objects.filter(empresa=empresa).last()
@@ -576,7 +591,7 @@ def gerar_macro_forecast_action(request):
     """
     Dispara o treinamento do Facebook Prophet para prever a receita global.
     """
-    empresa = request.user.usuarioempresa.empresa
+    empresa = request.empresa
     
     sucesso, mensagem = treinar_previsao_macro_empresa(empresa, dias_futuros=90)
     
@@ -586,3 +601,310 @@ def gerar_macro_forecast_action(request):
         messages.error(request, f"Atenção: {mensagem}")
         
     return redirect('painel_macro_forecast')
+@login_required
+def upload_macro_financeiro(request):
+    """
+    Ingestão Fast-Track: CFO sobe o CSV leve, a gente limpa a sujeira do Excel BR e salva.
+    """
+    empresa = request.empresa
+
+    if not empresa.is_active_subscriber:
+        messages.warning(request, "🔒 Funcionalidade Premium: A ingestão de caixa para IA requer uma assinatura ativa.")
+        return redirect('configuracoes_conta')
+    
+    if request.method == 'POST' and request.FILES.get('arquivo_macro'):
+        arquivo = request.FILES['arquivo_macro']
+        try:
+            extensao = '.csv' if arquivo.name.lower().endswith('.csv') else '.xlsx'
+            
+            # 1. LEITURA DO ARQUIVO (A Máscara de Texto - Solução do Erro de Bytes)
+            if extensao == '.csv':
+                import io
+                conteudo_bytes = arquivo.read() # Lê como binário
+                
+                # Tenta decodificar para texto humano (String)
+                try:
+                    conteudo_texto = conteudo_bytes.decode('utf-8')
+                except UnicodeDecodeError:
+                    conteudo_texto = conteudo_bytes.decode('latin-1')
+                
+                # Entrega para o Pandas como um arquivo de texto virtual!
+                df = pd.read_csv(io.StringIO(conteudo_texto), sep=None, engine='python')
+            else:
+                df = pd.read_excel(arquivo)
+                
+            # Limpa colunas e linhas totalmente vazias (fantasmas do Excel)
+            df.dropna(axis=1, how='all', inplace=True) 
+            df.dropna(axis=0, how='all', inplace=True)
+            
+            if len(df.columns) < 2:
+                messages.error(request, "O arquivo precisa ter pelo menos duas colunas (Data e Valor).")
+                return redirect('upload_macro_financeiro')
+
+            # ==========================================
+            # INTELIGÊNCIA DE AUTO-MAPPING (Versão Brasileira)
+            # ==========================================
+            col_data = df.columns[0]
+            col_valor = df.columns[1] 
+            
+            # 1. Limpeza Extrema da Data (Remove espaços em branco invisíveis do Excel)
+            df[col_data] = df[col_data].astype(str).str.strip()
+            
+            # ==========================================
+            # 1. Limpeza Extrema da Data (Parser Bulletproof BR/USA)
+            # ==========================================
+            df_data_limpa = df[col_data].astype(str).str.strip()
+            
+            # Tenta ler no formato Internacional do Excel primeiro (YYYY-MM-DD)
+            datas_parsed = pd.to_datetime(df_data_limpa, format='%Y-%m-%d', errors='coerce')
+            
+            # As linhas que falharam, ele tenta ler no formato Brasileiro (DD/MM/YYYY)
+            mask = datas_parsed.isna()
+            if mask.any():
+                datas_parsed.loc[mask] = pd.to_datetime(df_data_limpa[mask], format='%d/%m/%Y', errors='coerce')
+                
+            # As que ainda falharam, ele ativa a inteligência natural do Pandas com dayfirst=True
+            mask = datas_parsed.isna()
+            if mask.any():
+                datas_parsed.loc[mask] = pd.to_datetime(df_data_limpa[mask], errors='coerce', dayfirst=True)
+                
+            df[col_data] = datas_parsed
+
+
+            df[col_valor] = pd.to_numeric(df[col_valor], errors='coerce')
+
+            linhas_antes = len(df)
+            
+            # 2. Limpeza Bruta do Dinheiro (O Exterminador de \xa0)
+            if df[col_valor].dtype == 'object':
+                df[col_valor] = df[col_valor].astype(str)
+                
+                # MÁGICA 1: Tira o R$, o $ e TODOS os tipos de espaços (normais e invisíveis \s)
+                df[col_valor] = df[col_valor].str.replace(r'[R$\s]', '', regex=True, case=False)
+                
+                # MÁGICA 2: A Trava de Segurança da Moeda
+                # Se tiver vírgula, sabemos que é Brasil. Tiramos o ponto e trocamos vírgula por ponto.
+                # Se NÃO tiver vírgula, ele não faz nada (protege arquivos que já estão no formato americano).
+                df[col_valor] = df[col_valor].apply(
+                    lambda x: str(x).replace('.', '').replace(',', '.') if ',' in str(x) else x
+                )
+            
+            # Conversão final para Matemática
+            df[col_valor] = pd.to_numeric(df[col_valor], errors='coerce')
+            
+            # Exclui linhas onde a data ou valor não conseguiram ser convertidos (ex: Cabeçalhos soltos, rodapés)
+            df.dropna(subset=[col_data, col_valor], inplace=True)
+
+            linhas_perdidas = linhas_antes - len(df)
+            
+            if df.empty:
+                messages.error(request, "Falha crítica: As colunas foram lidas, mas nenhum valor financeiro válido sobreviveu à conversão.")
+                return redirect('upload_macro_financeiro')
+                
+            # Agrupa os faturamentos que caírem no mesmo dia
+            df_agrupado = df.groupby(col_data)[col_valor].sum().reset_index()
+            
+            # Prepara a lista para salvar no Banco (Bulk Create)
+            lista_faturamento = [
+                FaturamentoEmpresaDW(
+                    empresa=empresa,
+                    data_faturamento=row[col_data].date(),
+                    faturamento_total=float(row[col_valor])
+                )
+                for index, row in df_agrupado.iterrows()
+            ]
+            
+            # FLUSH AND FILL (Limpa o velho, bota o novo)
+            FaturamentoEmpresaDW.objects.filter(empresa=empresa).delete()
+            FaturamentoEmpresaDW.objects.bulk_create(lista_faturamento, batch_size=5000)
+            
+            # ==========================================
+            # NOVO: FEEDBACK TRANSPARENTE PARA O USUÁRIO
+            # ==========================================
+            if linhas_perdidas > 0:
+                messages.warning(request, f"Atenção: {linhas_perdidas} linhas do seu arquivo continham formatos irreconhecíveis e foram ignoradas (Verifique as datas e valores a partir de Março/2025).")
+            
+            messages.success(request, f"Mágico! {len(lista_faturamento)} dias de faturamento carregados e processados.")
+            return redirect('painel_macro_forecast')
+            
+        except Exception as e:
+            # AGORA O ERRO VAI DENUNCIAR EXATAMENTE O QUE QUEBROU
+            import logging
+            logging.error(f"Erro no Upload Macro: {e}")
+            messages.error(request, f"Erro interno ao ler o arquivo: {str(e)}")
+            return redirect('upload_macro_financeiro')
+            
+    return render(request, 'projects/upload_macro.html')
+
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+@login_required
+def criar_checkout_stripe(request):
+    """
+    Gera a sessão de pagamento (Checkout) segura na Stripe e redireciona o cliente.
+    """
+    empresa = request.empresa
+    
+    # COLE AQUI O SEU PRICE_ID GERADO NO PASSO 1
+    STRIPE_PRICE_ID = 'prod_U4l0CZfksGcAto' 
+    
+    # Monta as URLs de Sucesso e Cancelamento (para a Stripe saber pra onde devolver o cliente)
+    dominio = request.build_absolute_uri('/')[:-1] # Pega o "http://127.0.0.1:8000" automático
+    url_sucesso = dominio + reverse('sucesso_pagamento')
+    url_cancelado = dominio + reverse('cancelado_pagamento')
+
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'], # Pode adicionar 'boleto' ou 'pix' depois lá na Stripe
+            line_items=[
+                {
+                    'price': STRIPE_PRICE_ID,
+                    'quantity': 1,
+                },
+            ],
+            mode='subscription', # Modo de Assinatura Mensal Recorrente
+            success_url=url_sucesso + '?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url=url_cancelado,
+            
+            # O PULO DO GATO: Mandamos o ID da empresa escondido. 
+            # Quando a Stripe confirmar o pagamento, ela devolve esse ID e nós sabemos quem pagou!
+            client_reference_id=str(empresa.id),
+            customer_email=request.user.email, # Já preenche o e-mail do cliente na tela da Stripe
+        )
+        return redirect(checkout_session.url, code=303)
+        
+    except Exception as e:
+        messages.error(request, f"Erro ao conectar com o servidor de pagamentos: {str(e)}")
+        return redirect('configuracoes_conta')
+
+@login_required
+def sucesso_pagamento(request):
+    # Tela para onde o cliente cai após passar o cartão com sucesso
+    messages.success(request, "🎉 Pagamento aprovado! Bem-vindo ao Axiom Premium.")
+    return redirect('configuracoes_conta')
+
+@login_required
+def cancelado_pagamento(request):
+    # Tela caso ele desista de digitar o cartão e clique em "Voltar"
+    messages.warning(request, "O processo de assinatura foi cancelado.")
+    return redirect('configuracoes_conta')
+
+# ==========================================
+# WEBHOOK DA STRIPE (O Ouvinte Automático)
+# ==========================================
+@csrf_exempt
+def stripe_webhook(request):
+    """
+    Rota invisível que a Stripe chama automaticamente quando um pagamento é aprovado.
+    """
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    event = None
+
+    try:
+        # A Stripe exige que a gente valide a assinatura para provar que a mensagem é real e não de um hacker
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError as e:
+        return HttpResponse(status=400) # Payload inválido
+    except stripe.error.SignatureVerificationError as e:
+        return HttpResponse(status=400) # Assinatura falsa (Hacker)
+
+    # Verifica qual foi o evento que a Stripe mandou
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        
+        # Lembra que nós mandamos o ID da empresa escondido no client_reference_id? Nós pegamos ele de volta!
+        empresa_id = session.get('client_reference_id')
+        stripe_customer_id = session.get('customer')
+        stripe_subscription_id = session.get('subscription')
+
+        if empresa_id:
+            try:
+                # Encontra a empresa no banco de dados
+                empresa = Empresa.objects.get(id=empresa_id)
+                
+                # MÁGICA: Ativa a assinatura do cliente e salva as chaves dele!
+                empresa.is_active_subscriber = True
+                empresa.stripe_customer_id = stripe_customer_id
+                empresa.stripe_subscription_id = stripe_subscription_id
+                empresa.save()
+                
+                print(f"SUCESSO NO WEBHOOK: A empresa {empresa.nome} agora é Premium!")
+            except Empresa.DoesNotExist:
+                print(f"ERRO NO WEBHOOK: Empresa ID {empresa_id} não encontrada.")
+
+    # Responde 200 OK para a Stripe parar de mandar a mensagem
+    return HttpResponse(status=200)
+
+# ==========================================
+# API DE SIMULAÇÃO EM TEMPO REAL (XGBOOST)
+# ==========================================
+@login_required
+def api_simular_preco(request):
+    """
+    Recebe um novo preço do Front-end, consulta o modelo matemático do banco,
+    e devolve a quantidade prevista e o lucro projetado em milissegundos.
+    """
+    if request.method == 'POST':
+        try:
+            dados = json.loads(request.body)
+            projeto_id = dados.get('projeto_id')
+            sku = dados.get('sku')
+            
+            # Blindagem das vírgulas (já fizemos ontem)
+            preco_limpo = str(dados.get('novo_preco')).replace(',', '.')
+            custo_limpo = str(dados.get('custo')).replace(',', '.')
+            
+            novo_preco = float(preco_limpo)
+            custo = float(custo_limpo) 
+            
+            # ==========================================
+            # A CONEXÃO COM A REALIDADE (FIM DO MOCK)
+            # ==========================================
+            # 1. Busca os parâmetros reais de Elasticidade no Banco
+            resultado = ResultadoPrecificacao.objects.get(projeto_id=projeto_id, codigo_produto=sku, projeto__empresa=request.empresa)
+            
+            # 2. Busca a Demanda Base Média Diária exata deste SKU no histórico (DW)
+            media_vendas = VendaHistoricaDW.objects.filter(
+                projeto_id=projeto_id, 
+                codigo_produto=sku
+            ).aggregate(media=Avg('quantidade'))['media']
+            
+            demanda_base_diaria = float(media_vendas) if media_vendas else 0.0
+            
+            # 3. O Motor Matemático de Previsão
+            preco_atual = resultado.preco_atual
+            elasticidade = resultado.elasticidade
+            
+            # Fórmula: Nova Demanda = Demanda Base * (Novo Preço / Preço Atual) ^ Elasticidade
+            razao_preco = novo_preco / preco_atual if preco_atual > 0 else 1
+            if razao_preco <= 0: razao_preco = 1
+                
+            quantidade_diaria_prevista = demanda_base_diaria * math.pow(razao_preco, elasticidade)
+            
+            # Trava de segurança: não existe venda negativa
+            if quantidade_diaria_prevista < 0:
+                quantidade_diaria_prevista = 0
+                
+            # 4. Matemática Financeira Executiva (Cálculos Diários)
+            faturamento_diario = quantidade_diaria_prevista * novo_preco
+            lucro_diario = (novo_preco - custo) * quantidade_diaria_prevista
+            margem_projetada = ((novo_preco - custo) / novo_preco) * 100 if novo_preco > 0 else 0
+
+            # 5. Devolve a resposta REAL para a tela
+            return JsonResponse({
+                'status': 'sucesso',
+                'quantidade_prevista': round(quantidade_diaria_prevista, 2), # Mandamos a média diária! O JS multiplica pelos dias.
+                'faturamento_projetado': round(faturamento_diario, 2),
+                'lucro_projetado': round(lucro_diario, 2),
+                'margem_projetada': round(margem_projetada, 2)
+            })
+            
+        except Exception as e:
+            print(f"ERRO NA API: {e}")
+            return JsonResponse({'status': 'erro', 'mensagem': str(e)}, status=400)
+            
+    return JsonResponse({'status': 'invalido'}, status=405)

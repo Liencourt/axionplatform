@@ -3,7 +3,7 @@ from . import views
 
 urlpatterns = [
     
-    path('', views.iniciar_projeto_upload, name='iniciar_projeto_upload'),
+    path('novo-estudo/', views.iniciar_projeto_upload, name='iniciar_projeto_upload'),
     
     
     path('processar/', views.processar_modelo_dinamico, name='processar_modelo_dinamico'),
@@ -27,8 +27,19 @@ urlpatterns = [
     path('forecast/<str:sku>/', views.painel_forecast, name='painel_forecast'),
     
     path('forecast/<str:sku>/gerar/', views.gerar_forecast_action, name='gerar_forecast_action'),
-
+    path('api/simular-preco/', views.api_simular_preco, name='api_simular_preco'),
     # MÓDULO AXIOM MACRO (PREVISÃO DE FATURAMENTO GLOBAL)
     path('forecast-corporativo/', views.painel_macro_forecast, name='painel_macro_forecast'),
     path('forecast-corporativo/gerar/', views.gerar_macro_forecast_action, name='gerar_macro_forecast_action'),
+
+    path('forecast-corporativo/upload/', views.upload_macro_financeiro, name='upload_macro_financeiro'),
+
+    # ==========================================
+    # ASSINATURAS E PAGAMENTOS (STRIPE)
+    # ==========================================
+    path('assinatura/checkout/', views.criar_checkout_stripe, name='criar_checkout_stripe'),
+    path('assinatura/sucesso/', views.sucesso_pagamento, name='sucesso_pagamento'),
+    path('assinatura/cancelado/', views.cancelado_pagamento, name='cancelado_pagamento'),
+    path('stripe/webhook/', views.stripe_webhook, name='stripe_webhook'),
+    
 ]

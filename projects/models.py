@@ -150,3 +150,21 @@ class PrevisaoFaturamentoMacro(models.Model):
 
     def __str__(self):
         return f"Macro Forecast: {self.empresa.nome} | Gerado em {self.data_geracao.strftime('%d/%m/%Y')}"
+
+class FaturamentoEmpresaDW(models.Model):
+    """
+    Data Warehouse Macro: Guarda apenas a linha do tempo de faturamento global (Data + Valor).
+    Arquivo minúsculo, otimizado para o Prophet.
+    """
+    empresa = models.ForeignKey('accounts.Empresa', on_delete=models.CASCADE)
+    data_faturamento = models.DateField()
+    faturamento_total = models.FloatField()
+
+    class Meta:
+        verbose_name = "Faturamento Macro"
+        verbose_name_plural = "Faturamentos Macro"
+        # Garante que não teremos duas linhas para o mesmo dia na mesma empresa
+        unique_together = ('empresa', 'data_faturamento') 
+
+    def __str__(self):
+        return f"{self.empresa.nome} | {self.data_faturamento} | R$ {self.faturamento_total}"

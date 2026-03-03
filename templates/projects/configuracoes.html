@@ -1,5 +1,6 @@
 {% extends 'vertical.html' %}
 {% load static %}
+{% load humanize %}
 
 {% block page_content %}
 <div class="container-fluid">
@@ -10,6 +11,34 @@
         </div>
     </div>
 
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border border-warning border-opacity-50 rounded-4 overflow-hidden" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.05) 0%, rgba(255, 152, 0, 0.1) 100%);">
+                <div class="card-body p-4 p-md-5 d-flex align-items-center justify-content-between flex-wrap gap-4">
+                    <div>
+                        <h3 class="fw-bold text-body mb-2"><i class="ti ti-diamond text-warning me-2"></i> Axiom Premium</h3>
+                        <p class="text-muted mb-0 fs-5">Ative o Motor Preditivo de Machine Learning e a Projeção Financeira do CFO.</p>
+                        
+                        <ul class="list-unstyled mt-3 mb-0 text-muted">
+                            <li><i class="ti ti-check text-success me-2"></i> Axiom Forecast com XGBoost</li>
+                            <li><i class="ti ti-check text-success me-2"></i> Ingestão Macro para Facebook Prophet</li>
+                            <li><i class="ti ti-check text-success me-2"></i> Previsões de Demanda Ilimitadas</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="text-center">
+                        <form action="{% url 'criar_checkout_stripe' %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-warning btn-lg rounded-pill fw-bold shadow px-5 py-3 fs-5" style="background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%); border: none; color: #212529;">
+                                <i class="ti ti-credit-card me-2"></i> Assinar por R$ 497/mês
+                            </button>
+                        </form>
+                        <small class="text-muted d-block mt-2"><i class="ti ti-lock"></i> Pagamento seguro via Stripe</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="row g-4">
         <div class="col-xl-5 col-lg-6">
             <div class="card shadow-sm border-0 h-100">
@@ -39,7 +68,7 @@
                                 Atualizar Perfil
                             </button>
                         </div>
-                    </form>
+                    </form>                    
                 </div>
             </div>
         </div>
@@ -81,15 +110,18 @@
                             </div>
                         </div>
 
+                        
+
                         <div class="mt-4 text-end pt-3 border-top">
                             <button type="submit" name="btn_salvar_empresa" class="btn btn-dark rounded-pill px-4 shadow-sm">
                                 Salvar Regras de Negócio
                             </button>
-                        </div>
-                    </form>
-                </div>
+                        </div>                        
+                    </form>                    
+                </div>                
             </div>
-        </div>
+        </div>        
     </div>
+    
 </div>
 {% endblock page_content %}
