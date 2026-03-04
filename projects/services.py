@@ -5,6 +5,7 @@ import shap
 from datetime import timedelta
 from .models import VendaHistoricaDW, PrevisaoDemanda,PrevisaoFaturamentoMacro,FaturamentoEmpresaDW
 from prophet import Prophet
+from prophet.make_holidays import make_holidays_df
 
 
 
@@ -137,13 +138,28 @@ def treinar_previsao_macro_empresa(empresa, dias_futuros=90):
     
     if len(df_agrupado) < 30:
         return False, "O Prophet precisa de pelo menos 30 dias de histórico para achar padrões confiáveis."
+    
+    ano_inicio = df_agrupado['ds'].dt.year.min()
+    ano_fim = df_agrupado['ds'].dt.year.max()
+
+    lista_anos = list(range(ano_inicio, ano_fim + 2))
+
+    df_holidays = make_holidays_df(
+        year_list=lista_anos, 
+        country='BR', 
+        #province='RJ' # <--- Opcional: No futuro, puxar o 'estado' da tabela Empresa
+    )
+    
     # ==========================================
     # TREINAMENTO DO FACEBOOK PROPHET
     # ==========================================
     modelo =  Prophet(
+    scaling='minmax',      
+    holidays=df_holidays,
     growth='linear',
+    n_changepoints=38,
     # Deixe o Prophet achar os changepoints sozinho (padrão é 25)
-    changepoint_range=0.90, # Lê até os últimos 10% para captar tendências recentes
+    changepoint_range=0.95, # Lê até os últimos 10% para captar tendências recentes
     
     yearly_seasonality=True,  # Entende Janeiro x Dezembro
     weekly_seasonality=True,  # Entende Segunda x Sábado
@@ -152,16 +168,15 @@ def treinar_previsao_macro_empresa(empresa, dias_futuros=90):
     seasonality_mode='additive', 
     
     seasonality_prior_scale=10.0,
-    holidays_prior_scale=10.0,
+    holidays_prior_scale=15.0,
     
-    changepoint_prior_scale=0.60, # Subimos do padrão (0.05) para dar flexibilidade, mas sem o Overfitting do 0.90
+    changepoint_prior_scale=0.18, # Subimos do padrão (0.05) para dar flexibilidade, mas sem o Overfitting do 0.90
     
-    interval_width=0.90, # Ótimo, dá uma "sombra" azul de 90% de confiança para o CFO
+    interval_width=0.80, # Ótimo, dá uma "sombra" azul de 90% de confiança para o CFO
     uncertainty_samples=1000 # 1000 já é mais que suficiente e deixa o servidor mais rápido
 )
 
-# Apenas Feriados Nacionais. O yearly_seasonality já vai cuidar das vendas de Agosto sozinho!
-    modelo.add_country_holidays(country_name='BR')
+
     
     # Treina a IA
     modelo.fit(df_agrupado)
@@ -181,6 +196,26 @@ def treinar_previsao_macro_empresa(empresa, dias_futuros=90):
     apenas_futuro = forecast.tail(dias_futuros)
     soma_projetada = apenas_futuro['yhat'].sum()
 
+
+    # ==========================================
+    # NOVO: CÁLCULO DE ACURÁCIA (MAPE E COMPARATIVO)
+    # ==========================================
+    # Junta os dados reais com os dados que a IA "achou" que seriam para o mesmo período
+    df_comparativo = pd.merge(df_agrupado, forecast[['ds', 'yhat']], on='ds', how='inner')
+    
+    # Previne divisão por zero (caso tenha dia com venda R$ 0,00)
+    df_comparativo['y_safe'] = df_comparativo['y'].replace(0, np.nan)
+    
+    # Calcula o MAPE (Erro Percentual Absoluto Médio)
+    mape = (np.abs((df_comparativo['y_safe'] - df_comparativo['yhat']) / df_comparativo['y_safe']).mean()) * 100
+    if np.isnan(mape) or np.isinf(mape):
+        mape = 0.0
+
+    # Calcula os totais do histórico (O que aconteceu vs O que a IA teria previsto)
+    total_real = df_comparativo['y'].sum()
+    total_previsto = df_comparativo['yhat'].sum()
+    diferenca = total_real - total_previsto
+
     # ==========================================
     # PREPARAR OS JSONS PARA O DASHBOARD (Frontend)
     # ==========================================
@@ -191,7 +226,12 @@ def treinar_previsao_macro_empresa(empresa, dias_futuros=90):
         'limite_inferior': [round(x, 2) for x in forecast['yhat_lower']],
         'limite_superior': [round(x, 2) for x in forecast['yhat_upper']],
         'datas_reais': df_agrupado['ds'].dt.strftime('%Y-%m-%d').tolist(),
-        'valores_reais': [round(x, 2) for x in df_agrupado['y']]
+        'valores_reais': [round(x, 2) for x in df_agrupado['y']],
+        # ENVIANDO A ACURÁCIA PARA A TELA:
+        'mape': round(mape, 2),
+        'total_real': round(total_real, 2),
+        'total_previsto': round(total_previsto, 2),
+        'diferenca': round(diferenca, 2)
     }
 
     # Os valores que compõem a explicação da Diretoria (Por que a IA previu isso?)
