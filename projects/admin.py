@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import ProjetoPrecificacao, ResultadoPrecificacao, VendaHistoricaDW,FaturamentoEmpresaDW
+from .models import (ProjetoPrecificacao, ResultadoPrecificacao, 
+                     Loja,EventoCalendario,VendaHistoricaDW,FaturamentoEmpresaDW)
 
 
 @admin.register(ProjetoPrecificacao)
@@ -35,3 +36,15 @@ class FaturamentoEmpresaDWAdmin(admin.ModelAdmin):
     list_filter = ('empresa', 'data_faturamento')
     search_fields = ('empresa__nome',)
     date_hierarchy = 'data_faturamento'
+
+# Registra a Loja para você poder editar os nomes se quiser
+@admin.register(Loja)
+class LojaAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'empresa', 'ativo', 'criado_em')
+    list_filter = ('empresa', 'ativo')
+
+# Registra o Calendário
+@admin.register(EventoCalendario)
+class EventoCalendarioAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'data_inicio', 'data_fim', 'empresa', 'loja')
+    list_filter = ('empresa', 'loja')

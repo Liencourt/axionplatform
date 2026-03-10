@@ -14,14 +14,31 @@
             <p class="text-muted mb-0">Projeção Corporativa de Faturamento (IA: Facebook Prophet)</p>
         </div>
         
-        <div class="col-md-5 text-end">
+        <div class="col-md-7 text-end d-flex justify-content-end align-items-center">
+            
+            <form method="GET" action="{% url 'painel_macro_forecast' %}" id="formFiltroLoja" class="me-3 mb-0">
+                <select name="loja_id" class="form-select rounded-pill fw-bold shadow-sm border-primary text-primary bg-light" style="min-width: 200px;" onchange="document.getElementById('formFiltroLoja').submit();">
+                    <option value="">Selecione a Filial...</option>
+                    {% for loja in lojas %}
+                        <option value="{{ loja.id }}" {% if loja_selecionada_id == loja.id|stringformat:"s" %}selected{% endif %}>
+                            <i class="ti ti-building-store"></i> {{ loja.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </form>
+
             <a href="{% url 'upload_macro_financeiro' %}" class="btn btn-outline-dark shadow-sm me-2 rounded-pill fw-bold">
                 <i class="ti ti-cloud-upload me-1"></i> Atualizar Base (CSV)
             </a>
             
-            <a href="{% url 'gerar_macro_forecast_action' %}" class="btn btn-primary shadow-sm rounded-pill fw-bold">
-                <i class="ti ti-wand text-warning me-1"></i> Recalcular Projeção
-            </a>
+            <form method="POST" action="{% url 'gerar_macro_forecast_action' %}" class="mb-0">
+                {% csrf_token %}
+                <input type="hidden" name="loja_id" value="{{ loja_selecionada_id }}">
+                <button type="submit" class="btn btn-primary shadow-sm rounded-pill fw-bold" {% if not loja_selecionada_id %}disabled{% endif %}>
+                    <i class="ti ti-wand text-warning me-1"></i> Recalcular Projeção
+                </button>
+            </form>
+
         </div>
     </div>
     

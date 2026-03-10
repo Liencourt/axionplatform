@@ -10,14 +10,14 @@ import json
 import numpy as np
 import statsmodels.formula.api as smf
 from scipy.stats import shapiro
-from .models import ProjetoPrecificacao, ResultadoPrecificacao, VendaHistoricaDW
+from .models import(ProjetoPrecificacao, ResultadoPrecificacao,
+                     VendaHistoricaDW,Loja,PrevisaoDemanda,
+                     PrevisaoFaturamentoMacro,FaturamentoEmpresaDW)
 from django.shortcuts import get_object_or_404
 import csv
 from django.http import HttpResponse
 from django.http import JsonResponse
 from .services import treinar_previsao_xgboost,treinar_previsao_macro_empresa
-from .models import PrevisaoDemanda,PrevisaoFaturamentoMacro
-from .models import FaturamentoEmpresaDW
 import stripe
 from django.conf import settings
 from django.urls import reverse
@@ -564,11 +564,10 @@ def gerar_forecast_action(request, sku):
 @login_required
 def painel_macro_forecast(request):
     """
-    O Dashboard do CFO: Mostra a projeção de faturamento da empresa inteira.
+    O Dashboard do CFO: Mostra a projeção de faturamento da empresa inteira ou filtrada por Loja.
     """
     empresa = request.empresa
 
-   
     # ==========================================
     # A BARREIRA VIP (PAYWALL)
     # ==========================================
@@ -576,31 +575,57 @@ def painel_macro_forecast(request):
         messages.warning(request, "🔒 Este módulo é exclusivo do plano Axiom Premium. Faça o upgrade para desbloquear o Motor Preditivo.")
         return redirect('configuracoes_conta')     
    
+    # 1. Busca todas as lojas ativas do cliente para montar o Dropdown na tela
+    lojas = Loja.objects.filter(empresa=empresa, ativo=True).order_by('nome')
     
-    
-    # Pega a última previsão gerada para a empresa
-    previsao = PrevisaoFaturamentoMacro.objects.filter(empresa=empresa).last()
+    # 2. Verifica se o cliente escolheu alguma loja no filtro (vem pela URL ex: ?loja_id=5)
+    loja_selecionada_id = request.GET.get('loja_id')
+
+    if loja_selecionada_id:
+        # Se ele escolheu uma loja, puxa a última previsão gerada PARA ESSA LOJA
+        previsao = PrevisaoFaturamentoMacro.objects.filter(empresa=empresa, loja_id=loja_selecionada_id).last()
+    else:
+        # Se ele acabou de entrar na tela, puxa a última previsão gerada no geral
+        previsao = PrevisaoFaturamentoMacro.objects.filter(empresa=empresa).last()
+        # Se achou uma previsão, descobre de qual loja ela é para deixar o Dropdown marcado certinho
+        if previsao and previsao.loja:
+            loja_selecionada_id = str(previsao.loja.id)
 
     contexto = {
         'previsao': previsao,
+        'lojas': lojas,
+        'loja_selecionada_id': str(loja_selecionada_id) if loja_selecionada_id else None,
     }
+    
     return render(request, 'projects/macro_forecast.html', contexto)
+
 
 @login_required
 def gerar_macro_forecast_action(request):
+   
     """
-    Dispara o treinamento do Facebook Prophet para prever a receita global.
+    Dispara o treinamento do Facebook Prophet para prever a receita de uma loja específica.
     """
     empresa = request.empresa
-    
-    sucesso, mensagem = treinar_previsao_macro_empresa(empresa, dias_futuros=90)
-    
+
+    # Pega o ID da loja que o usuário selecionou no Front-end (via POST)
+    loja_id = request.POST.get('loja_id')
+
+    if not loja_id:
+        messages.error(request, "Por favor, selecione uma filial para gerar a previsão.")
+        return redirect('painel_macro_forecast')
+
+    sucesso, mensagem = treinar_previsao_macro_empresa(empresa, loja_id, dias_futuros=90)
+
     if sucesso:
         messages.success(request, mensagem)
     else:
         messages.error(request, f"Atenção: {mensagem}")
-        
-    return redirect('painel_macro_forecast')
+
+    # Devolve o cliente para o painel, já filtrado na loja que ele rodou
+    return redirect(f"{reverse('painel_macro_forecast')}?loja_id={loja_id}")
+
+
 @login_required
 def upload_macro_financeiro(request):
     """
@@ -642,72 +667,81 @@ def upload_macro_financeiro(request):
                 return redirect('upload_macro_financeiro')
 
             # ==========================================
-            # INTELIGÊNCIA DE AUTO-MAPPING (Versão Brasileira)
+            # INTELIGÊNCIA DE AUTO-MAPPING (Versão Multi-Lojas)
             # ==========================================
             col_data = df.columns[0]
             col_valor = df.columns[1] 
             
-            # 1. Limpeza Extrema da Data (Remove espaços em branco invisíveis do Excel)
-            df[col_data] = df[col_data].astype(str).str.strip()
+            # A MÁGICA: Tenta pegar a 3ª coluna. Se não tiver, vira None.
+            col_loja = df.columns[2] if len(df.columns) >= 3 else None
             
-            # ==========================================
             # 1. Limpeza Extrema da Data (Parser Bulletproof BR/USA)
-            # ==========================================
             df_data_limpa = df[col_data].astype(str).str.strip()
-            
-            # Tenta ler no formato Internacional do Excel primeiro (YYYY-MM-DD)
             datas_parsed = pd.to_datetime(df_data_limpa, format='%Y-%m-%d', errors='coerce')
             
-            # As linhas que falharam, ele tenta ler no formato Brasileiro (DD/MM/YYYY)
             mask = datas_parsed.isna()
             if mask.any():
                 datas_parsed.loc[mask] = pd.to_datetime(df_data_limpa[mask], format='%d/%m/%Y', errors='coerce')
                 
-            # As que ainda falharam, ele ativa a inteligência natural do Pandas com dayfirst=True
             mask = datas_parsed.isna()
             if mask.any():
                 datas_parsed.loc[mask] = pd.to_datetime(df_data_limpa[mask], errors='coerce', dayfirst=True)
                 
             df[col_data] = datas_parsed
 
-
-            df[col_valor] = pd.to_numeric(df[col_valor], errors='coerce')
-
             linhas_antes = len(df)
             
             # 2. Limpeza Bruta do Dinheiro (O Exterminador de \xa0)
             if df[col_valor].dtype == 'object':
                 df[col_valor] = df[col_valor].astype(str)
-                
-                # MÁGICA 1: Tira o R$, o $ e TODOS os tipos de espaços (normais e invisíveis \s)
                 df[col_valor] = df[col_valor].str.replace(r'[R$\s]', '', regex=True, case=False)
-                
-                # MÁGICA 2: A Trava de Segurança da Moeda
-                # Se tiver vírgula, sabemos que é Brasil. Tiramos o ponto e trocamos vírgula por ponto.
-                # Se NÃO tiver vírgula, ele não faz nada (protege arquivos que já estão no formato americano).
                 df[col_valor] = df[col_valor].apply(
                     lambda x: str(x).replace('.', '').replace(',', '.') if ',' in str(x) else x
                 )
             
-            # Conversão final para Matemática
             df[col_valor] = pd.to_numeric(df[col_valor], errors='coerce')
             
-            # Exclui linhas onde a data ou valor não conseguiram ser convertidos (ex: Cabeçalhos soltos, rodapés)
+            # 3. Limpeza da Coluna de Loja (Se existir)
+            if col_loja:
+                df[col_loja] = df[col_loja].astype(str).str.strip()
+                # Se a pessoa deixou a célula em branco na terceira coluna, chamamos de Matriz
+                df[col_loja] = df[col_loja].replace(['nan', 'None', '', 'NaT'], 'Matriz / Global')
+            else:
+                # Se não tem 3ª coluna, criamos uma virtual para o código funcionar igual
+                col_loja = 'loja_virtual'
+                df[col_loja] = 'Matriz / Global'
+            
+            # Exclui linhas onde a data ou valor falharam
             df.dropna(subset=[col_data, col_valor], inplace=True)
-
             linhas_perdidas = linhas_antes - len(df)
             
             if df.empty:
-                messages.error(request, "Falha crítica: As colunas foram lidas, mas nenhum valor financeiro válido sobreviveu à conversão.")
+                messages.error(request, "Falha crítica: As colunas foram lidas, mas nenhum valor financeiro válido sobreviveu.")
                 return redirect('upload_macro_financeiro')
                 
-            # Agrupa os faturamentos que caírem no mesmo dia
-            df_agrupado = df.groupby(col_data)[col_valor].sum().reset_index()
+            # Agrupa os faturamentos que caírem no mesmo dia E NA MESMA LOJA
+            df_agrupado = df.groupby([col_loja, col_data])[col_valor].sum().reset_index()
             
-            # Prepara a lista para salvar no Banco (Bulk Create)
+            # ==========================================
+            # AUTO-DISCOVERY: CRIANDO AS LOJAS NO BANCO
+            # ==========================================
+            nomes_lojas = df_agrupado[col_loja].unique()
+            dicionario_lojas = {}
+            
+            for nome_loja in nomes_lojas:
+                # O get_or_create busca a loja, se não achar, ele cria silenciosamente!
+                loja_obj, created = Loja.objects.get_or_create(
+                    empresa=empresa,
+                    nome=nome_loja,
+                    defaults={'ativo': True}
+                )
+                dicionario_lojas[nome_loja] = loja_obj
+
+            # Prepara a lista para salvar no Banco (Bulk Create veloz)
             lista_faturamento = [
                 FaturamentoEmpresaDW(
                     empresa=empresa,
+                    loja=dicionario_lojas[row[col_loja]], # Amarra a linha com o ID real da Loja!
                     data_faturamento=row[col_data].date(),
                     faturamento_total=float(row[col_valor])
                 )
@@ -717,7 +751,6 @@ def upload_macro_financeiro(request):
             # FLUSH AND FILL (Limpa o velho, bota o novo)
             FaturamentoEmpresaDW.objects.filter(empresa=empresa).delete()
             FaturamentoEmpresaDW.objects.bulk_create(lista_faturamento, batch_size=5000)
-            
             # ==========================================
             # NOVO: FEEDBACK TRANSPARENTE PARA O USUÁRIO
             # ==========================================

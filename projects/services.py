@@ -6,6 +6,9 @@ from datetime import timedelta
 from .models import VendaHistoricaDW, PrevisaoDemanda,PrevisaoFaturamentoMacro,FaturamentoEmpresaDW
 from prophet import Prophet
 from prophet.make_holidays import make_holidays_df
+import pandas as pd
+from django.db.models import Q
+from .models import EventoCalendario
 
 
 
@@ -118,37 +121,53 @@ def treinar_previsao_xgboost(empresa, codigo_produto, dias_futuros=30):
 
     return True, "Previsão gerada com XGBoost e explicada pelo SHAP com sucesso!"
 
-def treinar_previsao_macro_empresa(empresa, dias_futuros=90):
-    """
-    O Motor Macro: Lê a tabela leve do CFO, treina o Prophet e gera a previsão.
-    """
-    # 1. Busca os dados na tabela NOVA e LEVE
-    faturamentos = FaturamentoEmpresaDW.objects.filter(empresa=empresa).values('data_faturamento', 'faturamento_total')
-
-    if not faturamentos:
-        return False, "Nenhum histórico macro financeiro encontrado. Por favor, faça o upload da planilha financeira."
-
-    # 2. Transforma em Pandas (Já vem pronto, não precisa multiplicar quantidade x preço)
-    df = pd.DataFrame.from_records(faturamentos)
-    df['data_faturamento'] = pd.to_datetime(df['data_faturamento']).dt.tz_localize(None)
+def treinar_previsao_macro_empresa(empresa, loja_id, dias_futuros=90):
     
-    # 3. Renomeia as colunas para o padrão de ferro do Prophet ('ds' para Data e 'y' para Valor)
-    df.rename(columns={'data_faturamento': 'ds', 'faturamento_total': 'y'}, inplace=True)
-    df_agrupado = df.sort_values('ds')
-    
-    if len(df_agrupado) < 30:
-        return False, "O Prophet precisa de pelo menos 30 dias de histórico para achar padrões confiáveis."
-    
-    ano_inicio = df_agrupado['ds'].dt.year.min()
-    ano_fim = df_agrupado['ds'].dt.year.max()
+    # 1. FILTRO BLINDADO
+    faturamentos = FaturamentoEmpresaDW.objects.filter(
+        empresa=empresa, 
+        loja_id=loja_id
+    ).values('data_faturamento', 'faturamento_total')
 
-    lista_anos = list(range(ano_inicio, ano_fim + 2))
+    # === A TRAVA DE SEGURANÇA CONTRA ERROS VAZIOS ===
+    if not faturamentos.exists():
+        return False, "Nenhum dado de venda foi encontrado para esta filial. Por favor, verifique a base de dados."
 
-    df_holidays = make_holidays_df(
-        year_list=lista_anos, 
-        country='BR', 
-        #province='RJ' # <--- Opcional: No futuro, puxar o 'estado' da tabela Empresa
-    )
+    # 2. PREPARAÇÃO DO DATAFRAME PRINCIPAL
+    import pandas as pd
+    df_agrupado = pd.DataFrame(list(faturamentos))
+    
+    # GARANTE QUE AS COLUNAS TÊM O NOME QUE O PROPHET EXIGE ('ds' e 'y')
+    df_agrupado = df_agrupado.rename(columns={'data_faturamento': 'ds', 'faturamento_total': 'y'})
+    df_agrupado['ds'] = pd.to_datetime(df_agrupado['ds'])
+
+    # 3. FERIADOS NACIONAIS
+    from prophet.make_holidays import make_holidays_df
+    lista_anos = df_agrupado['ds'].dt.year.unique().tolist()
+    df_holidays = make_holidays_df(year_list=lista_anos, country='BR', province='RJ')
+
+    # 4. INJEÇÃO DO CALENDÁRIO CORPORATIVO (MÚLTIPLOS DIAS)
+    from django.db.models import Q
+    eventos_db = EventoCalendario.objects.filter(
+        Q(empresa=empresa) & (Q(loja__isnull=True) | Q(loja_id=loja_id))
+    ).values('nome', 'data_inicio', 'data_fim')
+
+    if eventos_db.exists():
+        lista_feriados_expandida = []
+        for evento in eventos_db:
+            datas_periodo = pd.date_range(start=evento['data_inicio'], end=evento['data_fim'])
+            for data in datas_periodo:
+                lista_feriados_expandida.append({
+                    'holiday': evento['nome'],
+                    'ds': data
+                })
+        
+        # Trava extra para garantir que o evento não está vazio
+        if lista_feriados_expandida:
+            df_custom_holidays = pd.DataFrame(lista_feriados_expandida)
+            df_custom_holidays['ds'] = pd.to_datetime(df_custom_holidays['ds'])
+            df_holidays = pd.concat([df_holidays, df_custom_holidays], ignore_index=True)
+            print(f"[AXIOM DEBUG] Eventos Customizados (Dias Expandidos) injetados com sucesso!")
     
     # ==========================================
     # TREINAMENTO DO FACEBOOK PROPHET
@@ -248,6 +267,7 @@ def treinar_previsao_macro_empresa(empresa, dias_futuros=90):
     # ==========================================
     PrevisaoFaturamentoMacro.objects.create(
         empresa=empresa,
+        loja_id=loja_id,
         dados_forecast=dados_json,
         componentes_sazonalidade=componentes,
         faturamento_projetado_total=soma_projetada

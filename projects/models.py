@@ -3,8 +3,43 @@ from django.core.validators import MinValueValidator
 from accounts.models import Empresa
 import logging
 
+  
+class Loja(models.Model):
+    """
+    Permite que uma Empresa tenha múltiplas filiais (Ex: Grupo Pão de Açúcar -> Loja Leblon)
+    """
+    empresa = models.ForeignKey('accounts.Empresa', on_delete=models.CASCADE, related_name='lojas')
+    nome = models.CharField(max_length=255, help_text="Ex: Filial RJ-Centro")
+    ativo = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nome} ({self.empresa.nome})"
+    
+
+class EventoCalendario(models.Model):
+    empresa = models.ForeignKey('accounts.Empresa', on_delete=models.CASCADE, related_name='eventos')
+    loja = models.ForeignKey(Loja, on_delete=models.CASCADE, null=True, blank=True, related_name='eventos')
+    nome = models.CharField(max_length=255, help_text="Ex: Black Week, Aniversário")
+    
+    # NOVOS CAMPOS:
+    data_inicio = models.DateField()
+    data_fim = models.DateField()
+
+    class Meta:
+        verbose_name = "Evento de Calendário"
+        verbose_name_plural = "Eventos de Calendário"
+        unique_together = ('empresa', 'loja', 'nome', 'data_inicio', 'data_fim')
+
+    def __str__(self):
+        escopo = self.loja.nome if self.loja else "Global"
+        return f"{self.nome} | {self.data_inicio.strftime('%d/%m/%Y')} a {self.data_fim.strftime('%d/%m/%Y')} ({escopo})"
+    
+
+
 class ProjetoPrecificacao(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='projetos')
+    loja = models.ForeignKey(Loja, on_delete=models.CASCADE, null=True, blank=True, related_name='projetos_pricing')
     nome = models.CharField(max_length=255)
     
     # Motor AutoML: Guarda as variáveis que o cliente arrastou na tela
@@ -76,6 +111,7 @@ class VendaHistoricaDW(models.Model):
     Data Warehouse Multitenant: Armazena o histórico cru de vendas de cada cliente (OBT).
     """
     empresa = models.ForeignKey('accounts.Empresa', on_delete=models.CASCADE, related_name='vendas_dw')
+    loja = models.ForeignKey(Loja, on_delete=models.CASCADE, null=True, blank=True, related_name='vendas_dw')
     projeto = models.ForeignKey(ProjetoPrecificacao, on_delete=models.SET_NULL, null=True, blank=True)
     
     
@@ -134,6 +170,7 @@ class PrevisaoFaturamentoMacro(models.Model):
     Guarda o resultado do Motor Macro (Facebook Prophet) para a Empresa toda.
     """
     empresa = models.ForeignKey('accounts.Empresa', on_delete=models.CASCADE)
+    loja = models.ForeignKey(Loja, on_delete=models.CASCADE, null=True, blank=True, related_name='previsoes_macro')
     data_geracao = models.DateTimeField(auto_now_add=True)
     
     # JSON completo retornado pelo Prophet (com intervalos de confiança)
@@ -157,6 +194,7 @@ class FaturamentoEmpresaDW(models.Model):
     Arquivo minúsculo, otimizado para o Prophet.
     """
     empresa = models.ForeignKey('accounts.Empresa', on_delete=models.CASCADE)
+    loja = models.ForeignKey(Loja, on_delete=models.CASCADE, null=True, blank=True, related_name='faturamentos_macro')
     data_faturamento = models.DateField()
     faturamento_total = models.FloatField()
 
@@ -164,7 +202,8 @@ class FaturamentoEmpresaDW(models.Model):
         verbose_name = "Faturamento Macro"
         verbose_name_plural = "Faturamentos Macro"
         # Garante que não teremos duas linhas para o mesmo dia na mesma empresa
-        unique_together = ('empresa', 'data_faturamento') 
+        unique_together = ('empresa', 'loja', 'data_faturamento') 
 
     def __str__(self):
         return f"{self.empresa.nome} | {self.data_faturamento} | R$ {self.faturamento_total}"
+  
