@@ -6,6 +6,7 @@ app_name = 'accounts'
 urlpatterns = [
     
     path('configuracoes/', views.configuracoes_empresa, name='configuracoes_empresa'),
+    path('registro/', views.sign_up, name='signup'),
     
     # Futuramente você pode adicionar aqui rotas padrão do Django como:
     # path('login/', views.login_view, name='login'),

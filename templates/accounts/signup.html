@@ -1,0 +1,128 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <title>Criar Conta | Axiom Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="{% static 'css/app.min.css' %}" rel="stylesheet" />
+    <style>
+        /* Estilo extra para o efeito de vidro (Glassmorphism) na prova social */
+        .backdrop-blur { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); background-color: rgba(255, 255, 255, 0.1); }
+    </style>
+</head>
+<body class="bg-body">
+
+    <div class="container-fluid p-0 overflow-hidden" style="min-height: 100vh;">
+        <div class="row g-0 h-100">
+            
+            <div class="col-lg-6 d-flex flex-column justify-content-center align-items-center bg-white px-4 py-5" style="min-height: 100vh;">
+                <div class="w-100" style="max-width: 480px;">
+                    
+                    <div class="text-center mb-5">
+                        <a href="/" class="text-decoration-none">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded p-2 mb-3 shadow-sm" style="width: 50px; height: 50px;">
+                                <i class="ti ti-chart-dots fs-2"></i>
+                            </div>
+                            <h2 class="h3 fw-bold text-dark mb-0">Axiom Platform</h2>
+                        </a>
+                    </div>
+
+                    <div class="text-center mb-4">
+                        <h1 class="h3 fw-bold mb-2">Crie o seu Ambiente Empresarial</h1>
+                        <p class="text-muted">A Inteligência Artificial que calibra a sua cadeia de abastecimento.</p>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger shadow-sm border-0 mb-4" role="alert">
+                            <div class="d-flex">
+                                <div>{{ form.non_field_errors }}</div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} shadow-sm border-0 mb-4" role="alert">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="POST" action="{% url 'accounts:signup' %}" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nome Completo</label>
+                            {{ form.nome_completo }}
+                            {% if form.nome_completo.errors %}<div class="text-danger small mt-1">{{ form.nome_completo.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">E-mail Corporativo</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Nome da Empresa <span class="text-muted fw-normal">(O seu Tenant)</span></label>
+                            {{ form.nome_empresa }}
+                            {% if form.nome_empresa.errors %}<div class="text-danger small mt-1">{{ form.nome_empresa.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-sm-6 mb-3 mb-sm-0">
+                                <label class="form-label fw-bold">Senha</label>
+                                {{ form.senha }}
+                                {% if form.senha.errors %}<div class="text-danger small mt-1">{{ form.senha.errors }}</div>{% endif %}
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label fw-bold">Confirmar</label>
+                                {{ form.confirmar_senha }}
+                                {% if form.confirmar_senha.errors %}<div class="text-danger small mt-1">{{ form.confirmar_senha.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 py-3 mb-4 fw-bold rounded-3 shadow-sm d-flex justify-content-center align-items-center">
+                            <span class="me-2">Gerar Motor de IA</span>
+                        </button>
+
+                        <p class="text-center text-muted small">
+                            Ao registar-se, concorda com os nossos <a href="#" class="text-decoration-none">Termos de Serviço</a> e <a href="#" class="text-decoration-none">Política de Privacidade</a>.
+                        </p>
+                    </form>
+                    
+                    <div class="text-center mt-5">
+                        <p class="text-muted">Já possui uma conta Axiom? <a href="{% url 'login' %}" class="fw-bold text-decoration-none">Fazer Login</a></p>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="col-lg-6 d-none d-lg-flex bg-primary position-relative overflow-hidden align-items-center justify-content-center">
+                
+                <div class="position-relative z-1 p-5 text-white" style="max-width: 600px;">
+                    <span class="badge bg-white text-primary mb-3 px-3 py-2 rounded-pill fw-bold shadow-sm">Axiom Forecast Engine</span>
+                    <h2 class="display-5 fw-bold mb-4" style="line-height: 1.2;">Previsões de demanda que não erram a realidade.</h2>
+                    <p class="fs-5 mb-5 opacity-75">Isolamento de dados por filial, detecção de anomalias e modelagem de calendário corporativo numa única plataforma.</p>
+                    
+                    <div class="card border-0 backdrop-blur rounded-4 shadow-lg text-white">
+                        <div class="card-body p-4">
+                            <p class="fst-italic mb-3">"A funcionalidade de Calendário Corporativo mudou o nosso jogo. A IA agora entende que o pico de vendas de Março foi por causa do nosso aniversário e projeta o ano seguinte com uma precisão cirúrgica."</p>
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center text-white fw-bold me-3" style="width: 40px; height: 40px;">RC</div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-white">Roberto Carvalho</h6>
+                                    <small class="opacity-75">CFO, Rede Varejo Premium</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    </body>
+</html>

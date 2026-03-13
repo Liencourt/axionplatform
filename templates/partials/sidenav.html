@@ -50,6 +50,12 @@
                 </a>
                 <div class="collapse" id="sidebarForecast">
                     <ul class="side-nav-second-level">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'painel_calendario' %}active{% endif %}" href="{% url 'painel_calendario' %}">
+                                <i class="ti ti-calendar-event nav-icon text-primary"></i>
+                                <span class="nav-link-title">Calendário Corporativo</span>
+                            </a>
+                        </li>
                         <li>
                             <a href="{% url 'painel_macro_forecast' %}">Faturamento Global</a>
                         </li>

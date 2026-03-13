@@ -8,7 +8,10 @@
             <h3 class="page-title mb-1 fw-bold text-dark">Dashboard de Pricing: {{ projeto.nome }}</h3>
             <p class="text-muted mb-0">Visão executiva de sensibilidade e sugestões otimizadas pela IA.</p>
         </div>
-        <div class="col-md-4 text-end">
+        <div class="col-md-5 text-end">
+            <a href="{% url 'painel_portfolio' projeto.id %}" class="btn btn-primary shadow-sm me-2">
+                <i class="fas fa-layer-group"></i> Axiom Portfolio BCG
+            </a>
             <a href="{% url 'exportar_erp' projeto.id %}" class="btn btn-outline-secondary shadow-sm">
                 <i class="fas fa-file-excel"></i> Exportar Base ERP
             </a>
@@ -51,16 +54,16 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-end mb-3 mt-2">
                 <h5 class="fw-bold text-primary mb-0">Curva de Produtos Analisados</h5>
-                <input type="text" class="form-control form-control-sm w-25" placeholder="Buscar produto...">
+                <input type="text" id="inputBusca" class="form-control form-control-sm w-25" placeholder="Buscar produto...">
             </div>
             
             <div class="card shadow-sm border-0">
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover table-borderless align-middle mb-0">
+                        <table id="tabelaProdutos" class="table table-hover table-borderless align-middle mb-0">
                             <thead class="bg-light text-muted small text-uppercase">
                                 <tr>
-                                    <th class="ps-4 py-3">Produto (SKU)</th>
+                                    <th class="ps-4 py-3">Produto/Loja</th>
                                     <th class="text-center">Comportamento</th>
                                     <th class="text-center">Elasticidade</th>
                                     <th class="text-center">Confiança</th>
@@ -72,7 +75,13 @@
                             <tbody>
                                 {% for item in resultados %}
                                 <tr class="border-bottom">
-                                    <td class="ps-4 fw-bold text-dark">{{ item.sku }}</td>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-dark">{{ item.nome_produto }}</div>
+                                        <div class="small text-muted">
+                                            <span class="me-2"><i class="ti ti-barcode"></i> {{ item.sku }}</span>
+                                            <span class="badge bg-light text-secondary border"><i class="ti ti-building-store"></i> {{ item.loja }}</span>
+                                        </div>
+                                    </td>
                                     
                                     <td class="text-center">
                                         <span class="badge border border-{{ item.cor_comp }} text-{{ item.cor_comp }} bg-transparent rounded-pill px-3 py-1">
@@ -84,8 +93,10 @@
                                         {{ item.elasticidade|floatformat:3 }}
                                     </td>
                                     
-                                    <td class="text-center text-muted">
-                                        {{ item.confianca }}
+                                    <td class="text-center">
+                                        <span class="badge bg-{{ item.badge_cor }} rounded-pill px-3 shadow-sm">
+                                            {{ item.confianca }}
+                                        </span>
                                     </td>
                                     
                                     <td class="text-end text-muted">
@@ -101,7 +112,7 @@
                                             <i class="ti ti-calculator"></i> Simular
                                         </a>
                                         
-                                        {% if item.sku %} <a href="{% url 'painel_forecast' item.sku %}" class="btn btn-outline-success btn-sm rounded-pill px-3 shadow-sm" title="Prever Demanda Futura">
+                                        {% if item.sku %} <a href="{% url 'painel_forecast' item.id %}" class="btn btn-outline-success btn-sm rounded-pill px-3 shadow-sm" title="Prever Demanda Futura">
                                                 <i class="ti ti-chart-infographic"></i> Prever
                                             </a>
                                         {% endif %}
@@ -117,4 +128,42 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Agora o JS sabe exatamente quem é o input e quem é a tabela!
+    const inputBusca = document.getElementById('inputBusca');
+    const tabela = document.getElementById('tabelaProdutos');
+    
+    if (!inputBusca || !tabela) return;
+
+    const tbody = tabela.querySelector('tbody');
+    
+    // A GRANDE MÁGICA: Lê as 15.990 linhas 1 única vez quando a página abre e guarda na memória!
+    const linhas = tbody.querySelectorAll('tr'); 
+    
+    let timerDebounce = null;
+
+    inputBusca.addEventListener('keyup', function(e) {
+        clearTimeout(timerDebounce);
+        const termo = e.target.value.toLowerCase();
+
+        timerDebounce = setTimeout(function() {
+            // Esconde a tabela (O navegador agradece)
+            tbody.style.display = 'none'; 
+
+            // Filtra instantaneamente pela memória
+            linhas.forEach(tr => {
+                const textoLinha = tr.textContent.toLowerCase();
+                tr.style.display = textoLinha.includes(termo) ? '' : 'none';
+            });
+
+            // Devolve a tabela filtrada para a tela
+            tbody.style.display = ''; 
+            
+        }, 300);
+    });
+});
+</script>
+
 {% endblock page_content %}

@@ -12,7 +12,8 @@ import statsmodels.formula.api as smf
 from scipy.stats import shapiro
 from .models import(ProjetoPrecificacao, ResultadoPrecificacao,
                      VendaHistoricaDW,Loja,PrevisaoDemanda,
-                     PrevisaoFaturamentoMacro,FaturamentoEmpresaDW)
+                     PrevisaoFaturamentoMacro,FaturamentoEmpresaDW,EventoCalendario)
+from .forms import EventoCalendarioForm
 from django.shortcuts import get_object_or_404
 import csv
 from django.http import HttpResponse
@@ -23,11 +24,15 @@ from django.conf import settings
 from django.urls import reverse
 from accounts.models import Empresa
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Avg
+from django.db.models import Avg,Sum, F, FloatField,Max
+from django.db.models.functions import Coalesce
 import math
+from scipy.stats.mstats import winsorize
+from datetime import timedelta
 
 
 logger = logging.getLogger(__name__)
+
 @login_required
 def iniciar_projeto_upload(request):
     """Passo 1: Recebe o arquivo e extrai as colunas (Versão sem engolir erros de HTML)"""
@@ -97,6 +102,11 @@ def processar_modelo_dinamico(request):
             config_json = request.POST.get('configuracao_variaveis')
             config = json.loads(config_json)
             
+            # --- NOVAS COLUNAS MAPEADAS ---
+            loja_col = config.get('loja_col') # Pode vir vazio se for projeto global
+            nome_produto_col = config.get('nome_produto_col') # Pode vir vazio
+            
+            # Colunas Clássicas
             sku_col = config.get('sku_col')
             data_col = config.get('data_col')
             target_col = config.get('target')
@@ -125,7 +135,6 @@ def processar_modelo_dinamico(request):
             df[custo_col] = pd.to_numeric(df[custo_col], errors='coerce')
             df.dropna(subset=[sku_col, data_col, target_col, preco_col], inplace=True)
             
-            # Formata a data para garantir que o banco de dados entenda
             df[data_col] = pd.to_datetime(df[data_col], errors='coerce')
             df.dropna(subset=[data_col], inplace=True)
 
@@ -137,13 +146,38 @@ def processar_modelo_dinamico(request):
             )
 
             # ==============================================================
+            # ARQUITETURA DE ALTA PERFORMANCE: CACHE E CRIAÇÃO AUTOMÁTICA DE LOJAS
+            # ==============================================================
+            dict_lojas = {}
+            if loja_col and loja_col in df.columns:
+                lojas_unicas = df[loja_col].dropna().unique()
+                for nome_loja in lojas_unicas:
+                    nome_str = str(nome_loja).strip()
+                    # A Mágica: Se a loja não existir para este cliente, o Django cria agora!
+                    loja_obj, created = Loja.objects.get_or_create(
+                        empresa=empresa_cliente,
+                        nome=nome_str,
+                        defaults={'ativo': True} # Pode adicionar outros campos default da sua Loja aqui
+                    )
+                    dict_lojas[nome_str] = loja_obj # Guarda na memória para usar no laço abaixo
+
+            # ==============================================================
             # PASSO A: INGESTÃO NO DATA WAREHOUSE (DW)
             # ==============================================================
             lista_vendas_dw = []
             nomes_variaveis_extras = [v['nome'] for v in variaveis_extras]
 
             for index, row in df.iterrows():
-                # Monta o JSON das covariáveis dinâmicas para essa linha
+                # Resolve a Loja
+                loja_obj = None
+                if loja_col and pd.notna(row.get(loja_col)):
+                    loja_obj = dict_lojas.get(str(row.get(loja_col)).strip())
+
+                # Resolve o Nome do Produto (Usa o SKU como fallback se não for mapeado)
+                nome_prod = str(row[sku_col])
+                if nome_produto_col and pd.notna(row.get(nome_produto_col)):
+                    nome_prod = str(row.get(nome_produto_col))
+
                 dict_extras = {}
                 for var in nomes_variaveis_extras:
                     if var in row and pd.notna(row[var]):
@@ -151,9 +185,10 @@ def processar_modelo_dinamico(request):
 
                 lista_vendas_dw.append(VendaHistoricaDW(
                     empresa=empresa_cliente,
+                    loja=loja_obj,
                     projeto=projeto,
                     codigo_produto=str(row[sku_col]),
-                    nome_produto=str(row[sku_col]), # Temporariamente usando o SKU como Nome
+                    nome_produto=nome_prod, # Agora tem a descrição real!
                     data_venda=row[data_col].date(),
                     quantidade=float(row[target_col]),
                     preco_praticado=float(row[preco_col]),
@@ -161,8 +196,6 @@ def processar_modelo_dinamico(request):
                     variaveis_extras=dict_extras
                 ))
 
-            # bulk_create é 100x mais rápido que salvar um por um
-            # ignore_conflicts=True evita o erro se o cliente subir dados repetidos
             VendaHistoricaDW.objects.bulk_create(lista_vendas_dw, ignore_conflicts=True)
 
             # ==============================================================
@@ -175,65 +208,130 @@ def processar_modelo_dinamico(request):
             mapa_dias = {0: 'Segunda', 1: 'Terca', 2: 'Quarta', 3: 'Quinta', 4: 'Sexta', 5: 'Sabado', 6: 'Domingo'}
             df_model['dia_semana_auto'] = df_model[data_col].dt.dayofweek.map(mapa_dias)
 
-            df_model = df_model.sort_values(by=[sku_col, data_col])
-
-            # Constrói a fórmula estatística
-            termos_formula = ["log_p", "C(dia_semana_auto)"] # Dia da semana injetado automaticamente!
+            # Construção da Fórmula
+            termos_formula = ["log_p", "C(dia_semana_auto)"]
             for var in variaveis_extras:
                 nome = var['nome']
                 termos_formula.append(f"C({nome})" if var['tipo'] == 'cat' else nome)
 
             formula_final = f"log_y ~ {' + '.join(termos_formula)}"
-            
+
             # ==============================================================
-            # PASSO C: TREINAMENTO DO MODELO (AutoML)
+            # PASSO C: TREINAMENTO DO MODELO ISOLADO (MULTI-LOJA) - V8
             # ==============================================================
             produtos_processados = 0
             
-            for sku, df_sku in df_model.groupby(sku_col):
-                if len(df_sku) < 10:
-                    continue
+            # Define as colunas de agrupamento
+            colunas_agrupamento = [sku_col]
+            if loja_col and loja_col in df_model.columns:
+                colunas_agrupamento = [loja_col, sku_col]
+                # Não fazemos o sort aqui, deixamos para fazer isoladamente por SKU!
+
+            for keys, df_sku in df_model.groupby(colunas_agrupamento):
+                # Desempacota a chave
+                if isinstance(keys, tuple):
+                    loja_val, sku = keys
+                    loja_obj = dict_lojas.get(str(loja_val).strip())
+                else:
+                    sku = keys
+                    loja_obj = None
+
+                # 1. ORDENAÇÃO TEMPORAL (Vital para o Lag de Preço)
+                df_sku = df_sku.sort_values(data_col).copy()
+
+                # 2. QUEBRA DE CAUSALIDADE REVERSA (Lag de Preço)
+                df_sku['log_p_lag1'] = df_sku['log_p'].shift(1)
+                df_sku.dropna(subset=['log_p_lag1'], inplace=True)
+
+                # 3. TRAVA DE GRAUS DE LIBERDADE (Degrees of Freedom)
+                n_params = len(termos_formula) + 7 # Variáveis Extras + 7 Dias da Semana
+                min_obs = max(30, n_params * 5)
                 
+                if len(df_sku) < min_obs:
+                    continue # Pula se não tiver maturidade estatística
+                
+                # Trava de Variação Mínima
+                if df_sku['log_p'].nunique() <= 1 or df_sku['log_y'].nunique() <= 1:
+                    continue
+
                 try:
-                    modelo = smf.ols(formula_final, data=df_sku).fit()
+                    # 4. BLINDAGEM CONTRA OUTLIERS (Winsorize 2% das pontas do volume de vendas)
+                    df_sku['log_y'] = winsorize(df_sku['log_y'], limits=[0.02, 0.02])
+                    
+                    # 5. AJUSTE DA FÓRMULA (Injetando a variável instrumental)
+                    formula_iv = formula_final.replace('log_p', 'log_p + log_p_lag1')
+                    
+                    # 6. TREINAMENTO
+                    modelo = smf.ols(formula_iv, data=df_sku).fit()
                     stat_shapiro, p_shapiro = shapiro(modelo.resid)
+                    
+                    # 7. EXTRAÇÃO DO INTERVALO DE CONFIANÇA E P-VALUE
+                    conf_int = modelo.conf_int()
+                    elasticidade_lower = tratar_nan(conf_int.loc['log_p', 0]) if 'log_p' in conf_int.index else 0
+                    elasticidade_upper = tratar_nan(conf_int.loc['log_p', 1]) if 'log_p' in conf_int.index else 0
+                    elasticidade_pvalue = tratar_nan(modelo.pvalues.get('log_p', 1.0))
                     
                     detalhes_vars = {}
                     for termo in modelo.pvalues.index:
-                        if termo != 'Intercept' and termo != 'log_p': 
+                        # Ignoramos as variáveis base na explicação
+                        if termo not in ['Intercept', 'log_p', 'log_p_lag1']: 
                             detalhes_vars[termo] = {
                                 "p_valor": tratar_nan(modelo.pvalues[termo]),
                                 "coeficiente": tratar_nan(modelo.params[termo]),
                                 "status": "Relevante" if modelo.pvalues[termo] < 0.05 else "Ruído" 
                             }
 
+                    # 8. PREÇO E CUSTO BASE SEGUROS (Mediana Recente - 30 dias)
+                    df_recente = df_sku.tail(30)
+                    preco_base_seguro = df_recente[preco_col].median()
+                    if pd.isna(preco_base_seguro):
+                        preco_base_seguro = df_sku[preco_col].iloc[-1]
+                        
+                    custo_base_seguro = df_recente[custo_col].median()
+                    if pd.isna(custo_base_seguro):
+                        custo_base_seguro = df_sku[custo_col].iloc[-1]
+
+                    # SALVA O RESULTADO NO BANCO!
                     ResultadoPrecificacao.objects.create(
                         projeto=projeto,
+                        loja=loja_obj,
                         codigo_produto=str(sku),
                         elasticidade=tratar_nan(modelo.params.get('log_p', 0)),
+                        
+                        # OS NOVOS CAMPOS!
+                        elasticidade_ic_lower=elasticidade_lower,
+                        elasticidade_ic_upper=elasticidade_upper,
+                        elasticidade_p_value=elasticidade_pvalue,
+                        
                         r_squared=tratar_nan(modelo.rsquared),
                         shapiro_p_value=tratar_nan(p_shapiro),
                         detalhes_variaveis=detalhes_vars,
-                        custo_unitario=df_sku[custo_col].mean(),
-                        preco_atual=df_sku[preco_col].mean()
+                        
+                        # OS PREÇOS SEGUROS
+                        custo_unitario=custo_base_seguro,
+                        preco_atual=preco_base_seguro
                     )
                     produtos_processados += 1
                     
                 except Exception as e:
-                    print(f"Erro estatístico no SKU {sku}: {e}")
+                    print(f"[AXIOM OLS ERRO] Falha no SKU {sku} (Loja: {loja_obj}): {e}")
 
             if produtos_processados == 0:
-                messages.error(request, "Nenhum resultado gerado. Verifique os dados.")
+                messages.error(request, "Nenhum resultado gerado. Os produtos não atingiram a volumetria mínima exigida (>30 dias) ou não possuem variação de preço.")
                 return redirect('iniciar_projeto_upload')
-
-            messages.success(request, f"Sucesso! Dados salvos no DW e {produtos_processados} produtos processados.")
+            
+            # ======== GARANTA QUE ESSAS DUAS LINHAS ESTÃO AQUI ========
+            messages.success(request, f"Sucesso! Dados salvos no DW e {produtos_processados} precificações geradas.")
             return redirect('dashboard_resultado', projeto_id=projeto.id)
 
         except Exception as e:
-            messages.error(request, f"Erro crítico: {e}")
+            messages.error(request, f"Erro crítico na Ingestão: {e}")
+            print(f"[AXIOM CRITICO] {e}")
             return redirect('iniciar_projeto_upload')
 
     return redirect('iniciar_projeto_upload')
+
+
 
 
 @login_required
@@ -254,6 +352,12 @@ def dashboard_resultado(request, projeto_id):
     total_analisados = resultados_db.count()
     elasticos_count = 0
     inelasticos_count = 0
+
+    mapeamento_nomes = dict(
+        VendaHistoricaDW.objects.filter(projeto=projeto)
+        .values_list('codigo_produto', 'nome_produto')
+        .distinct()
+    )
     
     # Processamento da Lógica de Negócio para a Tabela
     resultados_processados = []
@@ -269,22 +373,31 @@ def dashboard_resultado(request, projeto_id):
             cor_comp = "success" # Verde
             inelasticos_count += 1
             
-        # Lógica 2: Confiança (Ajustada para a realidade do Varejo)
+        # Lógica 2: Confiança 
         r2 = res.r_squared if res.r_squared else 0
-        if r2 >= 0.50:
+        p_val = res.elasticidade_p_value if res.elasticidade_p_value is not None else 1.0
+        
+        # A nova trava do PM:
+        if r2 >= 0.50 and p_val < 0.05:
             confianca = "Alta"
-        elif r2 >= 0.30:
+            badge_cor = "success"
+        elif r2 >= 0.30 and p_val < 0.10:
             confianca = "Média"
+            badge_cor = "warning"
         else:
-            confianca = "Baixa"
+            confianca = "Baixa (Use com cautela)"
+            badge_cor = "danger"
             
         resultados_processados.append({
             'id': res.id,
             'sku': res.codigo_produto,
+            'nome_produto': mapeamento_nomes.get(res.codigo_produto, res.codigo_produto),
+            'loja': res.loja.nome if res.loja else 'Global',
             'elasticidade': res.elasticidade,
             'comportamento': comportamento,
             'cor_comp': cor_comp,
             'confianca': confianca,
+            'badge_cor': badge_cor, # <- Mandamos a cor pro HTML!
             'preco_atual': res.preco_atual,
             'preco_sugerido': res.preco_sugerido,
         })
@@ -359,25 +472,36 @@ def simulador_produto(request, resultado_id):
     empresa = request.empresa
     resultado = get_object_or_404(ResultadoPrecificacao, id=resultado_id, projeto__empresa=empresa)
     
-    # Busca o histórico deste SKU no DW
+    # CORREÇÃO ARQUITETURAL: Agora as bolhas do gráfico puxam as vendas APENAS desta loja específica!
     vendas = VendaHistoricaDW.objects.filter(
         projeto=resultado.projeto,
-        codigo_produto=resultado.codigo_produto
+        codigo_produto=resultado.codigo_produto,
+        loja=resultado.loja # <-- O FILTRO MÁGICO AQUI
     ).values('data_venda', 'quantidade', 'preco_praticado')
 
     dados_grafico = {}
-    demanda_base_diaria = 100.0 # Valor padrão de segurança
+    demanda_base_diaria = 100.0 
 
     if vendas.exists():
-        # Transforma os dados do banco num DataFrame do Pandas rapidinho
         df = pd.DataFrame.from_records(vendas)
         df['preco_praticado'] = df['preco_praticado'].astype(float).round(2)
         df['quantidade'] = df['quantidade'].astype(float)
+        
+        # Converte para datetime para podermos filtrar
+        df['data_venda'] = pd.to_datetime(df['data_venda'])
+        
+        # ==========================================
+        # DEMANDA BASE RECENTE (Sincronizado com a API)
+        # ==========================================
+        ultima_data = df['data_venda'].max()
+        data_corte = ultima_data - pd.Timedelta(days=30)
+        df_recente = df[df['data_venda'] >= data_corte]
+        
+        if not df_recente.empty and df_recente['quantidade'].mean() > 0:
+            demanda_base_diaria = df_recente['quantidade'].mean()
+        else:
+            demanda_base_diaria = df['quantidade'].mean()
 
-        # AGORA É REAL: Puxa a média real de vendas diárias desse SKU!
-        demanda_base_diaria = df['quantidade'].mean()
-
-        # Filtro de Outliers (A Matemática que você já usava no BigQuery)
         Q1 = df['quantidade'].quantile(0.25)
         Q3 = df['quantidade'].quantile(0.75)
         IQR = Q3 - Q1
@@ -386,17 +510,14 @@ def simulador_produto(request, resultado_id):
         df_normal = df[df['quantidade'] <= teto_maximo]
         df_outlier = df[df['quantidade'] > teto_maximo]
 
-        # Agrupa para formar as "Bolhas" (Preço -> Média de Qtd -> Frequência)
         df_grouped = df_normal.groupby('preco_praticado').agg(
             qtd_media=('quantidade', 'mean'),
             frequencia=('data_venda', 'count')
         ).reset_index()
 
-        # Calcula o tamanho da bolha visual no gráfico (mínimo 10, máximo 35)
         df_grouped['tamanho'] = np.log1p(df_grouped['frequencia']) * 12
         df_grouped['tamanho'] = df_grouped['tamanho'].clip(lower=10, upper=35)
 
-        # Empacota para o Javascript
         dados_grafico = {
             'x_normal': df_grouped['preco_praticado'].tolist(),
             'y_normal': df_grouped['qtd_media'].tolist(),
@@ -521,45 +642,52 @@ def salvar_preco_simulado(request, resultado_id):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
             
     return JsonResponse({'status': 'invalid method'}, status=405)
-
 @login_required
-def painel_forecast(request, sku):
+def painel_forecast(request, resultado_id):
     """
-    Carrega a tela do Axiom Forecast para um SKU específico.
-    Se a IA já rodou, carrega os gráficos. Se não, mostra o botão para gerar.
+    Carrega a tela do Axiom Forecast para um SKU e Loja específicos.
     """
     empresa = request.empresa
     
-    # Pega a previsão mais recente gerada para este SKU
-    previsao = PrevisaoDemanda.objects.filter(empresa=empresa, codigo_produto=sku).last()
+    # 1. Pega o Resultado exato (que já sabe a loja e o SKU)
+    resultado = get_object_or_404(ResultadoPrecificacao, id=resultado_id, projeto__empresa=empresa)
+    sku = resultado.codigo_produto
+    loja = resultado.loja
     
-    # Busca o nome do produto no Data Warehouse para ficar bonito na tela
-    produto_info = VendaHistoricaDW.objects.filter(empresa=empresa, codigo_produto=sku).first()
+    # 2. Busca a previsão mais recente PARA ESTA LOJA específica
+    previsao = PrevisaoDemanda.objects.filter(empresa=empresa, codigo_produto=sku, loja=loja).last()
+    
+    # 3. Busca o nome bonito do produto
+    produto_info = VendaHistoricaDW.objects.filter(empresa=empresa, codigo_produto=sku, loja=loja).first()
     nome_produto = produto_info.nome_produto if produto_info else sku
 
     contexto = {
+        'resultado_id': resultado.id,
         'sku': sku,
+        'loja_nome': loja.nome if loja else 'Global',
         'nome_produto': nome_produto,
         'previsao': previsao,
     }
+    
     return render(request, 'projects/forecast.html', contexto)
 
 @login_required
-def gerar_forecast_action(request, sku):
+def gerar_forecast_action(request, resultado_id):
     """
     Ação do botão: Chama o Motor do XGBoost no services.py e salva no banco.
     """
     empresa = request.empresa
+    resultado = get_object_or_404(ResultadoPrecificacao, id=resultado_id, projeto__empresa=empresa)
     
-    # Chama o motor que está no seu services.py
-    sucesso, mensagem = treinar_previsao_xgboost(empresa, sku, dias_futuros=30)
+    # Chama o motor passando a LOJA para que o XGBoost isole os dados!
+    sucesso, mensagem = treinar_previsao_xgboost(empresa, resultado.codigo_produto, loja=resultado.loja, dias_futuros=30)
     
     if sucesso:
-        messages.success(request, "Motor Preditivo executado! Previsão de 30 dias gerada com sucesso.")
+        messages.success(request, f"Motor Preditivo executado para a filial {resultado.loja.nome if resultado.loja else 'Global'}!")
     else:
         messages.error(request, f"Erro na IA: {mensagem}")
         
-    return redirect('painel_forecast', sku=sku)
+    return redirect('painel_forecast', resultado_id=resultado.id)
 
 @login_required
 def painel_macro_forecast(request):
@@ -884,53 +1012,75 @@ def api_simular_preco(request):
     if request.method == 'POST':
         try:
             dados = json.loads(request.body)
-            projeto_id = dados.get('projeto_id')
-            sku = dados.get('sku')
+            # CORREÇÃO ARQUITETURAL: Recebemos o ID exato do resultado, e não mais o SKU genérico
+            resultado_id = dados.get('resultado_id') 
+
+            elasticidade_customizada = dados.get('elasticidade_customizada')
             
-            # Blindagem das vírgulas (já fizemos ontem)
             preco_limpo = str(dados.get('novo_preco')).replace(',', '.')
             custo_limpo = str(dados.get('custo')).replace(',', '.')
             
             novo_preco = float(preco_limpo)
             custo = float(custo_limpo) 
             
-            # ==========================================
-            # A CONEXÃO COM A REALIDADE (FIM DO MOCK)
-            # ==========================================
-            # 1. Busca os parâmetros reais de Elasticidade no Banco
-            resultado = ResultadoPrecificacao.objects.get(projeto_id=projeto_id, codigo_produto=sku, projeto__empresa=request.empresa)
+            # 1. Busca os parâmetros reais de Elasticidade no Banco (Usando o ID único)
+            resultado = ResultadoPrecificacao.objects.get(id=resultado_id, projeto__empresa=request.empresa)
             
-            # 2. Busca a Demanda Base Média Diária exata deste SKU no histórico (DW)
-            media_vendas = VendaHistoricaDW.objects.filter(
-                projeto_id=projeto_id, 
-                codigo_produto=sku
-            ).aggregate(media=Avg('quantidade'))['media']
-            
-            demanda_base_diaria = float(media_vendas) if media_vendas else 0.0
+            ultima_data = VendaHistoricaDW.objects.filter(
+                projeto_id=resultado.projeto_id, 
+                codigo_produto=resultado.codigo_produto,
+                loja=resultado.loja
+            ).aggregate(ultima=Max('data_venda'))['ultima']
+
+            demanda_base_diaria = 0.0
+
+            if ultima_data:
+                # Cortamos exatamente 30 dias para trás a partir da última venda
+                data_corte = ultima_data - timedelta(days=30)
+                
+                media_recente = VendaHistoricaDW.objects.filter(
+                    projeto_id=resultado.projeto_id, 
+                    codigo_produto=resultado.codigo_produto,
+                    loja=resultado.loja,
+                    data_venda__gte=data_corte
+                ).aggregate(media=Avg('quantidade'))['media']
+                
+                # Se por acaso os últimos 30 dias estiverem vazios, fazemos o fallback para a média geral
+                if media_recente:
+                    demanda_base_diaria = float(media_recente)
+                else:
+                    media_geral = VendaHistoricaDW.objects.filter(
+                        projeto_id=resultado.projeto_id, 
+                        codigo_produto=resultado.codigo_produto,
+                        loja=resultado.loja
+                    ).aggregate(media=Avg('quantidade'))['media']
+                    demanda_base_diaria = float(media_geral) if media_geral else 0.0
             
             # 3. O Motor Matemático de Previsão
             preco_atual = resultado.preco_atual
             elasticidade = resultado.elasticidade
+
+            if elasticidade_customizada is not None:
+                elasticidade = float(elasticidade_customizada)
+            else:
+                elasticidade = resultado.elasticidade
             
-            # Fórmula: Nova Demanda = Demanda Base * (Novo Preço / Preço Atual) ^ Elasticidade
             razao_preco = novo_preco / preco_atual if preco_atual > 0 else 1
             if razao_preco <= 0: razao_preco = 1
                 
             quantidade_diaria_prevista = demanda_base_diaria * math.pow(razao_preco, elasticidade)
             
-            # Trava de segurança: não existe venda negativa
             if quantidade_diaria_prevista < 0:
                 quantidade_diaria_prevista = 0
                 
-            # 4. Matemática Financeira Executiva (Cálculos Diários)
+            # 4. Matemática Financeira Executiva
             faturamento_diario = quantidade_diaria_prevista * novo_preco
             lucro_diario = (novo_preco - custo) * quantidade_diaria_prevista
             margem_projetada = ((novo_preco - custo) / novo_preco) * 100 if novo_preco > 0 else 0
 
-            # 5. Devolve a resposta REAL para a tela
             return JsonResponse({
                 'status': 'sucesso',
-                'quantidade_prevista': round(quantidade_diaria_prevista, 2), # Mandamos a média diária! O JS multiplica pelos dias.
+                'quantidade_prevista': round(quantidade_diaria_prevista, 2), 
                 'faturamento_projetado': round(faturamento_diario, 2),
                 'lucro_projetado': round(lucro_diario, 2),
                 'margem_projetada': round(margem_projetada, 2)
@@ -941,3 +1091,198 @@ def api_simular_preco(request):
             return JsonResponse({'status': 'erro', 'mensagem': str(e)}, status=400)
             
     return JsonResponse({'status': 'invalido'}, status=405)
+
+@login_required
+def painel_calendario(request):
+    empresa = request.empresa
+
+    # Se o usuário enviou o formulário (Clicou em Salvar)
+    if request.method == 'POST':
+        form = EventoCalendarioForm(request.POST, empresa=empresa)
+        if form.is_valid():
+            evento = form.save(commit=False)
+            evento.empresa = empresa # Amarra o evento à empresa do usuário logado
+            evento.save()
+            messages.success(request, f"Evento '{evento.nome}' adicionado com sucesso!")
+            return redirect('painel_calendario')
+        else:
+            messages.error(request, "Erro ao salvar o evento. Verifique as datas.")
+    else:
+        # Se ele só está abrindo a página, carrega o form vazio
+        form = EventoCalendarioForm(empresa=empresa)
+
+    # Busca todos os eventos futuros e passados da empresa para montar a tabela
+    eventos = EventoCalendario.objects.filter(empresa=empresa).order_by('-data_inicio')
+
+    contexto = {
+        'form': form,
+        'eventos': eventos,
+    }
+    return render(request, 'projects/calendario.html', contexto)
+
+
+@login_required
+def deletar_evento(request, evento_id):
+    empresa = request.empresa
+    # get_object_or_404 garante que ele só pode deletar um evento da PRÓPRIA empresa
+    evento = get_object_or_404(EventoCalendario, id=evento_id, empresa=empresa)
+    nome = evento.nome
+    evento.delete()
+    messages.warning(request, f"O evento '{nome}' foi removido do calendário.")
+    return redirect('painel_calendario')
+
+@login_required
+def api_recalcular_modelo(request):
+    """
+    Recalcula a Regressão OLS em tempo real, ligando ou desligando o filtro de Outliers (Winsorize).
+    """
+    if request.method == 'POST':
+        try:
+            dados = json.loads(request.body)
+            resultado_id = dados.get('resultado_id')
+            filtrar_outliers = dados.get('filtrar_outliers', True) # Padrão é True (Limpo)
+
+            resultado = ResultadoPrecificacao.objects.get(id=resultado_id, projeto__empresa=request.empresa)
+            projeto = resultado.projeto
+
+            # 1. Busca os dados crus do banco
+            vendas = VendaHistoricaDW.objects.filter(
+                projeto=projeto, codigo_produto=resultado.codigo_produto, loja=resultado.loja
+            ).order_by('data_venda')
+
+            df = pd.DataFrame(list(vendas.values('data_venda', 'quantidade', 'preco_praticado', 'variaveis_extras')))
+            
+            # 2. Reconstrói as variáveis extras
+            config = projeto.configuracao_variaveis
+            variaveis_extras_config = config.get('variaveis_extras', [])
+            
+            for var in variaveis_extras_config:
+                nome = var['nome']
+                df[nome] = df['variaveis_extras'].apply(lambda x: x.get(nome) if isinstance(x, dict) else None)
+
+            # 3. Engenharia de Features (Igual ao treinamento original)
+            df_model = df[(df['quantidade'] > 0) & (df['preco_praticado'] > 0)].copy()
+            df_model['log_y'] = np.log(df_model['quantidade'].astype(float))
+            df_model['log_p'] = np.log(df_model['preco_praticado'].astype(float))
+            
+            mapa_dias = {0: 'Segunda', 1: 'Terca', 2: 'Quarta', 3: 'Quinta', 4: 'Sexta', 5: 'Sabado', 6: 'Domingo'}
+            df_model['dia_semana_auto'] = pd.to_datetime(df_model['data_venda']).dt.dayofweek.map(mapa_dias)
+
+            termos_formula = ["log_p", "C(dia_semana_auto)"]
+            for var in variaveis_extras_config:
+                nome = var['nome']
+                termos_formula.append(f"C({nome})" if var['tipo'] == 'cat' else nome)
+
+            df_model = df_model.sort_values('data_venda')
+            df_model['log_p_lag1'] = df_model['log_p'].shift(1)
+            df_model.dropna(subset=['log_p_lag1'], inplace=True)
+
+            # 4. A CHAVE MESTRA: O BOTÃO DO USUÁRIO
+            if filtrar_outliers:
+                df_model['log_y'] = winsorize(df_model['log_y'], limits=[0.02, 0.02])
+
+            formula_iv = f"log_y ~ {' + '.join(termos_formula)}".replace('log_p', 'log_p + log_p_lag1')
+
+            # 5. Treina o Modelo Instantâneo
+            modelo = smf.ols(formula_iv, data=df_model).fit()
+            stat_shapiro, p_shapiro = shapiro(modelo.resid)
+
+            detalhes_vars = {}
+            for termo in modelo.pvalues.index:
+                if termo not in ['Intercept', 'log_p', 'log_p_lag1']:
+                    detalhes_vars[termo] = {
+                        "p_valor": float(modelo.pvalues[termo]) if not pd.isna(modelo.pvalues[termo]) else 1.0,
+                        "coeficiente": float(modelo.params[termo]) if not pd.isna(modelo.params[termo]) else 0.0,
+                        "status": "Relevante" if modelo.pvalues[termo] < 0.05 else "Ruído"
+                    }
+
+            return JsonResponse({
+                'status': 'sucesso',
+                'elasticidade': float(modelo.params.get('log_p', 0)),
+                'r_squared': float(modelo.rsquared),
+                'shapiro_p_value': float(p_shapiro),
+                'detalhes_variaveis': detalhes_vars
+            })
+
+        except Exception as e:
+            return JsonResponse({'status': 'erro', 'mensagem': str(e)}, status=400)
+        
+@login_required
+def painel_portfolio(request, projeto_id):
+    """
+    Motor de Portfolio Analytics:
+    Usa Database Pushdown para agregar milhões de linhas no SQL, 
+    e o Pandas na memória para calcular Curva ABC e Margens.
+    """
+    empresa = request.empresa
+    projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=empresa)
+
+    # ==========================================
+    # 1. DATABASE PUSHDOWN (SQL BRUTO EM C/C++)
+    # ==========================================
+    # Em vez de carregar milhões de vendas, pedimos ao banco para agrupar tudo por SKU.
+    # O comando 'F' multiplica as colunas linha a linha no banco de dados e o 'Sum' soma o total.
+    agrupamento = VendaHistoricaDW.objects.filter(projeto=projeto).values(
+        'codigo_produto', 'nome_produto'
+    ).annotate(
+        volume_total=Coalesce(Sum('quantidade'), 0.0, output_field=FloatField()),
+        receita_total=Coalesce(Sum(F('quantidade') * F('preco_praticado')), 0.0, output_field=FloatField()),
+        custo_total=Coalesce(Sum(F('quantidade') * F('custo_unitario')), 0.0, output_field=FloatField())
+    )
+
+    # ==========================================
+    # 2. PANDAS (TRABALHO LEVE NA MEMÓRIA)
+    # ==========================================
+    # O banco devolve apenas 1 linha por produto. O Pandas engole isso em 0.01 segundos.
+    df = pd.DataFrame(list(agrupamento))
+
+    if df.empty:
+        messages.warning(request, "Não há dados de vendas suficientes para gerar o portfólio.")
+        return redirect('dashboard_resultado', projeto_id=projeto.id)
+
+    # 3. CÁLCULO DE MARGEM (%)
+    # Evita divisão por zero usando o np.where
+    df['margem_lucro'] = np.where(
+        df['receita_total'] > 0,
+        ((df['receita_total'] - df['custo_total']) / df['receita_total']) * 100,
+        0
+    )
+
+    
+    df['preco_medio'] = np.where(df['volume_total'] > 0, df['receita_total'] / df['volume_total'], 0).round(2)
+    df['custo_medio'] = np.where(df['volume_total'] > 0, df['custo_total'] / df['volume_total'], 0).round(2)
+
+    # ==========================================
+    # 4. A CURVA ABC (Princípio de Pareto)
+    # ==========================================
+    # Ordena quem dá mais dinheiro para quem dá menos
+    df = df.sort_values(by='receita_total', ascending=False).reset_index(drop=True)
+    
+    # Soma acumulada (ex: se o 1º vende 50k e o 2º vende 30k, a linha 2 terá 80k)
+    df['receita_acumulada'] = df['receita_total'].cumsum()
+    df['percentual_acumulado'] = df['receita_acumulada'] / df['receita_total'].sum()
+
+    def classificar_abc(pct):
+        if pct <= 0.80: return 'A' # Primeiros 80% do faturamento
+        elif pct <= 0.95: return 'B' # Próximos 15%
+        else: return 'C'             # Últimos 5% (Cauda Longa)
+
+    df['curva_abc'] = df['percentual_acumulado'].apply(classificar_abc)
+
+    # ==========================================
+    # 5. EXPORTAÇÃO LIMPA PARA O JAVASCRIPT (FRONT-END)
+    # ==========================================
+    df['receita_total'] = df['receita_total'].round(2)
+    df['margem_lucro'] = df['margem_lucro'].round(2)
+    df['volume_total'] = df['volume_total'].round(2)
+
+    # Transformamos o DataFrame em um JSON super leve para o navegador mastigar e desenhar a Matriz BCG!
+    colunas_exportacao = ['codigo_produto', 'nome_produto', 'volume_total', 'receita_total', 'margem_lucro', 'curva_abc','preco_medio', 'custo_medio']
+    produtos_json = df[colunas_exportacao].to_dict(orient='records')
+
+    contexto = {
+        'projeto': projeto,
+        'produtos_json': json.dumps(produtos_json)
+    }
+    
+    return render(request, 'projects/portfolio.html', contexto)

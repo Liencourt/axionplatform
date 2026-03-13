@@ -6,7 +6,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <h2 class="page-title">Construtor de Hipóteses: {{ nome_projeto }}</h2>
-            <p class="text-muted">Mapeie as colunas obrigatórias e arraste as variáveis extras para criar seu modelo de precificação.</p>
+            <p class="text-muted">Mapeie as colunas obrigatórias e opcionais, e arraste as variáveis extras para criar seu modelo de precificação.</p>
         </div>
     </div>
 
@@ -17,12 +17,14 @@
 
         <div class="card shadow-sm mb-4 border-primary">
             <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0"><i class="fas fa-database"></i> 1. Mapeamento Obrigatório (O Core do Modelo)</h5>
+                <h5 class="card-title mb-0"><i class="fas fa-database"></i> 1. Mapeamento Core (Identidade e Finanças)</h5>
             </div>
             <div class="card-body">
-                <div class="row">
+                
+                <h6 class="fw-bold text-primary mb-3 border-bottom pb-2">Identidade e Segmentação</h6>
+                <div class="row mb-4">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Código do Produto (SKU)</label>
+                        <label class="form-label fw-bold">Código do Produto (SKU) <span class="text-danger">*</span></label>
                         <select class="form-select border-primary select-coluna" name="sku_col" required>
                             <option value="">Selecione a coluna de SKU...</option>
                             {% for col in colunas_categoricas %}
@@ -34,8 +36,34 @@
                         </select>
                         <small class="text-muted">Usado para calcular a elasticidade individual de cada produto.</small>
                     </div>
+                    
                     <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Data / Período</label>
+                        <label class="form-label fw-bold">Descrição do Produto <span class="badge bg-secondary ms-1">Opcional</span></label>
+                        <select class="form-select border-info select-coluna" name="nome_produto_col">
+                            <option value="">Selecione o Nome do Produto...</option>
+                            {% for col in colunas_categoricas %}
+                                <option value="{{ col }}">{{ col }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Melhora a leitura nos relatórios executivos.</small>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Filial / Loja <span class="badge bg-secondary ms-1">Opcional</span></label>
+                        <select class="form-select border-info select-coluna" name="loja_col">
+                            <option value="">Selecione a coluna de Loja...</option>
+                            {% for col in colunas_categoricas %}
+                                <option value="{{ col }}">{{ col }}</option>
+                            {% endfor %}
+                            {% for col in colunas_numericas %}
+                                <option value="{{ col }}">{{ col }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Se mapeado, a IA criará elasticidades e cenários isolados por filial.</small>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Data / Período <span class="text-danger">*</span></label>
                         <select class="form-select border-primary select-coluna" name="data_col" required>
                             <option value="">Selecione a coluna de Data...</option>
                             {% for col in colunas_categoricas %}
@@ -47,9 +75,12 @@
                         </select>
                         <small class="text-muted">A regressão precisa do tempo para entender a curva de demanda.</small>
                     </div>
+                </div>
 
+                <h6 class="fw-bold text-success mb-3 border-bottom pb-2">Variáveis Financeiras</h6>
+                <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold text-success">Quantidade Vendida (Y)</label>
+                        <label class="form-label fw-bold text-success">Quantidade Vendida (Y) <span class="text-danger">*</span></label>
                         <select class="form-select border-success select-coluna" name="target_col" required>
                             <option value="">Selecione a Quantidade...</option>
                             {% for col in colunas_numericas %}
@@ -58,7 +89,7 @@
                         </select>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold text-success">Preço Praticado (X)</label>
+                        <label class="form-label fw-bold text-success">Preço Praticado (X) <span class="text-danger">*</span></label>
                         <select class="form-select border-success select-coluna" name="preco_col" required>
                             <option value="">Selecione o Preço...</option>
                             {% for col in colunas_numericas %}
@@ -67,7 +98,7 @@
                         </select>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold text-danger">Custo Unitário</label>
+                        <label class="form-label fw-bold text-danger">Custo Unitário <span class="text-danger">*</span></label>
                         <select class="form-select border-danger select-coluna" name="custo_col" required>
                             <option value="">Selecione o Custo...</option>
                             {% for col in colunas_numericas %}
@@ -100,7 +131,7 @@
                 <div class="card shadow-sm mb-4 border-info">
                     <div class="card-header bg-info text-white"><h5 class="card-title mb-0">Suas Hipóteses Extras</h5></div>
                     <div class="card-body">
-                        <p class="text-muted small">Arraste para cá fatores como Clima, Estoque, etc.</p>
+                        <p class="text-muted small">Arraste para cá fatores como Clima, Estoque, Feriados, etc.</p>
                         <ul id="lista-modelo" class="list-group" style="min-height: 200px; background-color: #eef2f7; border: 2px dashed #b0c4de;"></ul>
                     </div>
                 </div>
@@ -125,9 +156,11 @@
                 variaveisEscolhidas.push({"nome": item.getAttribute('data-nome'), "tipo": item.getAttribute('data-tipo')});
             });
 
-            // Captura as colunas obrigatórias
+            // Captura as colunas obrigatórias E as novas colunas opcionais
             let configFinal = {
                 "sku_col": document.querySelector('select[name="sku_col"]').value,
+                "nome_produto_col": document.querySelector('select[name="nome_produto_col"]').value,
+                "loja_col": document.querySelector('select[name="loja_col"]').value,
                 "data_col": document.querySelector('select[name="data_col"]').value,
                 "target": document.querySelector('select[name="target_col"]').value,
                 "preco": document.querySelector('select[name="preco_col"]').value,
@@ -141,19 +174,16 @@
 </script>
 <style>.cursor-move { cursor: grab; }</style>
 <script>
+// O seu excelente Poka-yoke de exclusão mútua!
 document.addEventListener('DOMContentLoaded', function() {
-    // 1. Pega todos os dropdowns (selects)
     const selects = document.querySelectorAll('.select-coluna');
-    // 2. Pega todas as caixinhas da lista de "Variáveis Disponíveis" e da caixa de "Arrastar"
     const itensArrastaveis = document.querySelectorAll('.list-group-item');
 
     function atualizarOpcoes() {
-        // A. Descobre quais valores já foram escolhidos nos dropdowns
         const valoresEscolhidos = Array.from(selects)
             .map(select => select.value)
             .filter(valor => valor !== "");
 
-        // B. Atualiza as opções dentro dos outros dropdowns
         selects.forEach(select => {
             const opcoes = select.querySelectorAll('option');
             
@@ -168,26 +198,20 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // C. A NOVA MÁGICA: Esconde a variável do quadrado de "Variáveis Disponíveis"
         itensArrastaveis.forEach(item => {
-            // O nome da coluna fica salvo dentro do 'data-nome' no HTML
             const nomeDaVariavel = item.getAttribute('data-nome');
-            
-            // Se essa variável foi escolhida no dropdown, some com a caixinha dela!
             if (valoresEscolhidos.includes(nomeDaVariavel)) {
                 item.style.display = 'none'; 
             } else {
-                item.style.display = 'block'; // Se o usuário tirou do dropdown, a caixinha volta
+                item.style.display = 'block';
             }
         });
     }
 
-    // Coloca o espião para rodar a função toda vez que o usuário mudar um dropdown
     selects.forEach(select => {
         select.addEventListener('change', atualizarOpcoes);
     });
 
-    // Roda a função uma vez logo que a página carrega
     atualizarOpcoes();
 });
 </script>

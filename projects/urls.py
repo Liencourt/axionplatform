@@ -16,6 +16,8 @@ urlpatterns = [
 
     path('simulador/<int:resultado_id>/', views.simulador_produto, name='simulador_produto'),
 
+    path('api/recalcular-modelo/', views.api_recalcular_modelo, name='api_recalcular_modelo'),
+
     path('meus-projetos/', views.lista_projetos, name='lista_projetos'),
 
     path('projeto/<int:projeto_id>/excluir/', views.excluir_projeto, name='excluir_projeto'),
@@ -24,9 +26,9 @@ urlpatterns = [
 
     path('resultado/<int:resultado_id>/salvar-preco/', views.salvar_preco_simulado, name='salvar_preco_simulado'),
 
-    path('forecast/<str:sku>/', views.painel_forecast, name='painel_forecast'),
+    path('forecast/painel/<int:resultado_id>/', views.painel_forecast, name='painel_forecast'),
     
-    path('forecast/<str:sku>/gerar/', views.gerar_forecast_action, name='gerar_forecast_action'),
+    path('forecast/gerar/<int:resultado_id>/', views.gerar_forecast_action, name='gerar_forecast_action'),
     path('api/simular-preco/', views.api_simular_preco, name='api_simular_preco'),
     # MÓDULO AXIOM MACRO (PREVISÃO DE FATURAMENTO GLOBAL)
     path('forecast-corporativo/', views.painel_macro_forecast, name='painel_macro_forecast'),
@@ -41,5 +43,12 @@ urlpatterns = [
     path('assinatura/sucesso/', views.sucesso_pagamento, name='sucesso_pagamento'),
     path('assinatura/cancelado/', views.cancelado_pagamento, name='cancelado_pagamento'),
     path('stripe/webhook/', views.stripe_webhook, name='stripe_webhook'),
+
+    # CALENDÁRIO DE EVENTOS
+    path('calendario/', views.painel_calendario, name='painel_calendario'),
+    path('calendario/deletar/<int:evento_id>/', views.deletar_evento, name='deletar_evento'),
+
+    # Classificação de Produtos
+    path('projeto/<int:projeto_id>/portfolio/', views.painel_portfolio, name='painel_portfolio'),
     
 ]

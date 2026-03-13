@@ -38,7 +38,7 @@
                     <p class="text-muted mb-4 fs-5">
                         A IA ainda não mapeou o comportamento futuro deste SKU. Pressione o botão abaixo para treinar o <strong>XGBoost</strong> com o histórico do Data Warehouse e extrair a explicabilidade do modelo.
                     </p>
-                    <a href="{% url 'gerar_forecast_action' sku %}" class="btn btn-primary btn-lg rounded-pill px-5 shadow w-100" id="btnGerarIA" onclick="mostrarCarregamento()">
+                    <a href="{% url 'gerar_forecast_action' resultado_id %}" class="btn btn-primary btn-lg rounded-pill px-5 shadow w-100" id="btnGerarIA" onclick="mostrarCarregamento()">
                         <i class="ti ti-player-play me-2"></i> Inicializar Motor Preditivo
                     </a>
                 </div>
@@ -102,7 +102,7 @@
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-transparent border-bottom p-3 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold text-body"><i class="ti ti-timeline text-primary me-2"></i> Projeção de Demanda Futura</h5>
-                    <a href="{% url 'gerar_forecast_action' sku %}" class="btn btn-sm btn-outline-primary rounded-pill">
+                    <a href="{% url 'gerar_forecast_action' resultado_id %}" class="btn btn-sm btn-outline-primary rounded-pill">
                         <i class="ti ti-refresh"></i> Recalcular Hoje
                     </a>
                 </div>
