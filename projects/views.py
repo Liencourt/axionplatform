@@ -1234,11 +1234,27 @@ def painel_portfolio(request, projeto_id):
     # 2. PANDAS (TRABALHO LEVE NA MEMÓRIA)
     # ==========================================
     # O banco devolve apenas 1 linha por produto. O Pandas engole isso em 0.01 segundos.
-    df = pd.DataFrame(list(agrupamento))
+    df_vendas = pd.DataFrame(list(agrupamento))
 
-    if df.empty:
+    if df_vendas.empty:
         messages.warning(request, "Não há dados de vendas suficientes para gerar o portfólio.")
         return redirect('dashboard_resultado', projeto_id=projeto.id)
+    
+    # ==========================================
+    # NOVO: MERGE DA ELASTICIDADE 
+    # ==========================================
+    # Buscamos a elasticidade de todos os produtos do projeto
+    elasticidades = ResultadoPrecificacao.objects.filter(projeto=projeto).values('codigo_produto', 'elasticidade')
+    df_elasticidades = pd.DataFrame(list(elasticidades))
+
+    # Se tivermos cálculo de elasticidade pronto, mesclamos com as vendas
+    if not df_elasticidades.empty:
+        df = pd.merge(df_vendas, df_elasticidades, on='codigo_produto', how='left')
+        # Se um produto for novo e ainda não tiver elasticidade, colocamos -1.5 (média de mercado) para não dar erro
+        df['elasticidade'] = df['elasticidade'].fillna(-1.5)
+    else:
+        df = df_vendas
+        df['elasticidade'] = -1.5 # Fallback caso não exista modelo treinado ainda
 
     # 3. CÁLCULO DE MARGEM (%)
     # Evita divisão por zero usando o np.where
@@ -1275,9 +1291,10 @@ def painel_portfolio(request, projeto_id):
     df['receita_total'] = df['receita_total'].round(2)
     df['margem_lucro'] = df['margem_lucro'].round(2)
     df['volume_total'] = df['volume_total'].round(2)
+    df['elasticidade'] = df['elasticidade'].round(2)
 
     # Transformamos o DataFrame em um JSON super leve para o navegador mastigar e desenhar a Matriz BCG!
-    colunas_exportacao = ['codigo_produto', 'nome_produto', 'volume_total', 'receita_total', 'margem_lucro', 'curva_abc','preco_medio', 'custo_medio']
+    colunas_exportacao = ['codigo_produto', 'nome_produto', 'volume_total', 'receita_total', 'margem_lucro', 'curva_abc','preco_medio', 'custo_medio','elasticidade']
     produtos_json = df[colunas_exportacao].to_dict(orient='records')
 
     contexto = {

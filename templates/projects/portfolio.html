@@ -79,8 +79,8 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-xl-6 mb-4">
+    <div class="row mb-4">
+        <div class="col-xl-8 mb-4 mb-xl-0">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">
                     <h5 class="fw-bold text-dark mb-0">Matriz BCG Interativa</h5>
@@ -91,7 +91,7 @@
             </div>
         </div>
 
-        <div class="col-xl-3 mb-4">
+        <div class="col-xl-4">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0 text-center">
                     <h5 class="fw-bold text-dark mb-0">Receita BCG</h5>
@@ -101,18 +101,99 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="col-xl-3 mb-4">
-            <div class="card shadow-sm border-0 h-100 bg-dark text-white">
-                <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0 text-center">
-                    <h5 class="fw-bold text-white mb-0"><i class="fas fa-heartbeat text-danger"></i> Health Score</h5>
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-transparent border-bottom pt-4 pb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold text-dark mb-0"><i class="fas fa-heartbeat text-danger me-2"></i> Axiom Health Score (Risco do Portfólio)</h5>
+                        <span class="badge bg-secondary">Motor Analítico Avançado V2</span>
+                    </div>
                 </div>
-                <div class="card-body d-flex align-items-center justify-content-center p-0">
-                    <div id="graficoHealthScore" style="width: 100%; height: 350px;"></div>
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-lg-3 text-center border-end mb-4 mb-lg-0">
+                            <h6 class="text-uppercase text-muted fw-bold mb-0">Score Global</h6>
+                            <div id="graficoHealthScore" style="width: 100%; height: 220px;"></div>
+                            <h4 id="textoHealthScore" class="fw-bold mb-0 mt-2">--</h4>
+                        </div>
+                        
+                        <div class="col-lg-3 text-center border-end mb-4 mb-lg-0">
+                            <div id="gaugeDim1" style="width: 100%; height: 160px;"></div>
+                            <h6 class="fw-bold text-dark mb-1 mt-2">Qualidade BCG (40%)</h6>
+                            <small class="text-muted" style="font-size: 0.75rem;">Penalização real por Abacaxis</small>
+                        </div>
+
+                        <div class="col-lg-3 text-center border-end mb-4 mb-lg-0">
+                            <div id="gaugeDim2" style="width: 100%; height: 160px;"></div>
+                            <h6 class="fw-bold text-dark mb-1 mt-2">Saúde Financeira (35%)</h6>
+                            <small class="text-muted" style="font-size: 0.75rem;">Margem Média vs Margem Ideal</small>
+                        </div>
+
+                        <div class="col-lg-3 text-center">
+                            <div id="gaugeDim3" style="width: 100%; height: 160px;"></div>
+                            <h6 class="fw-bold text-dark mb-1 mt-2">Risco ABC×BCG (25%)</h6>
+                            <small class="text-muted" style="font-size: 0.75rem;">Produtos Classe A em declínio</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="fw-bold text-dark mb-3"><i class="fas fa-crosshairs text-danger"></i> Action Radar: Missões Sugeridas</h5>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm border-0 h-100 border-top border-danger border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-danger mb-0">Estancar Sangria</h6>
+                        <span class="badge bg-danger rounded-pill" id="badgeMissao1">0</span>
+                    </div>
+                    <p class="text-muted small mb-3">Produtos <strong>Curva A</strong> que estão no quadrante <strong>Abacaxi</strong>. O seu maior faturamento está com margem ruim.</p>
+                    <button class="btn btn-sm btn-outline-danger w-100 fw-bold" onclick="filtrarTabelaAcao('missao1')">
+                        <i class="fas fa-search"></i> Ver Lista de Risco
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm border-0 h-100 border-top border-success border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-success mb-0">Ouro Oculto</h6>
+                        <span class="badge bg-success rounded-pill" id="badgeMissao2">0</span>
+                    </div>
+                    <p class="text-muted small mb-3">Produtos de alto volume com <strong>Baixa Elasticidade</strong>. Aceitam aumento de preço sem queda brusca de vendas.</p>
+                    <button class="btn btn-sm btn-outline-success w-100 fw-bold" onclick="filtrarTabelaAcao('missao2')">
+                        <i class="fas fa-arrow-up"></i> Simular Aumentos
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm border-0 h-100 border-top border-info border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-info mb-0">Blindagem Operacional</h6>
+                        <span class="badge bg-info rounded-pill" id="badgeMissao3">0</span>
+                    </div>
+                    <p class="text-muted small mb-3"><strong>Vacas Leiteiras</strong> cuja margem caiu perigosamente para perto de 0%. Risco de prejuízo no próximo mês.</p>
+                    <button class="btn btn-sm btn-outline-info w-100 fw-bold" onclick="filtrarTabelaAcao('missao3')">
+                        <i class="fas fa-shield-alt"></i> Proteger Margens
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row mt-2 mb-5">
         <div class="col-12">
             <div class="card shadow-sm border-0">
@@ -138,7 +219,9 @@
                             <thead class="bg-light text-muted small text-uppercase sticky-top">
                                 <tr>
                                     <th class="text-start ps-4">Produto</th>
-                                    <th>Preço Médio</th> <th>Custo Médio</th> <th>Volume (Giro)</th>
+                                    <th>Preço Médio</th>
+                                    <th>Custo Médio</th>
+                                    <th>Volume (Giro)</th>
                                     <th>Margem (%)</th>
                                     <th>Receita Total</th>
                                     <th>Curva ABC</th>
@@ -152,6 +235,7 @@
             </div>
         </div>
     </div>
+
 </div>
 
 <script>
@@ -175,10 +259,10 @@
                 atualizarBCG();         // O BCG é dinâmico, desenha a 1ª vez e fica ouvindo os sliders
     });
 
-    // Função que roda TODA VEZ que o usuário arrasta a bolinha do slider
     function atualizarBCG() {
         let limiarVolume = parseFloat(document.getElementById('sliderVolume').value);
         let limiarMargem = parseFloat(document.getElementById('sliderMargem').value);
+        let countM1 = 0, countM2 = 0, countM3 = 0;
         
         document.getElementById('valSliderVolume').innerText = limiarVolume + " un";
         document.getElementById('valSliderMargem').innerText = limiarMargem + " %";
@@ -186,15 +270,18 @@
         let estrelas = 0, vacas = 0, interrogacoes = 0, abacaxis = 0;
         let recEstrelas = 0, recVacas = 0, recInterrogacoes = 0, recAbacaxis = 0;
         
+        // VARIÁVEIS DO AXIOM HEALTH SCORE V2
+        let recA_Estrelas = 0, recA_Vacas = 0, recA_Abacaxis = 0;
+        let recB_Abacaxis = 0, recC_Abacaxis = 0;
+        let margemTotalPonderada = 0; // Margem * Receita
+        
         let traceEstrelas = {x: [], y: [], text: [], mode: 'markers', name: 'Estrelas', marker: {color: '#2ecc71', size: 10}};
         let traceVacas = {x: [], y: [], text: [], mode: 'markers', name: 'Vacas Leiteiras', marker: {color: '#3498db', size: 10}};
         let traceInterrogacoes = {x: [], y: [], text: [], mode: 'markers', name: 'Interrogações', marker: {color: '#f1c40f', size: 10}};
         let traceAbacaxis = {x: [], y: [], text: [], mode: 'markers', name: 'Abacaxis', marker: {color: '#e74c3c', size: 10}};
 
-        // Variáveis para guardar as linhas da tabela
         let htmlEstrelas = "", htmlVacas = "", htmlInterrogacoes = "", htmlAbacaxis = "";
 
-        // Função auxiliar para desenhar a linha da tabela
         const criarLinha = (p, icone, cor) => `
             <tr class="tabela-linha" data-categoria="${cor}">
                 <td class="text-start ps-4">
@@ -205,155 +292,233 @@
                 <td class="text-danger">R$ ${p.custo_medio.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
                 <td class="fw-bold">${p.volume_total.toLocaleString('pt-BR')} un</td>                
                 <td class="fw-bold text-${cor}">${p.margem_lucro.toFixed(1)}%</td>
-                <td class="text-muted">R$ ${p.receita_total.toLocaleString('pt-BR')}</td>
+                <td class="text-muted">R$ ${p.receita_total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
                 <td><span class="badge bg-secondary">${p.curva_abc}</span></td>
             </tr>
         `;
 
         produtos.forEach(p => {
             let tooltip = `<b>${p.nome_produto}</b><br>SKU: ${p.codigo_produto}<br>Volume: ${p.volume_total} un<br>Margem: ${p.margem_lucro.toFixed(1)}%<br>Receita: R$ ${p.receita_total.toFixed(2)}`;
+            let rec = p.receita_total;
+            let isA = p.curva_abc === 'A';
+            let isAbacaxi = (p.margem_lucro < limiarMargem && p.volume_total < limiarVolume);
+            let isVaca = (p.margem_lucro < limiarMargem && p.volume_total >= limiarVolume);
+
+            // Reseta as flags das missões para cada recalculo
+            p.missao1 = false; p.missao2 = false; p.missao3 = false;
+
+            // Soma ponderada da margem para a Dimensão 2
+            margemTotalPonderada += (p.margem_lucro * rec);
             
+            // MISSÃO 1: Estancar Sangria (Produto Curva A que virou Abacaxi)
+            if (isA && isAbacaxi) {
+                p.missao1 = true;
+                countM1++;
+            }
+
+            // MISSÃO 2: Ouro Oculto (Produto Curva A, com Elasticidade Inelástica entre 0 e -1.0)
+            if (isA && p.elasticidade >= -1.0 && p.elasticidade <= 0) {
+                p.missao2 = true;
+                countM2++;
+            }
+
+            // MISSÃO 3: Blindagem (Vaca Leiteira com margem abaixo da METADE da margem ideal)
+            if (isVaca && p.margem_lucro > 0 && p.margem_lucro < (limiarMargem * 0.5)) {
+                p.missao3 = true;
+                countM3++;
+            }
+
+
             if (p.margem_lucro >= limiarMargem && p.volume_total >= limiarVolume) {
-                estrelas++;
-                recEstrelas += p.receita_total; // <-- SOMA A RECEITA
+                estrelas++; recEstrelas += rec;
+                if(isA) recA_Estrelas += rec;
                 traceEstrelas.x.push(p.margem_lucro); traceEstrelas.y.push(p.volume_total); traceEstrelas.text.push(tooltip);
                 htmlEstrelas += criarLinha(p, "fas fa-star", "success");
             } else if (p.margem_lucro < limiarMargem && p.volume_total >= limiarVolume) {
-                vacas++;
-                recVacas += p.receita_total; // <-- SOMA A RECEITA
+                vacas++; recVacas += rec;
+                if(isA) recA_Vacas += rec;
                 traceVacas.x.push(p.margem_lucro); traceVacas.y.push(p.volume_total); traceVacas.text.push(tooltip);
                 htmlVacas += criarLinha(p, "fas fa-cow", "info");
             } else if (p.margem_lucro >= limiarMargem && p.volume_total < limiarVolume) {
-                interrogacoes++;
-                recInterrogacoes += p.receita_total; // <-- SOMA A RECEITA
+                interrogacoes++; recInterrogacoes += rec;
                 traceInterrogacoes.x.push(p.margem_lucro); traceInterrogacoes.y.push(p.volume_total); traceInterrogacoes.text.push(tooltip);
                 htmlInterrogacoes += criarLinha(p, "fas fa-question-circle", "warning");
             } else {
-                abacaxis++;
-                recAbacaxis += p.receita_total; // <-- SOMA A RECEITA
+                abacaxis++; recAbacaxis += rec;
+                if(isA) recA_Abacaxis += rec;
+                else if(p.curva_abc === 'B') recB_Abacaxis += rec;
+                else recC_Abacaxis += rec;
                 traceAbacaxis.x.push(p.margem_lucro); traceAbacaxis.y.push(p.volume_total); traceAbacaxis.text.push(tooltip);
                 htmlAbacaxis += criarLinha(p, "fas fa-times-circle", "danger");
             }
         });
 
+        // Atualiza Cards Básicos
         document.getElementById('countEstrelas').innerText = estrelas;
         document.getElementById('countVacas').innerText = vacas;
         document.getElementById('countInterrogacoes').innerText = interrogacoes;
         document.getElementById('countAbacaxis').innerText = abacaxis;
-
-        // INJETA AS LINHAS NA TABELA BASEADO NA ABA ATIVA!
+        // Atualiza Cards Missões
+        document.getElementById('badgeMissao1').innerText = countM1;
+        document.getElementById('badgeMissao2').innerText = countM2;
+        document.getElementById('badgeMissao3').innerText = countM3;
         window.dadosTabelaGlobais = {
-            '#tab-estrelas': htmlEstrelas || '<tr><td colspan="5">Nenhum produto nesta categoria.</td></tr>',
-            '#tab-vacas': htmlVacas || '<tr><td colspan="5">Nenhum produto nesta categoria.</td></tr>',
-            '#tab-interrogacoes': htmlInterrogacoes || '<tr><td colspan="5">Nenhum produto nesta categoria.</td></tr>',
-            '#tab-abacaxis': htmlAbacaxis || '<tr><td colspan="5">Nenhum produto nesta categoria.</td></tr>'
+            '#tab-estrelas': htmlEstrelas || '<tr><td colspan="7">Nenhum produto nesta categoria.</td></tr>',
+            '#tab-vacas': htmlVacas || '<tr><td colspan="7">Nenhum produto nesta categoria.</td></tr>',
+            '#tab-interrogacoes': htmlInterrogacoes || '<tr><td colspan="7">Nenhum produto nesta categoria.</td></tr>',
+            '#tab-abacaxis': htmlAbacaxis || '<tr><td colspan="7">Nenhum produto nesta categoria.</td></tr>'
         };
-        
-        atualizarConteudoTabela(); // Chama a função que troca a tela
+        atualizarConteudoTabela(); 
 
+        // 1. PLOTA MATRIZ BCG
         let layoutBCG = {
-            font: { color: '#adb5bd' }, // Fix do Dark Mode
-            hovermode: 'closest',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: '#adb5bd' }, hovermode: 'closest', paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
             xaxis: { title: 'Margem de Lucro (%)', gridcolor: 'rgba(128,128,128,0.2)', zeroline: false },
             yaxis: { title: 'Volume de Vendas (un)', gridcolor: 'rgba(128,128,128,0.2)', zeroline: false, type: 'log' }, 
-            margin: { t: 20, b: 40, l: 60, r: 20 },
-            legend: { orientation: "h", y: -0.15, x: 0.5, xanchor: 'center' },
+            margin: { t: 20, b: 40, l: 60, r: 20 }, legend: { orientation: "h", y: -0.15, x: 0.5, xanchor: 'center' },
             shapes: [
                 { type: 'line', x0: limiarMargem, x1: limiarMargem, y0: 0, y1: 1, yref: 'paper', line: { color: '#7f8c8d', width: 2, dash: 'dot' } },
                 { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: limiarVolume, y1: limiarVolume, line: { color: '#7f8c8d', width: 2, dash: 'dot' } }
             ]
         };
-
         Plotly.react('graficoBCG', [traceEstrelas, traceVacas, traceInterrogacoes, traceAbacaxis], layoutBCG, {responsive: true});
 
-        // ==========================================
-        // 6. DESENHA O DONUT CHART (Receita por Quadrante)
-        // ==========================================
+        // 2. PLOTA PIZZA RECEITA
         let traceDonut = {
-            values: [recEstrelas, recVacas, recInterrogacoes, recAbacaxis],
-            labels: ['Estrelas', 'Vacas Leiteiras', 'Interrogações', 'Abacaxis'],
-            marker: { colors: ['#2ecc71', '#3498db', '#f1c40f', '#e74c3c'] },
-            type: 'pie',
-            hole: 0.65, // Deixa ele com formato de rosca (Donut) moderno
-            textinfo: 'percent', // Mostra só a porcentagem dentro do gráfico
-            textfont: { size: 14, color: '#fff', weight: 'bold' },
-            hovertemplate: '<b>%{label}</b><br>Faturamento: R$ %{value:,.2f}<extra></extra>' // Máscara de dinheiro no hover
+            values: [recEstrelas, recVacas, recInterrogacoes, recAbacaxis], labels: ['Estrelas', 'Vacas', 'Interrogações', 'Abacaxis'],
+            marker: { colors: ['#2ecc71', '#3498db', '#f1c40f', '#e74c3c'] }, type: 'pie', hole: 0.65, textinfo: 'percent',
+            textfont: { size: 14, color: '#fff', weight: 'bold' }, hovertemplate: '<b>%{label}</b><br>Faturamento: R$ %{value:,.2f}<extra></extra>'
         };
+        Plotly.react('graficoReceitaBCG', [traceDonut], {font: { color: '#adb5bd' }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { t: 20, b: 20, l: 20, r: 20 }, showlegend: true, legend: { orientation: "h", y: -0.1, x: 0.5, xanchor: 'center' }}, {responsive: true});
 
-        let layoutDonut = {
-            font: { color: '#adb5bd' }, 
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            margin: { t: 20, b: 20, l: 20, r: 20 },
-            showlegend: true,
-            legend: { orientation: "h", y: -0.1, x: 0.5, xanchor: 'center' }
-        };
-
-        Plotly.react('graficoReceitaBCG', [traceDonut], layoutDonut, {responsive: true});
-    }
-
-    // ==========================================
-        // 7. AXIOM HEALTH SCORE (O Termómetro do CEO)
         // ==========================================
-        let totalReceita = recEstrelas + recVacas + recInterrogacoes + recAbacaxis;
-        let healthScore = 0;
+        // 3. AXIOM HEALTH SCORE V2 (O MOTOR)
+        // ==========================================
+        const totalReceita = recEstrelas + recVacas + recInterrogacoes + recAbacaxis;
         
-        // Aplica a fórmula de pesos do Portfolio Analytics
-        if (totalReceita > 0) {
-            healthScore = ((recEstrelas * 100) + (recVacas * 75) + (recInterrogacoes * 50)) / totalReceita;
-        }
+        // DIMENSÃO 1: Qualidade do Portfólio
+        let scorePortfolioRaw = totalReceita > 0 ? ((recEstrelas * 1.0) + (recVacas * 0.75) + (recInterrogacoes * 0.25) + (recAbacaxis * -0.5)) / totalReceita : 0;
+        let dim1 = Math.max(0, Math.min(100, ((scorePortfolioRaw + 0.5) / 1.5) * 100));
 
-        // Define as cores e os alertas baseados na nota
-        let corScore = '#e74c3c'; // Vermelho por defeito
-        let textoScore = 'Risco Crítico';
+        // DIMENSÃO 2: Saúde Financeira (Baseada no Slider)
+        let margemPctMedia = totalReceita > 0 ? (margemTotalPonderada / totalReceita) : 0;
+        let dim2 = 0;
+        if (margemPctMedia > 0) {
+            dim2 = 30 + (margemPctMedia / limiarMargem) * 70; // Se atinge a margem alvo, bate 100 pontos
+        }
+        dim2 = Math.max(0, Math.min(100, dim2));
+
+        // DIMENSÃO 3: Risco de Concentração (Usando Receita)
+        let penalAbacaxiA = totalReceita > 0 ? (recA_Abacaxis / totalReceita) * 60 : 0;
+        let penalAbacaxiB = totalReceita > 0 ? (recB_Abacaxis / totalReceita) * 30 : 0;
+        let penalAbacaxiC = totalReceita > 0 ? (recC_Abacaxis / totalReceita) * 10 : 0;
+        let bonusEstrelaA = totalReceita > 0 ? (recA_Estrelas / totalReceita) * 20 : 0;
+        let bonusVacaA    = totalReceita > 0 ? (recA_Vacas / totalReceita) * 10 : 0;
+        let dim3 = Math.max(0, Math.min(100, 100 - penalAbacaxiA - penalAbacaxiB - penalAbacaxiC + bonusEstrelaA + bonusVacaA));
+
+        // CALCULO FINAL
+        let healthScore = (dim1 * 0.40) + (dim2 * 0.35) + (dim3 * 0.25);
+
+        // ESTILIZAÇÃO DO SCORE
+        let corScore = '#e74c3c'; let textoScore = 'Risco Crítico';
+        if (healthScore >= 75) { corScore = '#2ecc71'; textoScore = 'Operação Saudável'; } 
+        else if (healthScore >= 50) { corScore = '#f1c40f'; textoScore = 'Atenção Requerida'; }
         
-        if (healthScore >= 75) {
-            corScore = '#2ecc71'; // Verde
-            textoScore = 'Operação Saudável';
-        } else if (healthScore >= 50) {
-            corScore = '#f1c40f'; // Amarelo
-            textoScore = 'Atenção Requerida';
-        }
+        document.getElementById('textoHealthScore').innerText = textoScore;
+        document.getElementById('textoHealthScore').style.color = corScore;
 
-        let traceGauge = {
-            type: "indicator",
-            mode: "gauge+number",
-            value: healthScore,
-            title: { text: textoScore, font: { size: 22, color: corScore } }, // <-- HTML Removido, 100% seguro agora!
-            number: { suffix: "%", font: { color: corScore, size: 45 } },
+        // PLOT: GAUGE PRINCIPAL
+        let traceMainGauge = {
+            type: "indicator", mode: "gauge+number", value: healthScore,
+            number: { suffix: "", font: { color: corScore, size: 50 } },
             gauge: {
-                axis: { range: [0, 100], tickwidth: 1, tickcolor: "#adb5bd" },
-                bar: { color: corScore },
-                bgcolor: "rgba(255,255,255,0.05)",
-                borderwidth: 0,
-                steps: [
-                    { range: [0, 50], color: "rgba(231, 76, 60, 0.2)" }, 
-                    { range: [50, 75], color: "rgba(241, 196, 15, 0.2)" }, 
-                    { range: [75, 100], color: "rgba(46, 204, 113, 0.2)" }  
-                ]
+                axis: { range: [0, 100], tickwidth: 1, tickcolor: "#adb5bd", tickfont: { color: "#adb5bd", size: 12 } },
+                bar: { color: corScore }, bgcolor: "rgba(255,255,255,0.05)", borderwidth: 0,
+                steps: [{ range: [0, 50], color: "rgba(231, 76, 60, 0.2)" }, { range: [50, 75], color: "rgba(241, 196, 15, 0.2)" }, { range: [75, 100], color: "rgba(46, 204, 113, 0.2)" }]
             }
         };
+        Plotly.react('graficoHealthScore', [traceMainGauge], { paper_bgcolor: 'rgba(0,0,0,0)', margin: { t: 20, b: 20, l: 30, r: 30 } }, {responsive: true});
 
-        let layoutGauge = {
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            margin: { t: 60, b: 20, l: 30, r: 30 }
-        };
-
-        Plotly.react('graficoHealthScore', [traceGauge], layoutGauge, {responsive: true});
+        // PLOT: 3 MINI GAUGES (O "Explainable AI")
+        const layoutMini = { paper_bgcolor: 'rgba(0,0,0,0)', margin: { t: 30, b: 20, l: 15, r: 15 } };
         
-    // --- NOVA FUNÇÃO: Troca os dados da tabela quando o usuário clica na aba ---
+        let traceDim1 = { type: "indicator", mode: "gauge+number", value: dim1, number: { font: { color: '#2ecc71', size: 28 } }, gauge: { axis: { range: [0, 100], visible: false }, bar: { color: '#2ecc71', thickness: 0.3 }, bgcolor: "rgba(255,255,255,0.05)", borderwidth: 0 }};
+        Plotly.react('gaugeDim1', [traceDim1], layoutMini, {responsive: true});
+
+        let traceDim2 = { type: "indicator", mode: "gauge+number", value: dim2, number: { font: { color: '#f39c12', size: 28 } }, gauge: { axis: { range: [0, 100], visible: false }, bar: { color: '#f39c12', thickness: 0.3 }, bgcolor: "rgba(255,255,255,0.05)", borderwidth: 0 }};
+        Plotly.react('gaugeDim2', [traceDim2], layoutMini, {responsive: true});
+
+        let traceDim3 = { type: "indicator", mode: "gauge+number", value: dim3, number: { font: { color: '#9b59b6', size: 28 } }, gauge: { axis: { range: [0, 100], visible: false }, bar: { color: '#9b59b6', thickness: 0.3 }, bgcolor: "rgba(255,255,255,0.05)", borderwidth: 0 }};
+        Plotly.react('gaugeDim3', [traceDim3], layoutMini, {responsive: true});
+    }
+    
+    // ==========================================
+    // MOTOR DO ACTION RADAR (FILTRO DA TABELA)
+    // ==========================================
+    let missaoAtiva = null;
+
+    window.filtrarTabelaAcao = function(missao) {
+        missaoAtiva = missao;
+        let htmlFiltrado = "";
+        
+        produtos.forEach(p => {
+            if (missao === 'missao1' && p.missao1) htmlFiltrado += criarLinhaAcao(p, "fas fa-exclamation-triangle", "danger", "Risco: Produto A Abacaxi");
+            if (missao === 'missao2' && p.missao2) htmlFiltrado += criarLinhaAcao(p, "fas fa-arrow-up", "success", `Inelástico: Elast. ${p.elasticidade}`);
+            if (missao === 'missao3' && p.missao3) htmlFiltrado += criarLinhaAcao(p, "fas fa-shield-alt", "info", "Risco: Margem Crítica");
+        });
+
+        if (htmlFiltrado === "") {
+            htmlFiltrado = '<tr><td colspan="7" class="py-4 text-muted fw-bold"><i class="fas fa-check-circle text-success fs-3 mb-2 d-block"></i>Nenhuma anomalia detectada. Excelente trabalho!</td></tr>';
+        }
+
+        // Apaga as abas ativas
+        document.querySelectorAll('#tabMatriz .nav-link').forEach(t => t.classList.remove('active'));
+        document.getElementById('tbodyAcao').innerHTML = htmlFiltrado;
+    };
+
     function atualizarConteudoTabela() {
-        let abaAtiva = document.querySelector('#tabMatriz .nav-link.active').getAttribute('data-bs-target');
-        document.getElementById('tbodyAcao').innerHTML = window.dadosTabelaGlobais[abaAtiva];
+        if (missaoAtiva) {
+            // Se o usuário está na missão, atualiza a lista da missão em tempo real junto com o Slider!
+            window.filtrarTabelaAcao(missaoAtiva);
+        } else {
+            // Se está nas abas normais, PROCURA a aba com segurança para não gerar Crash
+            let abaAtivaElement = document.querySelector('#tabMatriz .nav-link.active');
+            if (abaAtivaElement) {
+                let abaAtiva = abaAtivaElement.getAttribute('data-bs-target');
+                document.getElementById('tbodyAcao').innerHTML = window.dadosTabelaGlobais[abaAtiva];
+            }
+        }
     }
 
-    // Adiciona o ouvinte para trocar a tabela assim que o usuário clicar numa Aba!
+    // Se o usuário clicar manualmente numa aba (ex: "Estrelas"), saímos do modo Missão
+    document.querySelectorAll('#tabMatriz .nav-link').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function() {
+            missaoAtiva = null; 
+            atualizarConteudoTabela();
+        });
+    });
+
+    // Função auxiliar (Pode manter igual a sua, só garantindo que está aqui no final)
+    const criarLinhaAcao = (p, icone, cor, motivo) => `
+        <tr class="tabela-linha" data-categoria="${cor}">
+            <td class="text-start ps-4">
+                <span class="fw-bold text-dark d-block">${p.nome_produto}</span>
+                <small class="text-muted"><i class="${icone} text-${cor} me-1"></i> SKU: ${p.codigo_produto}</small>
+            </td>
+            <td class="text-dark">R$ ${p.preco_medio.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td class="text-danger">R$ ${p.custo_medio.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td class="fw-bold">${p.volume_total.toLocaleString('pt-BR')} un</td>                
+            <td class="fw-bold text-${cor}">${p.margem_lucro.toFixed(1)}%</td>
+            <td class="text-muted">R$ ${p.receita_total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+            <td><span class="badge bg-${cor} shadow-sm">${motivo}</span></td>
+        </tr>
+    `;
+
+
     document.querySelectorAll('#tabMatriz .nav-link').forEach(tab => {
         tab.addEventListener('shown.bs.tab', atualizarConteudoTabela);
     });
+
     
 </script>
 {% endblock page_content %}
