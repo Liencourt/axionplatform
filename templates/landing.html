@@ -3,17 +3,19 @@
 <html lang="pt-br">
 <head>
     <meta charset="utf-8" />
-    <title>Axiom Platform | Scientific Intelligence for Executive Decisions</title>
+    <title>Axiom Platform | O Fim do Achismo no Varejo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="{% static 'css/app.min.css' %}" rel="stylesheet" />
     <link href="{% static 'css/icons.min.css' %}" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         /* ==========================================
-           O CÉREBRO DAS CORES (MUDE AQUI PARA A SUA LOGO)
+           O CÉREBRO DAS CORES
            ========================================== */
         :root {
-            --cor-principal: #0d6efd; /* Ex: Azul da logo */
-            --cor-secundaria: #ffc107; /* Ex: Dourado/Amarelo de destaque */
+            --cor-principal: #0d6efd; 
+            --cor-secundaria: #ffc107; 
             --cor-fundo-escuro: #0f172a;
             --cor-texto-escuro: #1e293b;
         }
@@ -31,9 +33,7 @@
             margin-bottom: 1rem; 
         }
 
-        /* ==========================================
-           BOTÕES BLINDADOS (NUNCA MAIS VÃO SUMIR)
-           ========================================== */
+        /* BOTÕES BLINDADOS */
         .btn-axiom-principal {
             background-color: var(--cor-principal);
             color: #ffffff;
@@ -56,14 +56,15 @@
         }
         .btn-axiom-contorno:hover {
             background-color: #ffffff;
-            color: var(--cor-texto-escuro); /* O texto fica escuro para não sumir no fundo branco! */
+            color: var(--cor-texto-escuro);
             border-color: #ffffff;
         }
 
         /* CARDS COM EFEITO SUAVE */
         .module-card { transition: transform 0.3s ease, box-shadow 0.3s ease; border: 1px solid #e2e8f0 !important; }
         .module-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important; border-color: var(--cor-principal) !important; }
-        .border-brand { border-color: var(--cor-principal) !important; }
+        
+        .use-case-card { border-left: 4px solid var(--cor-principal); background-color: #f8f9fa; }
     </style>
 </head>
 <body data-bs-spy="scroll" data-bs-target="#navbar-landing">
@@ -71,108 +72,119 @@
     <nav id="navbar-landing" class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow-sm">
         <div class="container">
             <a class="navbar-brand fw-bold" href="#">
-                <i class="ti ti-chart-arcs text-primary fs-3 align-middle me-2"></i>AXIOM PLATFORM
+                <i class="fas fa-chart-pie text-primary fs-4 align-middle me-2"></i>AXIOM PLATFORM
             </a>
             <div class="ms-auto">
-                <a href="{% url 'login' %}" class="btn btn-axiom-contorno btn-sm me-2 px-4 rounded-pill">Login</a>
-                <a href="#contato" class="btn btn-axiom-principal btn-sm px-4 rounded-pill">Request a Demo</a>
+                <a href="{% url 'login' %}" class="btn btn-axiom-contorno btn-sm me-2 px-4 rounded-pill">Entrar</a>
+                <a href="#contato" class="btn btn-axiom-principal btn-sm px-4 rounded-pill">Agendar Demo</a>
             </div>
         </div>
     </nav>
 
     <section class="hero-section text-center mt-5">
         <div class="container py-5">
-            <h1 class="display-4 fw-bold mb-3">Scientific Intelligence for Executive Decisions</h1>
-            <p class="lead mb-5 text-white-50 mx-auto" style="max-width: 700px;">
-                Construa modelos estatísticos de forma visual. Obtenha insights rápidos, precisos e explicáveis — sob demanda.
+            <span class="badge bg-primary text-white mb-3 px-3 py-2 rounded-pill shadow-sm">Inteligência Artificial para Varejo e Indústria</span>
+            <h1 class="display-4 fw-bold mb-3">O Fim do Achismo.<br>A Ciência da Rentabilidade.</h1>
+            <p class="lead mb-5 text-white-50 mx-auto" style="max-width: 750px;">
+                Transforme os dados do seu ERP em decisões executivas claras. Aumente margens, descubra lucros ocultos e audite o risco do seu portfólio de produtos em tempo real com Inteligência Artificial preditiva.
             </p>
             <div>
-                <a href="#contato" class="btn btn-axiom-principal btn-lg rounded-pill px-5 me-3 shadow">Request a Demo</a>
-                <a href="#how-it-works" class="btn btn-axiom-contorno btn-lg rounded-pill px-5">See How It Works</a>
+                <a href="#contato" class="btn btn-axiom-principal btn-lg rounded-pill px-5 me-3 shadow">Falar com um Especialista</a>
+                <a href="#solucoes" class="btn btn-axiom-contorno btn-lg rounded-pill px-5">Conhecer a Plataforma</a>
             </div>
         </div>
     </section>
 
     <section class="py-5 bg-light">
         <div class="container py-4 text-center">
-            <h2 class="fw-bold mb-4">Decisions demand speed.<br><span class="text-primary">Accuracy demands science.</span></h2>
+            <h2 class="fw-bold mb-4">Decisões exigem velocidade.<br><span class="text-primary">Lucro exige precisão matemática.</span></h2>
             <p class="text-muted fs-5 mb-4 mx-auto" style="max-width: 800px;">
-                A maioria das decisões estratégicas ainda depende de dashboards estáticos, análises manuais lentas ou modelos opacos que ninguém consegue explicar (dependência excessiva de times técnicos).<br><br>
-                <strong>Isso cria atraso, risco e perda de confiança.</strong>
+                A maioria dos executivos ainda depende de dashboards estáticos que apenas mostram o que aconteceu no passado. O Axiom não olha para trás. Nossa plataforma audita a saúde da sua empresa hoje e prescreve exatamente <strong>o que você deve fazer amanhã para gerar caixa.</strong>
             </p>
         </div>
     </section>
 
-    <section class="py-5">
-        <div class="container py-4">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
-                    <h2 class="fw-bold mb-3">Axiom Platform</h2>
-                    <p class="text-muted fs-5 mb-4">
-                        Um ambiente unificado de modelagem estatística e inteligência analítica, criado para transformar dados em decisões executivas claras. Aqui, estatística rigorosa encontra simplicidade operacional.
-                    </p>
-                    <ul class="list-unstyled fs-5 text-muted">
-                        <li class="mb-2"><i class="ti ti-check text-success me-2"></i> Configure modelos visualmente</li>
-                        <li class="mb-2"><i class="ti ti-check text-success me-2"></i> Controle variáveis e hipóteses</li>
-                        <li class="mb-2"><i class="ti ti-check text-success me-2"></i> Entenda os resultados</li>
-                        <li class="mb-2"><i class="ti ti-check text-success me-2"></i> Decide com confiança</li>
-                    </ul>
-                    <div class="mt-4 p-3 bg-light rounded border-start border-primary border-4">
-                        <span class="fw-bold text-dark">Sem caixas-pretas. Sem achismos.</span>
-                    </div>
-                </div>
-                <div class="col-lg-6 text-center mt-4 mt-lg-0">
-                    <div class="bg-light rounded p-5 border shadow-sm">
-                        <i class="ti ti-dashboard text-primary opacity-25" style="font-size: 8rem;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-5 bg-light" id="how-it-works">
+    <section class="py-5" id="solucoes">
         <div class="container py-4">
             <div class="text-center mb-5">
-                <h2 class="fw-bold">From variables to decisions — in minutes.</h2>
-                <p class="text-muted">Conheça o core da plataforma.</p>
+                <h2 class="fw-bold">Do Dado à Decisão — em Segundos.</h2>
+                <p class="text-muted">Conheça o motor analítico avançado do Axiom.</p>
             </div>
             
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="card h-100 border-0 shadow-sm module-card p-4">
-                        <i class="ti ti-chart-line feature-icon"></i>
-                        <h4 class="fw-bold">Regression Studio</h4>
-                        <p class="text-muted">Construa modelos de regressão linear e não-linear com total transparência.</p>
+                        <i class="fas fa-heartbeat feature-icon text-danger"></i>
+                        <h4 class="fw-bold">Axiom Health Score</h4>
+                        <p class="text-muted">O termômetro do CEO. Avalie a saúde financeira do seu portfólio de 0 a 100 em tempo real.</p>
                         <ul class="list-unstyled text-muted small mt-auto">
-                            <li>• Controle de variáveis independentes</li>
-                            <li>• Interpretação de coeficientes</li>
-                            <li>• Significância estatística</li>
+                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Qualidade do Mix de Produtos</li>
+                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Análise de Margem Média</li>
+                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Risco de Concentração (Curva ABC)</li>
                         </ul>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm module-card p-4">
-                        <i class="ti ti-box-model feature-icon"></i>
-                        <h4 class="fw-bold">Classification Studio</h4>
-                        <p class="text-muted">Modele cenários, riscos e comportamentos com foco em decisão.</p>
-                        <ul class="list-unstyled text-muted small mt-auto">
-                            <li>• Classificação explicável</li>
-                            <li>• Métricas claras além da acurácia</li>
-                            <li>• Suporte direto à estratégia</li>
-                        </ul>
-                    </div>
-                </div>
+                
                 <div class="col-md-4">
                     <div class="card h-100 border-0 shadow-sm module-card p-4 border-bottom border-primary border-4">
-                        <i class="ti ti-currency-dollar feature-icon"></i>
-                        <h4 class="fw-bold">Elasticity Studio</h4>
-                        <p class="text-muted">Transforme dados em decisões de preço e receita.</p>
+                        <i class="fas fa-chart-line feature-icon text-primary"></i>
+                        <h4 class="fw-bold">Elasticidade & Precificação</h4>
+                        <p class="text-muted">Simulador Preditivo. Descubra exatamente até onde você pode subir o preço sem perder a venda.</p>
                         <ul class="list-unstyled text-muted small mt-auto">
-                            <li>• Modelagem de elasticidade-preço</li>
-                            <li>• Simulação de cenários</li>
-                            <li>• Conexão entre estatística e finanças</li>
+                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Cálculo Matemático de Sensibilidade</li>
+                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Simulação de Faturamento Futuro</li>
+                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Geração de "Ouro Oculto" no caixa</li>
                         </ul>
                     </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm module-card p-4">
+                        <i class="fas fa-crosshairs feature-icon text-success"></i>
+                        <h4 class="fw-bold">Action Radar (Missões)</h4>
+                        <p class="text-muted">Deixe de procurar problemas. A IA do Axiom vasculha seus dados e gera "Missões de Lucro" diárias.</p>
+                        <ul class="list-unstyled text-muted small mt-auto">
+                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Alerta de Sangria (Produtos Tóxicos)</li>
+                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Blindagem de Margem (Vacas Leiteiras)</li>
+                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Tabelas prontas para execução</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-5 bg-light">
+        <div class="container py-4">
+            <h2 class="fw-bold text-center mb-5">Oportunidades de Uso na Operação</h2>
+            
+            <div class="row align-items-center mb-4 p-4 use-case-card rounded shadow-sm">
+                <div class="col-md-2 text-center mb-3 mb-md-0">
+                    <i class="fas fa-user-tie fa-4x text-primary"></i>
+                </div>
+                <div class="col-md-10">
+                    <h5 class="fw-bold mb-2">Para a Diretoria / CEO: Mitigação de Risco</h5>
+                    <p class="text-muted mb-0">Use o <strong>Health Score</strong> e a <strong>Matriz BCG</strong> para auditorias executivas. Descubra se a empresa está dependente de produtos que dão prejuízo ("Abacaxis" da Classe A) e acompanhe a saúde financeira da operação em uma única tela, garantindo segurança para os acionistas.</p>
+                </div>
+            </div>
+
+            <div class="row align-items-center mb-4 p-4 use-case-card rounded shadow-sm" style="border-left-color: #2ecc71;">
+                <div class="col-md-2 text-center mb-3 mb-md-0">
+                    <i class="fas fa-tags fa-4x text-success"></i>
+                </div>
+                <div class="col-md-10">
+                    <h5 class="fw-bold mb-2">Para o Time de Pricing: Aumento Imediato de Lucro</h5>
+                    <p class="text-muted mb-0">Através do <strong>Action Radar</strong>, os analistas recebem a missão de "Ouro Oculto". Eles acessam instantaneamente a lista de produtos inelásticos de alto giro, utilizam o <strong>Simulador de Elasticidade</strong> para aplicar micro-aumentos de preço justificados pela matemática, gerando lucro limpo imediato.</p>
+                </div>
+            </div>
+
+            <div class="row align-items-center p-4 use-case-card rounded shadow-sm" style="border-left-color: #e74c3c;">
+                <div class="col-md-2 text-center mb-3 mb-md-0">
+                    <i class="fas fa-shopping-cart fa-4x text-danger"></i>
+                </div>
+                <div class="col-md-10">
+                    <h5 class="fw-bold mb-2">Para o Time de Compras / Comercial: Estancar Sangrias</h5>
+                    <p class="text-muted mb-0">A IA alerta sobre "Vacas Leiteiras" (campeões de vendas) com margens caindo a níveis críticos. O setor comercial atua antecipadamente renegociando custos com fornecedores ou reestruturando estoques antes que o produto feche o mês dando prejuízo ao negócio.</p>
                 </div>
             </div>
         </div>
@@ -180,32 +192,31 @@
 
     <section class="py-5 bg-dark text-white text-center">
         <div class="container py-5">
-            <h2 class="fw-bold mb-4">Why Axiom Platform?</h2>
+            <h2 class="fw-bold mb-4">Por que escolher o Axiom?</h2>
             <div class="row justify-content-center mb-5">
                 <div class="col-md-8 d-flex justify-content-center flex-wrap gap-3">
-                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill">Explainable AI by design</span>
-                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill">Statistical rigor</span>
-                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill">User-controlled modeling</span>
-                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill">Built for executive clarity</span>
+                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill"><i class="fas fa-brain text-primary me-2"></i>IA Preditiva Explicável</span>
+                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill"><i class="fas fa-chart-bar text-primary me-2"></i>Rigor Matemático</span>
+                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill"><i class="fas fa-bolt text-primary me-2"></i>Software Prescritivo (Foco em Ação)</span>
                 </div>
             </div>
             
             <h3 class="fst-italic text-white-50 mb-4 mx-auto" style="max-width: 800px;">
-                "Complex models should not create complex decisions. Axiom Platform turns statistical science into executive clarity."
+                "Modelos complexos não devem gerar decisões complexas. O Axiom transforma a ciência estatística em clareza executiva."
             </h3>
             
             <div class="mt-5" id="contato">
-                <h4 class="mb-4">Ready to decide with confidence?</h4>
-                <a href="mailto:contato@suaempresa.com" class="btn btn-axiom-principal btn-lg rounded-pill px-5 me-2">Talk to a Specialist</a>
-                <a href="{% url 'login' %}" class="btn btn-axiom-contorno btn-lg rounded-pill px-5">Login to Platform</a>
+                <h4 class="mb-4">Pronto para decidir com confiança?</h4>
+                <a href="mailto:contato@suaempresa.com" class="btn btn-axiom-principal btn-lg rounded-pill px-5 me-2 shadow-lg">Agendar uma Demonstração</a>
+                <a href="{% url 'login' %}" class="btn btn-axiom-contorno btn-lg rounded-pill px-5">Acessar a Plataforma</a>
             </div>
         </div>
     </section>
 
     <footer class="bg-black text-center text-white-50 py-4">
         <div class="container">
-            <p class="mb-0 fw-bold text-white"><i class="ti ti-chart-arcs text-primary"></i> AXIOM PLATFORM</p>
-            <small>Scientific Intelligence for Executive Decisions</small>
+            <p class="mb-0 fw-bold text-white"><i class="fas fa-chart-pie text-primary me-2"></i> AXIOM PLATFORM</p>
+            <small>Inteligência Científica para Decisões Executivas &copy; 2026</small>
         </div>
     </footer>
 
