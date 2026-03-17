@@ -1,8 +1,9 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Evita que o Python grave arquivos .pyc e força a exibição dos logs no terminal
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+
 
 # Define a pasta de trabalho dentro do container
 WORKDIR /app
