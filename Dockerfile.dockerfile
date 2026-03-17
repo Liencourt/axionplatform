@@ -28,4 +28,4 @@ EXPOSE 8080
 
 # Comando para rodar a aplicação
 # ATENÇÃO: Substitua 'nome_do_seu_projeto' pelo nome da pasta onde está o seu arquivo wsgi.py
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "nome_do_seu_projeto.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "axionplatform.wsgi:application"]
