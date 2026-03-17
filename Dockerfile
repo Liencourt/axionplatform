@@ -1,5 +1,4 @@
-# Usa a imagem oficial e mais leve do Python
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 # Evita que o Python grave arquivos .pyc e força a exibição dos logs no terminal
 ENV PYTHONDONTWRITEBYTECODE 1
