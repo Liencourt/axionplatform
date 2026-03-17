@@ -26,5 +26,7 @@ COPY . /app/
 # Expõe a porta padrão que o Cloud Run utiliza
 EXPOSE 8080
 
-# Comando para rodar a aplicação
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "axionplatform.wsgi:application"]
+CMD python manage.py migrate && gunicorn --bind 0.0.0.0:8080 axionplatform.wsgi:application
+
+
+
