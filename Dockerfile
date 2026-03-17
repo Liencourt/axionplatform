@@ -26,7 +26,7 @@ COPY . /app/
 # Expõe a porta padrão que o Cloud Run utiliza
 EXPOSE 8080
 
-CMD python manage.py collectstatic --noinput && python manage.py migrate && python manage.py createsuperuser --noinput || true && gunicorn --bind 0.0.0.0:8080 axiomplatform.wsgi:application
+CMD python manage.py collectstatic --noinput && python manage.py migrate && python manage.py createsuperuser --noinput || true && gunicorn --bind 0.0.0.0:8080 config.wsgi:application
 
 
 
