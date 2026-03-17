@@ -4,8 +4,12 @@ from django.urls import path,include
 from django.views.generic import TemplateView
 from django.contrib.auth import views as auth_views
 
+from config.view import gerar_url_upload
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    path('api/gerar-url-upload/', gerar_url_upload, name='gerar_url_upload'),
     
    
     path('accounts/', include('accounts.urls')),
