@@ -28,6 +28,12 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://axiom-platform-935499891935.southamerica-east1.run.app',
+
+    
+]
+
 
 # Application definition
 
