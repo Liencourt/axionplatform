@@ -17,11 +17,13 @@
             background-color: var(--cor-principal);
             color: #ffffff;
             border: none;
-            transition: opacity 0.3s;
+            transition: all 0.3s ease; /* Deixa a transição mais suave */
         }
+        
         .btn-axiom-principal:hover {
+            background-color: var(--cor-principal); /* Trava a cor de fundo */
             opacity: 0.85;
-            color: #ffffff;
+            color: #ffffff !important; /* O !important impede o Bootstrap de mudar a cor do texto */
         }
     </style>
 </head>
