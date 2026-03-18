@@ -174,33 +174,38 @@ def processar_modelo_dinamico(request):
             lista_vendas_dw = []
             nomes_variaveis_extras = [v['nome'] for v in variaveis_extras]
 
-            for index, row in df.iterrows():
+            # A MÁGICA AQUI: Trocamos o iterrows() pelo to_dict()
+            for row in df.to_dict('records'):
                 # Resolve a Loja
                 loja_obj = None
                 if loja_col and pd.notna(row.get(loja_col)):
                     loja_obj = dict_lojas.get(str(row.get(loja_col)).strip())
 
                 # Resolve o Nome do Produto (Usa o SKU como fallback se não for mapeado)
-                nome_prod = str(row[sku_col])
+                nome_prod = str(row.get(sku_col))
                 if nome_produto_col and pd.notna(row.get(nome_produto_col)):
                     nome_prod = str(row.get(nome_produto_col))
 
                 dict_extras = {}
                 for var in nomes_variaveis_extras:
-                    if var in row and pd.notna(row[var]):
-                        dict_extras[var] = row[var]
+                    if pd.notna(row.get(var)):
+                        dict_extras[var] = row.get(var)
+
+                # Tratamento super seguro para o Custo (caso o cliente não envie)
+                custo_val = row.get(custo_col)
+                custo_final = float(custo_val) if pd.notna(custo_val) else None
 
                 lista_vendas_dw.append(VendaHistoricaDW(
                     id=None,
                     empresa=empresa_cliente,
                     loja=loja_obj,
                     projeto=projeto,
-                    codigo_produto=str(row[sku_col]),
+                    codigo_produto=str(row.get(sku_col)),
                     nome_produto=nome_prod,
-                    data_venda=row[data_col].date(),
-                    quantidade=float(row[target_col]),
-                    preco_praticado=float(row[preco_col]),
-                    custo_unitario=float(row[custo_col]) if pd.notna(row[custo_col]) else None,
+                    data_venda=row.get(data_col).date(),
+                    quantidade=float(row.get(target_col)),
+                    preco_praticado=float(row.get(preco_col)),
+                    custo_unitario=custo_final,
                     variaveis_extras=dict_extras
                 ))
 
