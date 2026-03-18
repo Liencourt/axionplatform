@@ -17,7 +17,7 @@
                     <h5 class="card-title mb-0"><i class="fas fa-cloud-upload-alt"></i> Importar Base de Dados</h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{% url 'iniciar_projeto_upload' %}" enctype="multipart/form-data">
+                    <form id="form-upload" method="POST" action="{% url 'iniciar_projeto_upload' %}">
                         {% csrf_token %}
                         
                         <div class="mb-4">
@@ -28,7 +28,7 @@
 
                         <div class="mb-4">
                             <label for="arquivo_dados" class="form-label fw-bold">Arquivo de Vendas (CSV ou Excel)</label>
-                            <input class="form-control form-control-lg" type="file" id="arquivo_dados" name="arquivo_dados" accept=".csv, .xls, .xlsx" required>
+                            <input class="form-control form-control-lg" type="file" id="arquivo_dados" accept=".csv, .xls, .xlsx" required>
                             <small class="text-muted">Tamanho máximo recomendado: 50MB.</small>
                         </div>
 
@@ -42,7 +42,8 @@
                         {% endif %}
 
                         <div class="text-end mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg">
+                            <p id="statusUpload" class="text-primary fw-bold me-3 d-inline-block"></p>
+                            <button type="submit" id="btnSubmit" class="btn btn-primary btn-lg">
                                 Avançar para Mapeamento <i class="fas fa-arrow-right"></i>
                             </button>
                         </div>
@@ -74,4 +75,66 @@
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('form-upload').addEventListener('submit', async function(event) {
+    event.preventDefault(); // Impede o formulário de ser enviado da forma tradicional
+    
+    const fileInput = document.getElementById('arquivo_dados');
+    const statusText = document.getElementById('statusUpload');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const form = this;
+
+    if (fileInput.files.length === 0) {
+        return;
+    }
+
+    const arquivo = fileInput.files[0];
+
+    // Trava o botão para o usuário não clicar duas vezes
+    btnSubmit.disabled = true;
+    
+    try {
+        statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 1/3: Solicitando autorização segura...';
+        
+        // Passo 1: Pede a URL assinada para o Django
+        const responseDjango = await fetch(`/api/gerar-url-upload/?file_name=${encodeURIComponent(arquivo.name)}&content_type=${encodeURIComponent(arquivo.type)}`);
+        
+        if (!responseDjango.ok) throw new Error("Erro ao falar com o servidor.");
+        const dadosDjango = await responseDjango.json();
+
+        // Passo 2: Envia o arquivo de 50MB direto para o cofre do Google (GCS)
+        statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 2/3: Enviando arquivo pesado para o banco de dados...';
+        
+        const responseGoogle = await fetch(dadosDjango.url, {
+            method: 'PUT',
+            headers: { 'Content-Type': arquivo.type },
+            body: arquivo
+        });
+
+        if (!responseGoogle.ok) throw new Error("Erro ao enviar o arquivo.");
+
+        statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 3/3: Processando projeto...';
+
+        // Passo 3: O Pulo do Gato! 
+        // Cria um campo invisível com o caminho onde o Google guardou o arquivo
+        const hiddenInput = document.createElement("input");
+        hiddenInput.type = "hidden";
+        hiddenInput.name = "caminho_gcs"; // É esse nome que o Django vai ler!
+        hiddenInput.value = dadosDjango.file_path;
+        form.appendChild(hiddenInput);
+
+        // Desativa o input de arquivo original para garantir que ele NÃO seja enviado pro Django
+        fileInput.disabled = true;
+
+        // Agora sim, envia o formulário pro Django (só com o Nome do Projeto e o Caminho do Arquivo)
+        form.submit();
+
+    } catch (erro) {
+        console.error(erro);
+        statusText.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> Erro no upload. Tente novamente.</span>';
+        btnSubmit.disabled = false;
+    }
+});
+</script>
 {% endblock %}
