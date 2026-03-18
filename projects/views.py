@@ -172,10 +172,10 @@ def processar_modelo_dinamico(request):
             # PASSO A: INGESTÃO NO DATA WAREHOUSE (DW)
             # ==============================================================
             
-            # 1. PREPARAÇÃO BLINDADA: Mata qualquer resquício do Pandas/NumPy
+            # 1. PREPARAÇÃO SUPER BLINDADA
             df_limpo = df.copy()
-            df_limpo[data_col] = df_limpo[data_col].dt.strftime('%Y-%m-%d') # Força a data virar texto
-            df_limpo = df_limpo.replace({np.nan: None}) # Troca o 'NaN' tóxico pelo 'None' nativo do Python
+            # Troca tudo que é NaN/NaT por None de forma segura nativa do Python
+            df_limpo = df_limpo.astype(object).where(pd.notnull(df_limpo), None)
             
             lista_vendas_dw = []
             nomes_variaveis_extras = [v['nome'] for v in variaveis_extras]
@@ -191,12 +191,25 @@ def processar_modelo_dinamico(request):
                 if nome_produto_col and row.get(nome_produto_col) is not None:
                     nome_prod = str(row.get(nome_produto_col))
 
-                # Variáveis Extras 100% purificadas para o JSONField não chorar
+                # Purificação Extrema do JSON para evitar erro de Numpy
                 dict_extras = {}
                 for var in nomes_variaveis_extras:
                     val = row.get(var)
                     if val is not None:
-                        dict_extras[var] = val
+                        # Extrai o valor puro do Python (mata o np.float64, np.int64)
+                        if hasattr(val, 'item'):
+                            dict_extras[var] = val.item()
+                        else:
+                            dict_extras[var] = val
+
+                # Extrai a Data nativa (Contorna o bug do pd.to_datetime)
+                data_val = row.get(data_col)
+                if hasattr(data_val, 'date'):
+                    # Se já for um Timestamp, apenas extrai a data silenciosamente
+                    data_final = data_val.date()
+                else:
+                    # Só usa o conversor do Pandas em último caso
+                    data_final = pd.to_datetime(str(data_val)).date()
 
                 # Tratamento do Custo
                 custo_val = row.get(custo_col)
@@ -208,15 +221,16 @@ def processar_modelo_dinamico(request):
                     projeto=projeto,
                     codigo_produto=str(row.get(sku_col)),
                     nome_produto=nome_prod,
-                    data_venda=pd.to_datetime(row.get(data_col)).date(),
+                    data_venda=data_final,
                     quantidade=float(row.get(target_col)),
                     preco_praticado=float(row.get(preco_col)),
                     custo_unitario=custo_final,
                     variaveis_extras=dict_extras
                 ))
 
-            # Agora o bulk_create vai voar liso e sem engasgar
+            # Grava no banco em massa voando!
             VendaHistoricaDW.objects.bulk_create(lista_vendas_dw, ignore_conflicts=True)
+
             # ==============================================================
             # PASSO B: ENGENHARIA DE DATAS (Feature Engineering)
             # ==============================================================
