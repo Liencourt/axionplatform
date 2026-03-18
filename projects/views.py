@@ -30,6 +30,7 @@ import math
 from scipy.stats.mstats import winsorize
 from datetime import timedelta
 from google.cloud import storage
+from django.db.models import Avg, Sum, F, FloatField, Max, Min
 
 
 logger = logging.getLogger(__name__)
@@ -1252,6 +1253,17 @@ def painel_portfolio(request, projeto_id):
     projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=empresa)
 
     # ==========================================
+    # BUSCAR O PERÍODO ANALISADO
+    # ==========================================
+    datas_venda = VendaHistoricaDW.objects.filter(projeto=projeto).aggregate(
+        primeira=Min('data_venda'),
+        ultima=Max('data_venda')
+    )
+
+    data_inicial_str = datas_venda['primeira'].strftime('%d/%m/%Y') if datas_venda['primeira'] else '--/--/----'
+    data_final_str = datas_venda['ultima'].strftime('%d/%m/%Y') if datas_venda['ultima'] else '--/--/----'
+
+    # ==========================================
     # 1. DATABASE PUSHDOWN (SQL BRUTO EM C/C++)
     # ==========================================
     # Em vez de carregar milhões de vendas, pedimos ao banco para agrupar tudo por SKU.
@@ -1333,7 +1345,9 @@ def painel_portfolio(request, projeto_id):
 
     contexto = {
         'projeto': projeto,
-        'produtos_json': json.dumps(produtos_json)
+        'produtos_json': json.dumps(produtos_json),
+        'data_inicial': data_inicial_str, 
+        'data_final': data_final_str      
     }
     
     return render(request, 'projects/portfolio.html', contexto)

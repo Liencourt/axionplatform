@@ -9,6 +9,12 @@
         <div class="col-md-8">
             <h3 class="page-title mb-1 fw-bold text-dark"><i class="fas fa-layer-group text-primary"></i> Axiom Portfolio Analytics</h3>
             <p class="text-muted mb-0">Projeto: <strong>{{ projeto.nome }}</strong> | Matriz BCG Dinâmica e Curva ABC</p>
+            
+            <div class="mt-2">
+                <span class="badge bg-secondary text-white px-3 py-2 rounded-pill fs-6 shadow-sm">
+                    <i class="fas fa-calendar-alt me-1"></i> Período Analisado: {{ data_inicial }} a {{ data_final }}
+                </span>
+            </div>
         </div>
         <div class="col-md-4 text-end">
             <a href="{% url 'dashboard_resultado' projeto.id %}" class="btn btn-outline-secondary shadow-sm">
@@ -24,19 +30,25 @@
                 <div class="col-md-5">
                     <label class="form-label fw-bold text-muted small mb-0">Giro Ideal (Volume Mínimo Aceitável)</label>
                     <div class="d-flex align-items-center mt-2">
-                        <input type="range" class="form-range w-100" id="sliderVolume" min="1" max="1000" step="1" value="100" oninput="atualizarBCG()">
-                        <span class="badge bg-primary ms-3 fs-6" id="valSliderVolume" style="min-width: 80px;">100 un</span>
+                        <input type="range" class="form-range w-100" id="sliderVolume" min="1" max="1000" step="1" value="100" oninput="sincronizarVolume('slider')">
+                        <div class="input-group ms-3 shadow-sm" style="width: 140px;">
+                            <input type="number" class="form-control text-center fw-bold text-primary" id="inputVolume" value="100" oninput="sincronizarVolume('input')">
+                            <span class="input-group-text bg-light text-muted small">un</span>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-5 offset-md-1">
                     <label class="form-label fw-bold text-muted small mb-0">Margem Ideal (Lucro Mínimo %)</label>
                     <div class="d-flex align-items-center mt-2">
-                        <input type="range" class="form-range w-100" id="sliderMargem" min="1" max="100" step="1" value="30" oninput="atualizarBCG()">
-                        <span class="badge bg-success ms-3 fs-6" id="valSliderMargem" style="min-width: 80px;">30 %</span>
+                        <input type="range" class="form-range w-100" id="sliderMargem" min="1" max="100" step="1" value="30" oninput="sincronizarMargem('slider')">
+                        <div class="input-group ms-3 shadow-sm" style="width: 140px;">
+                            <input type="number" class="form-control text-center fw-bold text-success" id="inputMargem" value="30" oninput="sincronizarMargem('input')">
+                            <span class="input-group-text bg-light text-muted small">%</span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <small class="text-muted mt-3 d-block"><i class="fas fa-info-circle"></i> Arraste os controles para reclassificar o seu portfólio instantaneamente.</small>
+            <small class="text-muted mt-3 d-block"><i class="fas fa-keyboard"></i> Arraste os controles ou digite o valor exato nas caixas para reclassificar o seu portfólio.</small>
         </div>
     </div>
 
@@ -251,21 +263,46 @@
             // Pega a mediana do volume para o slider não começar num número absurdo
             let volumes = produtos.map(p => p.volume_total).sort((a,b) => a-b);
             let medianaVol = volumes[Math.floor(volumes.length / 2)];
+            let maxSlider = volumes[volumes.length - 1] > 1000 ? 5000 : 1000;
             
             document.getElementById('sliderVolume').max = volumes[volumes.length - 1] > 1000 ? 5000 : 1000;
             document.getElementById('sliderVolume').value = medianaVol.toFixed(0);
+            document.getElementById('inputVolume').value = medianaVol.toFixed(0);
         }
+
+    
 
                 atualizarBCG();         // O BCG é dinâmico, desenha a 1ª vez e fica ouvindo os sliders
     });
+    function sincronizarVolume(origem) {
+        let slider = document.getElementById('sliderVolume');
+        let input = document.getElementById('inputVolume');
+        if (origem === 'slider') {
+            input.value = slider.value;
+        } else {
+            if (input.value === "" || input.value < 0) return; // Proteção contra apagar tudo
+            slider.value = input.value;
+        }
+        atualizarBCG(); 
+    }
+
+    function sincronizarMargem(origem) {
+        let slider = document.getElementById('sliderMargem');
+        let input = document.getElementById('inputMargem');
+        if (origem === 'slider') {
+            input.value = slider.value;
+        } else {
+            if (input.value === "") return;
+            slider.value = input.value;
+        }
+        atualizarBCG(); 
+    }
 
     function atualizarBCG() {
-        let limiarVolume = parseFloat(document.getElementById('sliderVolume').value);
-        let limiarMargem = parseFloat(document.getElementById('sliderMargem').value);
+        let limiarVolume = parseFloat(document.getElementById('inputVolume').value) || 0;
+        let limiarMargem = parseFloat(document.getElementById('inputMargem').value) || 0;
         let countM1 = 0, countM2 = 0, countM3 = 0;
         
-        document.getElementById('valSliderVolume').innerText = limiarVolume + " un";
-        document.getElementById('valSliderMargem').innerText = limiarMargem + " %";
 
         let estrelas = 0, vacas = 0, interrogacoes = 0, abacaxis = 0;
         let recEstrelas = 0, recVacas = 0, recInterrogacoes = 0, recAbacaxis = 0;
@@ -316,8 +353,14 @@
                 countM1++;
             }
 
-            // MISSÃO 2: Ouro Oculto (Produto Curva A, com Elasticidade Inelástica entre 0 e -1.0)
-            if (isA && p.elasticidade >= -1.0 && p.elasticidade <= 0) {
+            // ==========================================
+            // MISSÃO 2: Ouro Oculto (O Limite Dinâmico do CEO)
+            // ==========================================
+            // Definimos que o teto aceitável é 50% acima da margem ideal que o cliente configurou.
+            // Ex: Se o supermercado quer 10%, o teto é 15%. Se a grife de roupas quer 60%, o teto é 90%.
+            let tetoMargemAceitavel = limiarMargem * 1.5; 
+
+            if (isA && p.elasticidade >= -1.0 && p.elasticidade <= 0 && p.margem_lucro < tetoMargemAceitavel) {
                 p.missao2 = true;
                 countM2++;
             }
@@ -515,9 +558,6 @@
     `;
 
 
-    document.querySelectorAll('#tabMatriz .nav-link').forEach(tab => {
-        tab.addEventListener('shown.bs.tab', atualizarConteudoTabela);
-    });
 
     
 </script>
