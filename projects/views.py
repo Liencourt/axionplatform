@@ -171,46 +171,52 @@ def processar_modelo_dinamico(request):
             # ==============================================================
             # PASSO A: INGESTÃO NO DATA WAREHOUSE (DW)
             # ==============================================================
+            
+            # 1. PREPARAÇÃO BLINDADA: Mata qualquer resquício do Pandas/NumPy
+            df_limpo = df.copy()
+            df_limpo[data_col] = df_limpo[data_col].dt.strftime('%Y-%m-%d') # Força a data virar texto
+            df_limpo = df_limpo.replace({np.nan: None}) # Troca o 'NaN' tóxico pelo 'None' nativo do Python
+            
             lista_vendas_dw = []
             nomes_variaveis_extras = [v['nome'] for v in variaveis_extras]
 
-            # A MÁGICA AQUI: Trocamos o iterrows() pelo to_dict()
-            for row in df.to_dict('records'):
+            for row in df_limpo.to_dict('records'):
                 # Resolve a Loja
                 loja_obj = None
-                if loja_col and pd.notna(row.get(loja_col)):
+                if loja_col and row.get(loja_col) is not None:
                     loja_obj = dict_lojas.get(str(row.get(loja_col)).strip())
 
-                # Resolve o Nome do Produto (Usa o SKU como fallback se não for mapeado)
+                # Resolve o Nome do Produto
                 nome_prod = str(row.get(sku_col))
-                if nome_produto_col and pd.notna(row.get(nome_produto_col)):
+                if nome_produto_col and row.get(nome_produto_col) is not None:
                     nome_prod = str(row.get(nome_produto_col))
 
+                # Variáveis Extras 100% purificadas para o JSONField não chorar
                 dict_extras = {}
                 for var in nomes_variaveis_extras:
-                    if pd.notna(row.get(var)):
-                        dict_extras[var] = row.get(var)
+                    val = row.get(var)
+                    if val is not None:
+                        dict_extras[var] = val
 
-                # Tratamento super seguro para o Custo (caso o cliente não envie)
+                # Tratamento do Custo
                 custo_val = row.get(custo_col)
-                custo_final = float(custo_val) if pd.notna(custo_val) else None
+                custo_final = float(custo_val) if custo_val is not None else None
 
                 lista_vendas_dw.append(VendaHistoricaDW(
-                    id=None,
                     empresa=empresa_cliente,
                     loja=loja_obj,
                     projeto=projeto,
                     codigo_produto=str(row.get(sku_col)),
                     nome_produto=nome_prod,
-                    data_venda=row.get(data_col).date(),
+                    data_venda=pd.to_datetime(row.get(data_col)).date(),
                     quantidade=float(row.get(target_col)),
                     preco_praticado=float(row.get(preco_col)),
                     custo_unitario=custo_final,
                     variaveis_extras=dict_extras
                 ))
 
+            # Agora o bulk_create vai voar liso e sem engasgar
             VendaHistoricaDW.objects.bulk_create(lista_vendas_dw, ignore_conflicts=True)
-
             # ==============================================================
             # PASSO B: ENGENHARIA DE DATAS (Feature Engineering)
             # ==============================================================
