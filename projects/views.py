@@ -229,7 +229,7 @@ def processar_modelo_dinamico(request):
                 ))
 
             # Grava no banco em massa voando!
-            VendaHistoricaDW.objects.bulk_create(lista_vendas_dw, ignore_conflicts=True)
+            VendaHistoricaDW.objects.bulk_create(lista_vendas_dw, batch_size=2000, ignore_conflicts=True)
 
             # ==============================================================
             # PASSO B: ENGENHARIA DE DATAS (Feature Engineering)
