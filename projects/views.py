@@ -146,6 +146,7 @@ def processar_modelo_dinamico(request):
 
             empresa_cliente = request.empresa
             projeto = ProjetoPrecificacao.objects.create(
+                id=None,
                 empresa=empresa_cliente,
                 nome=nome_projeto,
                 configuracao_variaveis=config
@@ -190,6 +191,7 @@ def processar_modelo_dinamico(request):
                         dict_extras[var] = row[var]
 
                 lista_vendas_dw.append(VendaHistoricaDW(
+                    id
                     empresa=empresa_cliente,
                     loja=loja_obj,
                     projeto=projeto,
@@ -299,6 +301,7 @@ def processar_modelo_dinamico(request):
 
                     # SALVA O RESULTADO NO BANCO!
                     ResultadoPrecificacao.objects.create(
+                        id=None,
                         projeto=projeto,
                         loja=loja_obj,
                         codigo_produto=str(sku),
