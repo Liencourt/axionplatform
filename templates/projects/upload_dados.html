@@ -17,7 +17,7 @@
                     <h5 class="card-title mb-0"><i class="fas fa-cloud-upload-alt"></i> Importar Base de Dados</h5>
                 </div>
                 <div class="card-body">
-                    <form id="form-upload" method="POST" action="{% url 'iniciar_projeto_upload' %}">
+                    <form id="meuFormulario" method="POST" action="{% url 'iniciar_projeto_upload' %}">
                         {% csrf_token %}
                         
                         <div class="mb-4">
@@ -43,7 +43,7 @@
 
                         <div class="text-end mt-4">
                             <p id="statusUpload" class="text-primary fw-bold me-3 d-inline-block"></p>
-                            <button type="submit" id="btnSubmit" class="btn btn-primary btn-lg">
+                            <button type="button" id="btnSubmit" class="btn btn-primary btn-lg" onclick="iniciarUpload()">
                                 Avançar para Mapeamento <i class="fas fa-arrow-right"></i>
                             </button>
                         </div>
@@ -77,64 +77,63 @@
 </div>
 
 <script>
-document.getElementById('form-upload').addEventListener('submit', async function(event) {
-    event.preventDefault(); // Impede o formulário de ser enviado da forma tradicional
-    
+async function iniciarUpload() {
     const fileInput = document.getElementById('arquivo_dados');
     const statusText = document.getElementById('statusUpload');
     const btnSubmit = document.getElementById('btnSubmit');
-    const form = this;
+    const form = document.getElementById('meuFormulario');
 
+    // Validação inicial
     if (fileInput.files.length === 0) {
+        alert('Por favor, selecione a planilha de vendas primeiro.');
         return;
     }
 
     const arquivo = fileInput.files[0];
 
-    // Trava o botão para o usuário não clicar duas vezes
+    // Trava o botão para não ter duplo clique
     btnSubmit.disabled = true;
     
     try {
-        statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 1/3: Solicitando autorização segura...';
+        statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 1/3: Solicitando autorização segura do servidor...';
         
         // Passo 1: Pede a URL assinada para o Django
         const responseDjango = await fetch(`/api/gerar-url-upload/?file_name=${encodeURIComponent(arquivo.name)}&content_type=${encodeURIComponent(arquivo.type)}`);
         
-        if (!responseDjango.ok) throw new Error("Erro ao falar com o servidor.");
+        if (!responseDjango.ok) throw new Error("Falha ao comunicar com o servidor.");
         const dadosDjango = await responseDjango.json();
 
-        // Passo 2: Envia o arquivo de 50MB direto para o cofre do Google (GCS)
-        statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 2/3: Enviando arquivo pesado para o banco de dados...';
+        statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 2/3: Enviando arquivo pesado direto para o Google Cloud...';
         
+        // Passo 2: Envia para o cofre do Google (GCS)
         const responseGoogle = await fetch(dadosDjango.url, {
             method: 'PUT',
             headers: { 'Content-Type': arquivo.type },
             body: arquivo
         });
 
-        if (!responseGoogle.ok) throw new Error("Erro ao enviar o arquivo.");
+        if (!responseGoogle.ok) throw new Error("O Google bloqueou o upload (Verifique o CORS do bucket).");
 
-        statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 3/3: Processando projeto...';
+        statusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 3/3: Preparando para analisar os dados...';
 
-        // Passo 3: O Pulo do Gato! 
-        // Cria um campo invisível com o caminho onde o Google guardou o arquivo
+        // Passo 3: Cria o campo invisível com o caminho que o Django vai ler
         const hiddenInput = document.createElement("input");
         hiddenInput.type = "hidden";
-        hiddenInput.name = "caminho_gcs"; // É esse nome que o Django vai ler!
+        hiddenInput.name = "caminho_gcs"; 
         hiddenInput.value = dadosDjango.file_path;
         form.appendChild(hiddenInput);
 
-        // Desativa o input de arquivo original para garantir que ele NÃO seja enviado pro Django
-        fileInput.disabled = true;
+        // Arranca o arquivo físico da tela para garantir que ele não vá para o Django
+        fileInput.remove();
 
-        // Agora sim, envia o formulário pro Django (só com o Nome do Projeto e o Caminho do Arquivo)
+        // Agora o nosso JavaScript dá o comando de enviar apenas os textos!
         form.submit();
 
     } catch (erro) {
         console.error(erro);
-        statusText.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> Erro no upload. Tente novamente.</span>';
+        statusText.innerHTML = `<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> Erro: ${erro.message}</span>`;
         btnSubmit.disabled = false;
     }
-});
+}
 </script>
 {% endblock %}
