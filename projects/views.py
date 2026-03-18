@@ -191,7 +191,7 @@ def processar_modelo_dinamico(request):
                         dict_extras[var] = row[var]
 
                 lista_vendas_dw.append(VendaHistoricaDW(
-                    id
+                    id=None,
                     empresa=empresa_cliente,
                     loja=loja_obj,
                     projeto=projeto,
