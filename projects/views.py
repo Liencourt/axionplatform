@@ -36,26 +36,33 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def iniciar_projeto_upload(request):
-    """Passo 1: Recebe o arquivo e extrai as colunas (Versão sem engolir erros de HTML)"""
- 
-    if request.method == 'POST' and request.FILES.get('arquivo_dados'):
-        arquivo = request.FILES['arquivo_dados']
+    """Passo 1: Recebe o caminho do arquivo no GCS e extrai as colunas"""
+
+    if request.method == 'POST' and request.POST.get('caminho_gcs'):
+        caminho_gcs = request.POST.get('caminho_gcs')
         nome_projeto = request.POST.get('nome_projeto', 'Novo Projeto')
         
-        contexto = None # Inicializa vazio
+        print(f"-> 1. POST Recebido! Caminho GCS: {caminho_gcs}")
+        contexto = None 
         
         try:
-            # 1. Salva o arquivo fisicamente
-            extensao = '.csv' if arquivo.name.endswith('.csv') else '.xlsx'
+            # Puxa o nome do bucket igual fizemos na outra função!
+            bucket_name = os.getenv('BUCKET_NAME', 'axiom-platform-datasets')
+            client = storage.Client()
+            bucket = client.bucket(bucket_name)
+            blob = bucket.blob(caminho_gcs)
+            
+            print(f"-> 2. Conectou no Bucket '{bucket_name}'. Baixando arquivo...")
+            
+            extensao = '.csv' if caminho_gcs.lower().endswith('.csv') else '.xlsx'
             fd, caminho_temp = tempfile.mkstemp(suffix=extensao)
             
             with os.fdopen(fd, 'wb') as f:
-                for chunk in arquivo.chunks():
-                    f.write(chunk)
+                blob.download_to_file(f)
             
+            print(f"-> 3. Download concluído. Lendo com Pandas...")
             request.session['caminho_arquivo_temp'] = caminho_temp
 
-            # 2. Pandas lê o arquivo
             if extensao == '.csv':
                 try:
                     df = pd.read_csv(caminho_temp, sep=None, engine='python', encoding='utf-8')
@@ -65,8 +72,8 @@ def iniciar_projeto_upload(request):
                 df = pd.read_excel(caminho_temp)
 
             df.dropna(axis=1, how='all', inplace=True) 
+            print(f"-> 4. Sucesso! Colunas encontradas: {df.columns.tolist()}")
 
-            # 3. Mapeia as colunas
             colunas_numericas = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
             colunas_categoricas = df.select_dtypes(include=['object', 'category', 'bool']).columns.tolist()
 
@@ -75,19 +82,17 @@ def iniciar_projeto_upload(request):
                 'colunas_numericas': colunas_numericas,
                 'colunas_categoricas': colunas_categoricas,
             }
+            print("-> 5. Tudo certo! Redirecionando para o Construtor de Hipóteses...")
             
         except Exception as e:
-            logger.error(f"Erro fatal ao processar upload: {e}")
-            messages.error(request, f"Falha na leitura do arquivo (CSV/Excel): {e}")
+            # Esse print vai gritar o erro exato no log do Cloud Run!
+            print(f"-> ERRO FATAL NO BACKEND: {str(e)}")
+            messages.error(request, f"Falha na leitura do arquivo: {e}")
             
-        # FORA DO TRY/EXCEPT!
-        # Se o contexto foi criado com sucesso, renderiza a próxima tela.
-        # Se a próxima tela tiver erro de código, o Django vai nos avisar de forma clara!
         if contexto:
             return render(request, 'projects/construtor_hipoteses.html', contexto)
             
     return render(request, 'projects/upload_dados.html')
-
 
 def tratar_nan(valor):
     """Utilitário de Arquitetura: Limpa sujeiras matemáticas antes de ir para o JSON do Banco"""
