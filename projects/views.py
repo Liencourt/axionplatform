@@ -196,7 +196,7 @@ def processar_modelo_dinamico(request):
                     loja=loja_obj,
                     projeto=projeto,
                     codigo_produto=str(row[sku_col]),
-                    nome_produto=nome_prod, # Agora tem a descrição real!
+                    nome_produto=nome_prod,
                     data_venda=row[data_col].date(),
                     quantidade=float(row[target_col]),
                     preco_praticado=float(row[preco_col]),
