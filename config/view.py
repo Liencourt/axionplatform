@@ -5,9 +5,8 @@ from google.cloud import storage
 from datetime import timedelta
 from django.http import JsonResponse
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+
 
 BUCKET_NAME = os.getenv('BUCKET_NAME', 'axiom-platform-datasets')
 
