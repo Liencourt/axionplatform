@@ -1,0 +1,343 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+<style>
+    /* Efeitos Premium de SaaS - Agnósticos a Tema (Dark/Light) */
+    .glass-card {
+        
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--bs-border-color, rgba(0,0,0,0.1));
+    }
+    .kpi-title { font-size: 0.8rem; letter-spacing: 1px; }
+    .transition-all { transition: all 0.3s ease; }
+    #painelResultados { display: none; }
+    
+    /* Corrige a cor do cabeçalho da tabela no modo escuro */
+    .table-adaptive-header {
+        background-color: var(--bs-tertiary-bg, #f8f9fa) !important;
+        color: var(--bs-secondary-color, #6c757d) !important;
+    }
+</style>
+
+<div class="container-fluid pb-5">
+    
+    <div class="row mb-4 align-items-center mt-3">
+        <div class="col-md-8">
+            <h3 class="page-title mb-1 fw-bold text-body"><i class="fas fa-ship text-primary me-2"></i> Axiom Margin Command</h3>
+            <p class="text-muted mb-0">Projeto: <strong>{{ projeto.nome }}</strong> | Motor Top-Down de Otimização Heurística</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'dashboard_resultado' projeto.id %}" class="btn btn-outline-secondary shadow-sm rounded-pill px-4">
+                <i class="fas fa-arrow-left me-2"></i> Voltar ao Painel
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 border-top border-primary border-4 glass-card">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-lg-7 mb-3 mb-lg-0 border-end">
+                            <h5 class="fw-bold text-body mb-2"><i class="fas fa-bullseye text-danger me-2"></i> Definição de Meta (Target)</h5>
+                            <p class="text-muted small mb-0">Informe ao motor Axiom a margem de contribuição global exigida para este portfólio. A IA ajustará automaticamente os preços dos produtos inelásticos e estancará produtos em prejuízo para atingir este número.</p>
+                        </div>
+                        <div class="col-lg-5">
+                            <div class="row g-2">
+                                <div class="col-sm-6">
+                                    <label class="form-label fw-bold text-primary mb-1">Margem Alvo (%)</label>
+                                    <div class="input-group shadow-sm">
+                                        <input type="number" id="inputMetaMargem" class="form-control border-end-0 fw-bold text-body text-center bg-transparent" placeholder="Ex: 30" step="0.1" min="1">
+                                        <span class="input-group-text bg-transparent border-start-0 text-muted">%</span>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label fw-bold text-warning mb-1">Teto de Aumento (%)</label>
+                                    <div class="input-group shadow-sm">
+                                        <input type="number" id="inputTeto" class="form-control border-end-0 fw-bold text-body text-center bg-transparent" value="5.0" step="0.1" min="0">
+                                        <span class="input-group-text bg-transparent border-start-0 text-muted">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary fw-bold w-100 mt-3 transition-all" id="btnOtimizar" onclick="chamarMotorOtimizacao()">
+                                <i class="fas fa-magic me-2"></i> Gerar Plano
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loaderIA" class="text-center my-5 py-5" style="display: none;">
+        <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+        <h5 class="fw-bold text-body">A IA está negociando com os números...</h5>
+        <p class="text-muted">Calculando elasticidade cruzada e impacto em caixa.</p>
+    </div>
+
+    <div id="painelResultados" class="transition-all">
+        
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100 bg-body-tertiary">
+                    <div class="card-body text-center p-4">
+                        <h6 class="text-muted text-uppercase fw-bold kpi-title mb-2">Margem Base</h6>
+                        <h2 class="fw-bold text-body mb-0" id="kpiMargemAtual">--%</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100 bg-primary text-white">
+                    <div class="card-body text-center p-4">
+                        <h6 class="text-uppercase fw-bold kpi-title mb-2 text-white-50">Margem Atingida</h6>
+                        <h2 class="fw-bold mb-0" id="kpiMargemNova">--%</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100 bg-success text-white">
+                    <div class="card-body text-center p-4">
+                        <h6 class="text-uppercase fw-bold kpi-title mb-2 text-white-50">Lucro Adicional</h6>
+                        <h2 class="fw-bold mb-0" id="kpiLucroGanho">R$ --</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100 bg-dark text-white">
+                    <div class="card-body text-center p-4">
+                        <h6 class="text-uppercase fw-bold kpi-title mb-2 text-white-50">SKUs Afetados</h6>
+                        <h2 class="fw-bold mb-0" id="kpiSkus">--</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0 glass-card">
+                    <div class="card-header bg-transparent pt-4 pb-0 border-bottom-0">
+                        <h5 class="fw-bold text-body mb-0"><i class="fas fa-water text-info me-2"></i> Construção de Valor (Waterfall)</h5>
+                        <p class="text-muted small">Como a IA encontrou o dinheiro para atingir sua meta.</p>
+                    </div>
+                    <div class="card-body">
+                        <div id="plotWaterfall" style="width: 100%; height: 350px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm border-0 glass-card">
+                    <div class="card-header bg-transparent pt-4 pb-3 border-bottom d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="fw-bold text-body mb-0"><i class="fas fa-clipboard-list text-success me-2"></i> Plano de Execução (De/Para)</h5>
+                            <small class="text-muted">Envie esta lista para o ERP ou para a equipe de Pricing.</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-success fw-bold" onclick="exportarTabelaCSV()">
+                            <i class="fas fa-file-excel me-1"></i> Exportar CSV
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0 text-center text-body" id="tabelaExecucao" style="--bs-table-bg: transparent;">
+                                <thead class="table-adaptive-header small text-uppercase sticky-top">
+                                    <tr>
+                                        <th class="text-start ps-4">Código SKU</th>
+                                        <th class="text-start">Descrição do Produto</th>
+                                        <th>Motivo (Estratégia)</th>
+                                        <th>Preço Base</th>
+                                        <th>Preço Sugerido</th>
+                                        <th>Aumento (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyExecucao">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Configura o CSRF Token para a chamada AJAX no Django
+    const csrfToken = '{{ csrf_token }}';
+    const projetoId = '{{ projeto.id }}'; 
+
+    function chamarMotorOtimizacao() {
+        const metaInput = document.getElementById('inputMetaMargem').value;
+        const tetoInput = document.getElementById('inputTeto').value; // NOVO CAMPO
+
+        // Validação dupla agora
+        if (!metaInput || metaInput <= 0 || !tetoInput || tetoInput < 0) {
+            alert("Por favor, preencha a meta de margem e o teto de aumento corretamente.");
+            return;
+        }
+
+        // UI: Mostra o Loader, esconde resultados
+        document.getElementById('painelResultados').style.display = 'none';
+        document.getElementById('loaderIA').style.display = 'block';
+        document.getElementById('btnOtimizar').disabled = true;
+
+        fetch("{% url 'api_otimizar_margem_global' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                projeto_id: projetoId,
+                meta_margem: parseFloat(metaInput),
+                limite_teto: parseFloat(tetoInput) // ENVIANDO O TETO PARA O PYTHON!
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loaderIA').style.display = 'none';
+            document.getElementById('btnOtimizar').disabled = false;
+
+            if (data.status === 'sucesso') {
+                document.getElementById('painelResultados').style.display = 'block';
+                
+                // 1. Atualiza os KPIs
+                document.getElementById('kpiMargemAtual').innerText = data.kpis.margem_atual_pct.toFixed(1) + "%";
+                document.getElementById('kpiMargemNova').innerText = data.kpis.margem_projetada_pct.toFixed(1) + "%";
+                document.getElementById('kpiLucroGanho').innerText = "R$ " + data.kpis.ganho_lucro_reais.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                document.getElementById('kpiSkus').innerText = data.kpis.skus_alterados;
+
+                // 2. Monta o Waterfall
+                desenharWaterfall(data);
+
+                // 3. Monta a Tabela
+                preencherTabela(data.plano_execucao);
+
+                if (!data.atingiu_meta) {
+                    alert("Atenção: A IA esgotou as possibilidades de aumento seguro e não conseguiu atingir a meta exata. Entregamos a otimização máxima possível.");
+                }
+
+            } else {
+                alert("Erro no Motor de IA: " + data.mensagem);
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            alert("Erro crítico de comunicação com o servidor.");
+            document.getElementById('loaderIA').style.display = 'none';
+            document.getElementById('btnOtimizar').disabled = false;
+        });
+    }
+
+    function desenharWaterfall(data) {
+        // Separa os ganhos por estratégia para o gráfico ficar executivo!
+        let ganhoOuro = 0;
+        let ganhoSangria = 0;
+
+        data.plano_execucao.forEach(item => {
+            // Lucro adicional = (Novo Preço - Preço Antigo) * Volume
+            let ganhoItem = (item.preco_novo - item.preco_atual) * item.vol_projetado;
+            if (item.estrategia === 'Ouro Oculto') ganhoOuro += ganhoItem;
+            if (item.estrategia === 'Estancar Sangria') ganhoSangria += ganhoItem;
+        });
+
+        const trace = {
+            type: "waterfall",
+            orientation: "v",
+            measure: [
+                "absolute",   // Lucro Base
+                "relative",   // Ganho Ouro Oculto
+                "relative",   // Ganho Sangria
+                "total"       // Novo Lucro Projetado
+            ],
+            x: ["Lucro Atual", "Ouro Oculto (Inelásticos)", "Estancar Sangria", "Lucro Projetado"],
+            textposition: "outside",
+            text: [
+                "R$ " + (data.kpis.lucro_atual_reais/1000).toFixed(1) + "k",
+                "+ R$ " + (ganhoOuro/1000).toFixed(1) + "k",
+                "+ R$ " + (ganhoSangria/1000).toFixed(1) + "k",
+                "R$ " + (data.kpis.lucro_projetado_reais/1000).toFixed(1) + "k"
+            ],
+            y: [
+                data.kpis.lucro_atual_reais, 
+                ganhoOuro, 
+                ganhoSangria, 
+                data.kpis.lucro_projetado_reais
+            ],
+            connector: { line: { color: "rgba(128,128,128,0.5)", width: 2, dash: "dot" } },
+            decreasing: { marker: { color: "#e74c3c" } },
+            increasing: { marker: { color: "#2ecc71" } },
+            totals: { marker: { color: "#0d6efd" } } // Azul para o resultado
+        };
+
+        const layout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            margin: { t: 20, b: 40, l: 60, r: 20 },
+            // Corrigido para funcionar no modo Dark/Light:
+            xaxis: { tickfont: { size: 13, color: '#888', weight: 'bold' } },
+            yaxis: { 
+                title: { text: "Lucro (R$)", font: { color: '#888' } }, 
+                gridcolor: 'rgba(128,128,128,0.1)',
+                tickfont: { color: '#888' },
+                tickformat: "$,.0f" 
+            }
+        };
+
+        Plotly.newPlot('plotWaterfall', [trace], layout, {responsive: true, displayModeBar: false});
+    }
+
+    function preencherTabela(plano) {
+        let html = "";
+        if (plano.length === 0) {
+            html = "<tr><td colspan='6' class='text-muted py-4'>Nenhum ajuste necessário ou possível.</td></tr>";
+        } else {
+            plano.forEach(item => {
+                let badgeClass = item.estrategia === 'Ouro Oculto' ? 'bg-success' : 'bg-danger';
+                html += `
+                <tr>
+                    <td class="text-start ps-4 fw-bold text-secondary">${item.sku}</td>
+                    <td class="text-start text-body fw-bold">${item.produto}</td>
+                    <td><span class="badge ${badgeClass} shadow-sm">${item.estrategia}</span></td>
+                    <td class="text-muted">R$ ${item.preco_atual.toFixed(2)}</td>
+                    <td class="fw-bold text-primary fs-6">R$ ${item.preco_novo.toFixed(2)}</td>
+                    <td class="fw-bold text-success"><i class="fas fa-arrow-up me-1"></i>${item.aumento_pct.toFixed(1)}%</td>
+                </tr>
+                `;
+            });
+        }
+        document.getElementById('tbodyExecucao').innerHTML = html;
+    }
+
+    function exportarTabelaCSV() {
+        let table = document.getElementById("tabelaExecucao");
+        let rows = table.querySelectorAll("tr");
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // UTF-8 BOM p/ Excel
+
+        rows.forEach(function(row) {
+            let cols = row.querySelectorAll("td, th");
+            let rowData = [];
+            cols.forEach(col => {
+                // Limpa o texto (tira R$, %, e arruma virgulas)
+                let text = col.innerText.replace("R$", "").replace("%", "").trim();
+                text = text.replace(/\./g, "").replace(",", "."); // Padrão gringo pro CSV entender
+                rowData.push('"' + text + '"');
+            });
+            csvContent += rowData.join(";") + "\r\n";
+        });
+
+        let encodedUri = encodeURI(csvContent);
+        let link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "Axiom_Plano_Execucao.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+{% endblock page_content %}

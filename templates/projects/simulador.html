@@ -6,6 +6,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/pt-br.min.js"></script>
 
+<style>
+    .transition-hover { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+    .transition-hover:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important; }
+    .bg-primary-light { background-color: #e0f0ff; }
+    .bg-success-light { background-color: #e6ffed; }
+    .bg-danger-light { background-color: #ffeef0; }
+</style>
+
 <div class="container-fluid">
     <div class="row mb-4 align-items-center">
         <div class="col-md-8">
@@ -25,7 +33,6 @@
             <div class="card shadow-sm border-0 mb-3 border-top border-primary border-4">
                 <div class="card-body">
                     <h6 class="fw-bold text-muted small text-uppercase mb-3"><i class="fas fa-database"></i> Base Matemática</h6>
-                    
                     <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
                         <span class="text-muted">Custo Unitário</span>
                         <span class="fw-bold text-danger">R$ {{ resultado.custo_unitario|floatformat:2 }}</span>
@@ -76,10 +83,6 @@
                         </div>
                         <small class="text-muted">Altere para simular novos fornecedores ou reajustes.</small>
                     </div>
-                    
-                    <div class="text-center small text-muted">
-                        <i class="fas fa-magic text-warning"></i> Sugestão Axiom carregada por padrão
-                    </div>
                 </div>
             </div>
 
@@ -118,13 +121,54 @@
                     </div>
                 </div>
             </div>
-
         </div>
 
         <div class="col-xl-9 col-lg-8">
-            <div class="card shadow-sm border-0 h-100">
+            
+            <div class="row gx-3 mb-2">
+                <div class="col-12 mb-2">
+                    <h5 class="fw-bold text-dark"><i class="fas fa-robot text-primary me-2"></i>Cenários Prescritivos (IA)</h5>
+                </div>
+                {% for c in cenarios %}
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm border-0 h-100 border-top border-{{ c.cor }} border-3 transition-hover">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-{{ c.cor }}-light text-{{ c.cor }} rounded-circle p-2 me-2 fs-5 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <i class="{{ c.icone }}"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-0">{{ c.nome }}</h6>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-light rounded p-2 text-center mb-3 border">
+                                <small class="text-muted d-block mb-1">Preço Sugerido</small>
+                                <h3 class="fw-bold text-dark mb-0">R$ {{ c.preco|floatformat:2 }}</h3>
+                            </div>
+                            
+                            <div class="row text-center mb-3 small">
+                                <div class="col-6 border-end">
+                                    <span class="text-muted d-block">Margem %</span>
+                                    <strong class="text-{{ c.cor }} fs-6">{{ c.margem|floatformat:1 }}%</strong>
+                                </div>
+                                <div class="col-6">
+                                    <span class="text-muted d-block">Lucro Dia</span>
+                                    <strong class="text-dark fs-6">R$ {{ c.lucro|floatformat:2 }}</strong>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-sm btn-outline-{{ c.cor }} w-100 fw-bold rounded-pill" onclick="aplicarCenario({{ c.preco|stringformat:'f' }})">
+                                <i class="fas fa-check-circle me-1"></i> Usar Preço
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>           
+
+            <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body p-0">
-                    
                     <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center rounded-top">
                         <ul class="nav nav-pills" id="simuladorTabs" role="tablist">
                             <li class="nav-item" role="presentation">
@@ -144,6 +188,12 @@
                         
                         <div class="tab-pane fade show active" id="grafico" role="tabpanel">
                             <div id="plotDiv" style="width: 100%; height: 500px;"></div>
+                            
+                            <div class="mt-4 pt-4 border-top">
+                                <h6 class="fw-bold text-dark mb-0"><i class="fas fa-box-open text-primary me-2"></i> Amplitude Histórica (Box Plot)</h6>
+                                <small class="text-muted mb-3 d-block">A dispersão dos preços reais já praticados no balcão comparados à simulação atual.</small>
+                                <div id="graficoBoxPlot" style="width: 100%; height: 250px;"></div>
+                            </div>
                         </div>
 
                         <div class="tab-pane fade" id="diagnostico" role="tabpanel">
@@ -228,11 +278,9 @@
     const MARGEM_MINIMA = parseFloat("{{ margem_minima|default:'0' }}".replace(',', '.'));
     const PRECO_SUGERIDO = parseFloat("{{ resultado.preco_sugerido|default:'0' }}".replace(',', '.'));
     
-    
-    
     // Tratamento JSON seguro
     let variaveisModelo = {{ detalhes_json|default:"{}"|safe }};
-    const historicoDW = {{ historico_json|default:"{}"|safe }};
+    const historicoDW = {{ historico_json|default:"{}"|safe }}; // <-- MÁGICA AQUI. ESSA É A VARIÁVEL CORRETA!
 
     document.addEventListener("DOMContentLoaded", function() {
         // Inicializa datas: Hoje até Hoje + 7 dias
@@ -240,18 +288,60 @@
         document.getElementById('dataFim').value = moment().add(7, 'days').format('YYYY-MM-DD');
         
         // Injeta o preço sugerido no campo HTML usando o formato correto
-        document.getElementById('inputPrecoPromo').value = PRECO_SUGERIDO.toFixed(2);
+        document.getElementById('inputPrecoPromo').value = PRECO_SUGERIDO > 0 ? PRECO_SUGERIDO.toFixed(2) : PRECO_ATUAL.toFixed(2);
         
         calcularTudo();
+        renderizarBoxPlot(); // <-- CHAMA O BOXPLOT CORRETO ASSIM QUE CARREGA!
 
         // Recalcula o tamanho dos gráficos ao trocar de aba
         document.querySelectorAll('button[data-bs-toggle="pill"]').forEach(tab => {
             tab.addEventListener('shown.bs.tab', function (event) {
                 if (event.target.id === 'diagnostico-tab') { Plotly.Plots.resize('plotPesos'); }
-                if (event.target.id === 'grafico-tab') { Plotly.Plots.resize('plotDiv'); }
+                if (event.target.id === 'grafico-tab') { Plotly.Plots.resize('plotDiv');
+                    Plotly.Plots.resize('graficoBoxPlot');
+                 }
             });
         });
     });
+
+    // Função Exclusiva para os Cenários
+    function aplicarCenario(precoSugerido) {
+        let inputPreco = document.getElementById('inputPrecoPromo'); // ID CORRETO DA SUA TELA!
+        if(inputPreco) {
+            inputPreco.value = precoSugerido.toFixed(2);
+            calcularTudo(); // Roda a simulação financeira na hora!
+            inputPreco.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Rola pra caixa de simulação
+        }
+    }
+
+    // Função Exclusiva do Box Plot Corrigido
+    function renderizarBoxPlot() {
+        // VERIFICA SE historicoDW TEM A CHAVE box_precos
+        if (historicoDW && historicoDW.box_precos && historicoDW.box_precos.length > 0) {
+            let traceBox = {
+                y: historicoDW.box_precos,
+                type: 'box',
+                name: 'Histórico Praticado',
+                marker: { color: '#0d6efd' },
+                boxpoints: 'outliers',
+                jitter: 0.3,
+                fillcolor: 'rgba(13, 110, 253, 0.1)',
+                line: { width: 1.5 }
+            };
+
+            let layoutBox = {
+                margin: { t: 20, b: 30, l: 50, r: 10 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                yaxis: { title: 'Preço Real (R$)', gridcolor: '#f0f0f0' },
+                xaxis: { showticklabels: false }
+            };
+
+            Plotly.newPlot('graficoBoxPlot', [traceBox], layoutBox, {responsive: true, displayModeBar: false});
+        } else {
+            document.getElementById('graficoBoxPlot').innerHTML = '<div class="alert alert-warning text-center mt-4">Não há variação de histórico de preço suficiente para gerar o BoxPlot.</div>';
+        }
+    }
 
     function calcularTudo() {
         calcularMatematicaFinanceira();
@@ -262,13 +352,13 @@
     // --- FUNÇÃO 1: OS CÁLCULOS AGORA VÊM DO BACK-END (XGBOOST) ---
     function calcularMatematicaFinanceira() {
         let inputPreco = document.getElementById('inputPrecoPromo');
-        let inputCusto = document.getElementById('inputCustoSimulado'); // Pega o campo de custo!
+        let inputCusto = document.getElementById('inputCustoSimulado'); 
         
         let valorDigitado = inputPreco.value.replace(',', '.');
         let precoSimulado = parseFloat(valorDigitado) || PRECO_ATUAL;
         
-        let custoDigitado = inputCusto.value.replace(',', '.'); // Limpa a vírgula do custo
-        let custoSimulado = parseFloat(custoDigitado) || CUSTO; // Se ele apagar tudo, volta pro original
+        let custoDigitado = inputCusto.value.replace(',', '.'); 
+        let custoSimulado = parseFloat(custoDigitado) || CUSTO; 
         
         let dataInicio = moment(document.getElementById('dataInicio').value); 
         let dataFim = moment(document.getElementById('dataFim').value); 
@@ -277,11 +367,9 @@
         let diasTotais = dataFim.diff(dataInicio, 'days') + 1;
         document.getElementById('resDias').innerText = diasTotais;
 
-        // Pega a URL do Django e o Token de Segurança
         const apiUrl = inputPreco.getAttribute('data-url');
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-        // Chama o XGBoost no views.py
         fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -291,7 +379,7 @@
             body: JSON.stringify({
                 resultado_id: "{{ resultado.id|stringformat:'d' }}", 
                 novo_preco: precoSimulado,
-                custo: custoSimulado, // AQUI ESTÁ A MÁGICA! Enviando o custo novo!
+                custo: custoSimulado, 
                 dias_totais: diasTotais,
                 elasticidade_customizada: ELASTICIDADE
             })
@@ -299,17 +387,14 @@
         .then(response => response.json())
         .then(data => {
             if(data.status === 'sucesso') {
-                // Multiplica a previsão diária do backend pelos dias da campanha
                 let totalVolume = data.quantidade_prevista * diasTotais;
                 let faturamento = data.faturamento_projetado * diasTotais;
                 let lucroBruto = data.lucro_projetado * diasTotais;
                 
-                // Atualiza o seu HTML com os IDs originais do seu template!
                 document.getElementById('resQtd').innerText = Math.round(totalVolume).toLocaleString('pt-BR') + ' un';
                 document.getElementById('resFat').innerText = faturamento.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
                 document.getElementById('resLucro').innerText = lucroBruto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
                 
-                // Lógica da Margem (Fica Verde ou Vermelha)
                 let elMargem = document.getElementById('resMargem');
                 let elAlerta = document.getElementById('alertaMargem');
                 
@@ -331,9 +416,8 @@
     // --- FUNÇÃO 2: O GRÁFICO DA ABA 1 (PARÁBOLA + DEMANDA + BOLHAS REAIS) ---
     function renderizarGraficoParabola() {
         const precoSimulado = parseFloat(document.getElementById('inputPrecoPromo').value) || PRECO_ATUAL;
-        const custoSimulado = parseFloat(document.getElementById('inputCustoSimulado').value.replace(',', '.')) || CUSTO; // LÊ O CUSTO AQUI!
+        const custoSimulado = parseFloat(document.getElementById('inputCustoSimulado').value.replace(',', '.')) || CUSTO;
         
-        // Agora usamos o custoSimulado para gerar os limites do gráfico
         const preco_minimo = custoSimulado * 1.05; 
         const preco_maximo = PRECO_ATUAL * 1.50;
         const step = (preco_maximo - preco_minimo) / 50; 
@@ -346,7 +430,6 @@
             let vol = DEMANDA_BASE * Math.pow((p / PRECO_ATUAL), ELASTICIDADE);
             demandas.push(vol);
             
-            // O cálculo de cada ponto de lucro usa o custo novo!
             let L = (p - custoSimulado) * vol; 
             lucros.push(L);
             if (L > maxLucro) { maxLucro = L; precoOtimoMax = p; }
@@ -379,20 +462,18 @@
             marker: {color: '#ffc107', size: 20, symbol: 'star', line: {color: '#000', width: 1.5}}
         };
 
-        // Arrays para os traços do gráfico
         let traces = [traceLucro, traceDemanda, traceAtual, traceSimulado, traceEstrela];
 
-        // INSERINDO AS BOLHAS DO DATA WAREHOUSE!
         if (historicoDW.x_normal && historicoDW.x_normal.length > 0) {
             const traceBolhas = {
                 x: historicoDW.x_normal,
                 y: historicoDW.y_normal,
                 mode: 'markers',
                 name: 'Histórico de Vendas',
-                yaxis: 'y2', // Fica no mesmo eixo do volume!
+                yaxis: 'y2', 
                 marker: {
                     size: historicoDW.sizes,
-                    color: 'rgba(52, 152, 219, 0.4)', // Azul claro transparente
+                    color: 'rgba(52, 152, 219, 0.4)', 
                     line: {color: '#2980b9', width: 1}
                 },
                 customdata: historicoDW.freqs,
@@ -401,7 +482,6 @@
             traces.push(traceBolhas);
         }
 
-        // INSERINDO OS OUTLIERS
         if (historicoDW.x_outlier && historicoDW.x_outlier.length > 0) {
             const traceOutliers = {
                 x: historicoDW.x_outlier,
@@ -439,14 +519,11 @@
         Plotly.newPlot('plotDiv', traces, layout, {responsive: true});
     }
 
-    
     // --- FUNÇÃO 3: O GRÁFICO DA ABA 2 (RAIO-X DAS VARIÁVEIS) ---
     function renderizarDiagnosticoRaiosX() {
         const impactos = [];
         
-        // Converte os coeficientes logarítmicos em Impacto Percentual (%)
         for (const [chave, dados] of Object.entries(variaveisModelo)) {
-            // IGNORA A VARIÁVEL DE PREÇO AQUI:
             if (chave === 'log_p') continue; 
             
             let nomeLpo = chave.replace('C(', '').replace(')', '').replace('[T.', ' - ').replace(']', '');
@@ -460,22 +537,19 @@
             });
         }
 
-     
-            
-
         if (impactos.length === 0) {
             document.getElementById('plotPesos').innerHTML = '<div class="alert alert-warning mt-4 text-center">Nenhuma variável extra (como clima ou feriado) foi arrastada na construção deste modelo.</div>';
             document.getElementById('textoStorytelling').innerHTML = `A inteligência artificial focou puramente na curva de preço vs quantidade. O comportamento de compra é governado pela elasticidade base de <strong>${ELASTICIDADE}</strong>.`;
             return;
         }
 
-        impactos.sort((a, b) => a.valor - b.valor); // Ordena do negativo pro positivo
+        impactos.sort((a, b) => a.valor - b.valor); 
         
         const xVals = impactos.map(i => i.valor);
         const yVals = impactos.map(i => i.nome + (i.relevante ? '' : ' (Ruído)'));
         const colors = impactos.map(i => {
-            if (!i.relevante) return 'rgba(169, 169, 169, 0.5)'; // Cinza pra ruído
-            return i.valor >= 0 ? 'rgba(32, 178, 170, 0.85)' : 'rgba(240, 128, 128, 0.85)'; // Verde e Vermelho
+            if (!i.relevante) return 'rgba(169, 169, 169, 0.5)'; 
+            return i.valor >= 0 ? 'rgba(32, 178, 170, 0.85)' : 'rgba(240, 128, 128, 0.85)'; 
         });
 
         const tracePesos = {
@@ -496,7 +570,6 @@
 
         Plotly.newPlot('plotPesos', [tracePesos], layoutPesos, {responsive: true});
 
-        // Monta o Storytelling da IA
         let impactosValidos = impactos.filter(i => i.relevante);
         let texto = `Com base no histórico processado, o Axiom Pricing detectou padrões interessantes além do preço.<br><br>`;
         
@@ -511,13 +584,10 @@
         }
 
         document.getElementById('textoStorytelling').innerHTML = texto;
-
-        
     }
 
     // --- FUNÇÃO 4: SALVAR PREÇO NO BANCO (AJAX) ---
     function salvarPrecoERP() {
-        // Pega o valor e força a troca de vírgula por ponto para o Python não engasgar
         let valorInput = document.getElementById('inputPrecoPromo').value.toString().replace(',', '.');
         const precoSimulado = parseFloat(valorInput);
         
@@ -550,8 +620,6 @@
                 btn.innerHTML = '<i class="ti ti-check me-2"></i> Preço Confirmado!';
                 btn.classList.replace('btn-primary', 'btn-success');
                 
-                // Redireciona de volta para o Dashboard automaticamente após 1.5 segundos!
-                // Isso resolve o problema de usar a "Seta de Voltar" do navegador.
                 setTimeout(() => {
                     window.location.href = "{% url 'dashboard_resultado' resultado.projeto.id %}";
                 }, 1500);
@@ -567,12 +635,12 @@
             btn.disabled = false;
         });
     }
-   function acionarRecalculoModelo() {
+
+    function acionarRecalculoModelo() {
         const switchObj = document.getElementById('switchOutliers');
         const filtrar = switchObj.checked;
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         
-        // Efeito visual de carregamento
         document.getElementById('labelSwitch').innerHTML = '<i class="ti ti-loader ti-spin text-primary"></i> Recalculando IA...';
         
         fetch("{% url 'api_recalcular_modelo' %}", {
@@ -586,16 +654,13 @@
         .then(res => res.json())
         .then(data => {
             if(data.status === 'sucesso') {
-                // Atualiza as variáveis globais
                 ELASTICIDADE = data.elasticidade;
                 variaveisModelo = data.detalhes_variaveis;
                 
-                // Atualiza os Textos dos Cards usando IDs Seguros!
                 document.getElementById('valAderencia').innerText = data.r_squared.toFixed(2);
                 document.getElementById('valForca').innerText = data.elasticidade.toFixed(2);
                 document.getElementById('valNormalidade').innerText = data.shapiro_p_value > 0.05 ? 'Passou' : 'Falhou';
                 
-                // Atualiza o Card de Ruído
                 const cardRuido = document.getElementById('valRuido');
                 const cardRuidoPai = document.getElementById('cardRuidoContainer');
                 
@@ -611,14 +676,13 @@
                     document.getElementById('labelSwitch').innerText = 'Sujo / Dados Brutos';
                 }
 
-                // Refaz o gráfico Raio-X e o gráfico de Lucro da Aba 1!
                 renderizarDiagnosticoRaiosX();
                 renderizarGraficoParabola();
                 calcularMatematicaFinanceira();
             } else {
                 alert("Erro da Inteligência Artificial: " + data.mensagem);
                 document.getElementById('labelSwitch').innerText = 'Falha no Recálculo';
-                switchObj.checked = !filtrar; // Reverte o botão
+                switchObj.checked = !filtrar; 
             }
         })
         .catch(error => {

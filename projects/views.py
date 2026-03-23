@@ -552,6 +552,7 @@ def simulador_produto(request, resultado_id):
 
         df_grouped['tamanho'] = np.log1p(df_grouped['frequencia']) * 12
         df_grouped['tamanho'] = df_grouped['tamanho'].clip(lower=10, upper=35)
+        dados_grafico['box_precos'] = df['preco_praticado'].tolist()
 
         dados_grafico = {
             'x_normal': df_grouped['preco_praticado'].tolist(),
@@ -559,8 +560,69 @@ def simulador_produto(request, resultado_id):
             'sizes': df_grouped['tamanho'].tolist(),
             'freqs': df_grouped['frequencia'].tolist(),
             'x_outlier': df_outlier['preco_praticado'].tolist(),
-            'y_outlier': df_outlier['quantidade'].tolist()
+            'y_outlier': df_outlier['quantidade'].tolist(),
+            'box_precos': df['preco_praticado'].tolist() 
         }
+    
+    #==========================================
+    # NOVO: MOTOR DOS 3 CENÁRIOS (A MÁGICA DA IA)
+    # ==========================================
+    preco_atual = resultado.preco_atual
+    custo = resultado.custo_unitario if resultado.custo_unitario and resultado.custo_unitario > 0 else 0.01
+    elasticidade = resultado.elasticidade
+    
+    cenarios = []
+    
+    # Função auxiliar rápida para calcular as métricas de um preço
+    def calcular_cenario(p_novo):
+        razao = p_novo / preco_atual if preco_atual > 0 else 1
+        if razao <= 0: razao = 1
+        vol = demanda_base_diaria * math.pow(razao, elasticidade)
+        lucro = (p_novo - custo) * vol
+        margem = ((p_novo - custo) / p_novo) * 100 if p_novo > 0 else 0
+        return {'preco': round(p_novo, 2), 'volume': round(vol, 2), 'lucro': round(lucro, 2), 'margem': round(margem, 1)}
+
+    # 1. CENÁRIO: LUCRO ÓTIMO (O Algoritmo testa 1.000 preços para achar o topo)
+    precos_teste = np.linspace(custo * 1.05, preco_atual * 2.0, 1000)
+    melhor_lucro = -float('inf')
+    preco_otimo = preco_atual
+
+    for pt in precos_teste:
+        luc_t = calcular_cenario(pt)['lucro']
+        if luc_t > melhor_lucro:
+            melhor_lucro = luc_t
+            preco_otimo = pt
+
+    cenarios.append({
+        'nome': 'Lucro Ótimo (IA)',
+        'icone': 'fas fa-brain', 'cor': 'primary',
+        'desc': 'O ponto matemático exato que maximiza o dinheiro em caixa.',
+        **calcular_cenario(preco_otimo)
+    })
+
+    # 2. CENÁRIO: CONSERVADOR (Quick Win seguro)
+    # Se inelástico, sobe 3%. Se elástico, baixa 2%.
+    ajuste = 1.03 if elasticidade >= -1.0 else 0.98
+    cenarios.append({
+        'nome': 'Ajuste Conservador',
+        'icone': 'fas fa-shield-alt', 'cor': 'success',
+        'desc': 'Micro-ajuste focado em ganhar margem sem assustar o cliente.',
+        **calcular_cenario(preco_atual * ajuste)
+    })
+
+    # 3. CENÁRIO: MARKET SHARE (Agressivo)
+    # Reduz preço em 8% para disparar volume, mas trava se chegar perto do custo
+    preco_agressivo = preco_atual * 0.92
+    if preco_agressivo <= custo:
+        preco_agressivo = custo * 1.10 # Trava em 10% de margem mínima
+        
+    cenarios.append({
+        'nome': 'Defesa de Volume',
+        'icone': 'fas fa-fire', 'cor': 'danger',
+        'desc': 'Redução agressiva para esmagar concorrência e girar estoque.',
+        **calcular_cenario(preco_agressivo)
+    })
+
     
     contexto = {
         'resultado': resultado,
@@ -568,7 +630,9 @@ def simulador_produto(request, resultado_id):
         'margem_minima': empresa.margem_minima_padrao,
         'limite_choque': empresa.limite_variacao_preco,
         'detalhes_json': json.dumps(resultado.detalhes_variaveis),
-        'historico_json': json.dumps(dados_grafico)
+        'historico_json': json.dumps(dados_grafico),
+        'cenarios': cenarios
+        
     }
     
     return render(request, 'projects/simulador.html', contexto)
@@ -1351,3 +1415,366 @@ def painel_portfolio(request, projeto_id):
     }
     
     return render(request, 'projects/portfolio.html', contexto)
+
+def extrair_dados_agrupados_do_dw(projeto):
+    """
+    Helper Function: Busca milhões de linhas no banco, agrupa por SKU, 
+    calcula a Curva ABC e junta com as Elasticidades.
+    """
+    # 1. DATABASE PUSHDOWN (SQL Bruto e Rápido)
+    agrupamento = VendaHistoricaDW.objects.filter(projeto=projeto).values(
+        'codigo_produto', 'nome_produto'
+    ).annotate(
+        volume_total=Coalesce(Sum('quantidade'), 0.0, output_field=FloatField()),
+        receita_total=Coalesce(Sum(F('quantidade') * F('preco_praticado')), 0.0, output_field=FloatField()),
+        custo_total=Coalesce(Sum(F('quantidade') * F('custo_unitario')), 0.0, output_field=FloatField())
+    )
+
+    df_vendas = pd.DataFrame(list(agrupamento))
+    if df_vendas.empty:
+        return []
+
+    # 2. Busca Elasticidades e Custos/Preços Base (Do Resultado do AutoML)
+    resultados = ResultadoPrecificacao.objects.filter(projeto=projeto).values(
+        'codigo_produto'
+    ).annotate(
+        elasticidade=Avg('elasticidade'),
+        preco_atual=Avg('preco_atual'),
+        custo_unitario=Avg('custo_unitario')
+    )
+    df_resultados = pd.DataFrame(list(resultados))
+
+    # 3. Merge (Junta as vendas reais com a inteligência do modelo)
+    if not df_resultados.empty:
+        df = pd.merge(df_vendas, df_resultados, on='codigo_produto', how='left')
+        # Fallback de mercado para produtos novos sem IA treinada
+        df['elasticidade'] = df['elasticidade'].fillna(-1.5) 
+    else:
+        df = df_vendas
+        df['elasticidade'] = -1.5
+
+    # Proteção: Se a IA não gerou preco_atual/custo_unitario, calcula a média ponderada
+    if 'preco_atual' not in df.columns:
+        df['preco_atual'] = np.nan
+    if 'custo_unitario' not in df.columns:
+        df['custo_unitario'] = np.nan
+
+    df['preco_atual'] = np.where(
+        df['preco_atual'].isna(), 
+        np.where(df['volume_total'] > 0, df['receita_total'] / df['volume_total'], 0), 
+        df['preco_atual']
+    )
+
+    df['custo_unitario'] = np.where(
+        df['custo_unitario'].isna(), 
+        np.where(df['volume_total'] > 0, df['custo_total'] / df['volume_total'], 0), 
+        df['custo_unitario']
+    )
+
+    # 4. CÁLCULO DA CURVA ABC (O mesmo que fizemos na Matriz BCG)
+    df = df.sort_values(by='receita_total', ascending=False).reset_index(drop=True)
+    df['receita_acumulada'] = df['receita_total'].cumsum()
+    df['percentual_acumulado'] = df['receita_acumulada'] / df['receita_total'].sum()
+
+    def classificar_abc(pct):
+        if pct <= 0.80: return 'A'
+        elif pct <= 0.95: return 'B'
+        else: return 'C'
+
+    df['curva_abc'] = df['percentual_acumulado'].apply(classificar_abc)
+
+    # 5. Formatação do Dicionário para o Algoritmo Greedy do CEO
+    skus_data = []
+    for _, row in df.iterrows():
+        # Ignora lixo matemático (produtos sem volume ou sem preço)
+        if row['volume_total'] > 0 and row['preco_atual'] > 0:
+            skus_data.append({
+                'codigo_produto': row['codigo_produto'],
+                'nome_produto': row['nome_produto'],
+                'preco': float(row['preco_atual']),
+                'volume': float(row['volume_total']),
+                'custo_unit': float(row['custo_unitario']),
+                'elasticidade': float(row['elasticidade']),
+                'curva_abc': row['curva_abc']
+            })
+
+    return skus_data
+
+
+@login_required
+def api_otimizar_margem_global(request):
+    """
+    AXIOM MARGIN COMMAND — Motor de Otimização de Margem v2
+    
+    Recebe a meta de margem do CFO e devolve o plano de ação cirúrgico,
+    alterando apenas os SKUs estritamente necessários para atingir a meta.
+
+    Correções aplicadas em relação à v1:
+      - Estado simulado separado do estado original (preco_sim / vol_sim)
+      - Greedy adaptativo: para assim que a meta é atingida, sem sobre-ajustar
+      - Reordenação por impacto marginal a cada rodada (SKU mais valioso primeiro)
+      - Passo de aumento proporcional ao delta de receita necessário (não fixo em 1%)
+      - Documentação explícita de que a margem calculada é margem de contribuição
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
+
+    try:
+        dados = json.loads(request.body)
+        projeto_id = dados.get('projeto_id')
+        meta_margem_alvo = float(dados.get('meta_margem')) / 100.0  # Ex: 30 → 0.30
+
+        limite_teto_input = float(dados.get('limite_teto', 5.0)) / 100.0
+
+        projeto = ProjetoPrecificacao.objects.get(id=projeto_id, empresa=request.empresa)
+
+        # ── 1. EXTRAÇÃO DOS DADOS ──────────────────────────────────────────────
+        skus_data = extrair_dados_agrupados_do_dw(projeto)
+
+        receita_atual_global = 0.0
+        custo_variavel_global = 0.0  # ⚠️ Margem de contribuição (sem fixos rateados)
+
+        skus_para_otimizar = []
+
+        # ── 2. CLASSIFICAÇÃO DOS BALDES ────────────────────────────────────────
+        for p in skus_data:
+            receita_sku  = p['preco'] * p['volume']
+            custo_sku    = p['custo_unit'] * p['volume']
+
+            receita_atual_global    += receita_sku
+            custo_variavel_global   += custo_sku
+
+            elasticidade  = min(p['elasticidade'], 0.0) 
+            margem_atual  = (p['preco'] - p['custo_unit']) / p['preco'] if p['preco'] > 0 else 0
+
+            is_inelastico = elasticidade >= -1.0          # Demanda pouco sensível a preço
+            is_elastico   = elasticidade <= -1.5          # KVI — não tocar
+            is_sangria    = margem_atual < 0.10 and p['curva_abc'] == 'C'
+
+            # Limite máximo de aumento permitido por grupo de risco
+            if is_elastico:
+                continue  # KVI: ignora completamente
+
+            if is_sangria:
+                limite_aumento = 1.15   # Mantemos os 15% fixos para SANGRIA (Afinal, produto que dá prejuízo precisa de remédio amargo)
+                motivo = 'Estancar Sangria'
+            elif is_inelastico:
+                # A MÁGICA AQUI: O limite agora é 1.0 + o que o CFO digitou
+                limite_aumento = 1.0 + limite_teto_input   
+                motivo = 'Ouro Oculto'
+            else:
+                continue  # Elástico moderado: conservador, não otimiza
+
+            skus_para_otimizar.append({
+                # ── Referência imutável (origem) ──────────────────────────────
+                'sku'         : p['codigo_produto'],
+                'nome'        : p['nome_produto'],
+                'preco_orig'  : p['preco'],           # NUNCA alterado após este ponto
+                'vol_orig'    : p['volume'],           # NUNCA alterado após este ponto
+                'custo_unit'  : p['custo_unit'],
+                'elasticidade': elasticidade,
+                'limite_preco': p['preco'] * limite_aumento,
+                'motivo'      : motivo,
+
+                # ── Estado simulado (mutável a cada rodada) ───────────────────
+                'preco_sim'   : p['preco'],
+                'vol_sim'     : p['volume'],
+            })
+
+        if receita_atual_global == 0:
+            return JsonResponse({'status': 'erro', 'mensagem': 'Receita global zerada.'}, status=400)
+
+        margem_atual_global = (receita_atual_global - custo_variavel_global) / receita_atual_global
+
+        if margem_atual_global >= meta_margem_alvo:
+            return JsonResponse({
+                'status': 'sucesso',
+                'atingiu_meta': True,
+                'mensagem': 'Meta já atingida. Nenhuma alteração necessária.',
+                'kpis': _montar_kpis(
+                    margem_atual_global, margem_atual_global,
+                    receita_atual_global, custo_variavel_global,
+                    receita_atual_global, custo_variavel_global,
+                    skus_alterados=0
+                ),
+                'plano_execucao': []
+            })
+
+        # ── 3. MOTOR HEURÍSTICO ADAPTATIVO ────────────────────────────────────
+        #
+        # Estratégia:
+        #   a) A cada rodada calcula quanto de receita extra ainda falta.
+        #   b) Distribui esse delta entre os SKUs proporcionalmente ao seu
+        #      impacto marginal (lucro_contrib = vol_sim × (preco_sim - custo)).
+        #   c) Para cada SKU, calcula o passo de aumento necessário — mas
+        #      respeita o teto (limite_preco) e nunca passa de +2% por rodada
+        #      para manter realismo.
+        #   d) Aplica elasticidade para ajustar o volume simulado.
+        #   e) Para assim que margem_simulada >= meta.
+        #
+        receita_sim = receita_atual_global
+        custo_sim   = custo_variavel_global
+        atingiu_meta = False
+
+        MAX_RODADAS  = 20    # Mais rodadas, passos menores → mais preciso
+        PASSO_MAX    = 0.02  # Cada SKU sobe no máximo 2% por rodada
+
+        for rodada in range(1, MAX_RODADAS + 1):
+
+            margem_sim = (receita_sim - custo_sim) / receita_sim
+            if margem_sim >= meta_margem_alvo:
+                atingiu_meta = True
+                break
+
+            # Filtra apenas SKUs que ainda têm espaço para subir
+            skus_ativos = [s for s in skus_para_otimizar if s['preco_sim'] < s['limite_preco']]
+            if not skus_ativos:
+                break  # Esgotamos o espaço de manobra
+
+            # ── Reordena por impacto marginal decrescente ──────────────────────
+            # Impacto marginal ≈ lucro de contribuição atual do SKU
+            # SKUs com maior lucro potencial vêm primeiro
+            skus_ativos.sort(
+                key=lambda s: s['vol_sim'] * (s['preco_sim'] - s['custo_unit']),
+                reverse=True
+            )
+
+            # ── Receita alvo desta rodada ──────────────────────────────────────
+            receita_alvo   = custo_sim / (1.0 - meta_margem_alvo)
+            delta_necessario = receita_alvo - receita_sim
+
+            # Soma total do impacto marginal (para distribuir o delta proporcionalmente)
+            impacto_total = sum(
+                s['vol_sim'] * (s['preco_sim'] - s['custo_unit'])
+                for s in skus_ativos
+            )
+
+            for item in skus_ativos:
+                if item['preco_sim'] >= item['limite_preco']:
+                    continue
+
+                # ── Passo proporcional ao peso do SKU no impacto total ─────────
+                if impacto_total > 0:
+                    peso = (item['vol_sim'] * (item['preco_sim'] - item['custo_unit'])) / impacto_total
+                else:
+                    peso = 1.0 / len(skus_ativos)
+
+                # Quanto este SKU precisa subir para contribuir com sua parte do delta
+                receita_sku_atual = item['preco_sim'] * item['vol_sim']
+                receita_sku_alvo  = receita_sku_atual + (delta_necessario * peso)
+
+                # Passo de preço necessário (sem considerar elasticidade ainda)
+                passo_necessario = (receita_sku_alvo / receita_sku_atual) - 1.0 if receita_sku_atual > 0 else 0.0
+
+                # Aplica teto de segurança por rodada
+                passo_aplicado = min(passo_necessario, PASSO_MAX)
+                passo_aplicado = max(passo_aplicado, 0.0)  # Nunca reduzir
+
+                novo_preco = item['preco_sim'] * (1.0 + passo_aplicado)
+
+                # Respeita o teto absoluto do grupo
+                novo_preco = min(novo_preco, item['limite_preco'])
+
+                if novo_preco <= item['preco_sim']:
+                    continue  # Nada a fazer neste SKU nesta rodada
+
+                # ── Remove cenário antigo do bolo global ───────────────────────
+                receita_sim -= item['preco_sim'] * item['vol_sim']
+                custo_sim   -= item['custo_unit'] * item['vol_sim']
+
+                # ── Elasticidade: novo volume com base no preço ORIGINAL ────────
+                # Usamos preco_orig como âncora para evitar acumulação de erro
+                razao    = novo_preco / item['preco_orig']
+                novo_vol = item['vol_orig'] * math.pow(razao, item['elasticidade'])
+                novo_vol = max(novo_vol, 0.0)  # Volume nunca negativo
+
+                # ── Atualiza estado simulado (NÃO toca em preco_orig / vol_orig) ─
+                item['preco_sim'] = novo_preco
+                item['vol_sim']   = novo_vol
+
+                # ── Injeta novo cenário no bolo global ────────────────────────
+                receita_sim += novo_preco * novo_vol
+                custo_sim   += item['custo_unit'] * novo_vol
+
+                # Verifica meta intra-rodada para parar o mais cedo possível
+                if receita_sim > 0:
+                    margem_intra = (receita_sim - custo_sim) / receita_sim
+                    if margem_intra >= meta_margem_alvo:
+                        atingiu_meta = True
+                        break
+
+            if atingiu_meta:
+                break
+
+        margem_simulada = (receita_sim - custo_sim) / receita_sim
+
+        # ── 4. PLANO DE AÇÃO — só SKUs que realmente mudaram ──────────────────
+        plano_de_acao = []
+        for item in skus_para_otimizar:
+            delta_pct = (item['preco_sim'] / item['preco_orig']) - 1.0
+            if delta_pct > 0.0001:  # Filtra ruído de ponto flutuante
+                plano_de_acao.append({
+                    'sku'          : item['sku'],
+                    'produto'      : item['nome'],
+                    'preco_atual'  : round(item['preco_orig'], 2),
+                    'preco_novo'   : round(item['preco_sim'], 2),
+                    'aumento_pct'  : round(delta_pct * 100, 1),
+                    'vol_projetado': round(item['vol_sim'], 0),
+                    'estrategia'   : item['motivo'],
+                })
+
+        # Ordena o plano por maior aumento percentual (mais urgentes primeiro)
+        plano_de_acao.sort(key=lambda x: x['aumento_pct'], reverse=True)
+
+        # ── 5. RESPOSTA FINAL ──────────────────────────────────────────────────
+        return JsonResponse({
+            'status'          : 'sucesso',
+            'atingiu_meta'    : atingiu_meta,
+            'aviso_margem'    : (
+                'Margem calculada é de contribuição variável. '
+                'Custos fixos não estão incluídos.'
+            ),
+            'kpis'            : _montar_kpis(
+                margem_atual_global, margem_simulada,
+                receita_atual_global, custo_variavel_global,
+                receita_sim, custo_sim,
+                skus_alterados=len(plano_de_acao)
+            ),
+            'plano_execucao'  : plano_de_acao,
+        })
+
+    except ProjetoPrecificacao.DoesNotExist:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Projeto não encontrado.'}, status=404)
+    except (ValueError, KeyError) as e:
+        return JsonResponse({'status': 'erro', 'mensagem': f'Parâmetro inválido: {e}'}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'erro', 'mensagem': str(e)}, status=500)
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _montar_kpis(
+    margem_atual, margem_proj,
+    receita_atual, custo_atual,
+    receita_proj, custo_proj,
+    skus_alterados
+):
+    """Monta o dict de KPIs padronizado para o front-end."""
+    lucro_atual  = receita_atual - custo_atual
+    lucro_proj   = receita_proj  - custo_proj
+    return {
+        'margem_atual_pct'      : round(margem_atual * 100, 2),
+        'margem_projetada_pct'  : round(margem_proj  * 100, 2),
+        'ganho_margem_pp'       : round((margem_proj - margem_atual) * 100, 2),
+        'lucro_atual_reais'     : round(lucro_atual, 2),
+        'lucro_projetado_reais' : round(lucro_proj,  2),
+        'ganho_lucro_reais'     : round(lucro_proj - lucro_atual, 2),
+        'receita_atual_reais'   : round(receita_atual, 2),
+        'receita_projetada_reais': round(receita_proj, 2),
+        'skus_alterados'        : skus_alterados,
+    }
+
+@login_required
+def painel_margin_command(request, projeto_id):
+    projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=request.empresa)
+    return render(request, 'projects/margin_command.html', {'projeto': projeto})

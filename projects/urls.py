@@ -50,5 +50,11 @@ urlpatterns = [
 
     # Classificação de Produtos
     path('projeto/<int:projeto_id>/portfolio/', views.painel_portfolio, name='painel_portfolio'),
+
+    # ==========================================
+    # AXIOM MARGIN COMMAND (O Dashboard do CEO)
+    # ==========================================
+    path('projeto/<int:projeto_id>/margin-command/', views.painel_margin_command, name='painel_margin_command'),
+    path('api/otimizar-margem/', views.api_otimizar_margem_global, name='api_otimizar_margem_global'),
     
 ]
