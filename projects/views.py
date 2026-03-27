@@ -569,8 +569,9 @@ def simulador_produto(request, resultado_id):
     # ==========================================
     preco_atual = resultado.preco_atual
     custo = resultado.custo_unitario if resultado.custo_unitario and resultado.custo_unitario > 0 else 0.01
-    elasticidade = resultado.elasticidade
-    
+    # Teto obrigatório: aumentar preço NUNCA aumenta volume na vida real (CLAUDE.md §2)
+    elasticidade = min(resultado.elasticidade, 0.0)
+
     cenarios = []
     
     # Função auxiliar rápida para calcular as métricas de um preço
@@ -1163,7 +1164,9 @@ def api_simular_preco(request):
                 elasticidade = float(elasticidade_customizada)
             else:
                 elasticidade = resultado.elasticidade
-            
+            # Teto obrigatório: aumentar preço NUNCA aumenta volume na vida real (CLAUDE.md §2)
+            elasticidade = min(elasticidade, 0.0)
+
             razao_preco = novo_preco / preco_atual if preco_atual > 0 else 1
             if razao_preco <= 0: razao_preco = 1
                 
@@ -1361,7 +1364,7 @@ def painel_portfolio(request, projeto_id):
     if not df_elasticidades.empty:
         df = pd.merge(df_vendas, df_elasticidades, on='codigo_produto', how='left')
         # Se um produto for novo e ainda não tiver elasticidade, colocamos -1.5 (média de mercado) para não dar erro
-        df['elasticidade'] = df['elasticidade'].fillna(-1.5)
+        df['elasticidade'] = np.where(df['elasticidade'].isna(), -1.5, df['elasticidade'])
     else:
         df = df_vendas
         df['elasticidade'] = -1.5 # Fallback caso não exista modelo treinado ainda
@@ -1448,7 +1451,7 @@ def extrair_dados_agrupados_do_dw(projeto):
     if not df_resultados.empty:
         df = pd.merge(df_vendas, df_resultados, on='codigo_produto', how='left')
         # Fallback de mercado para produtos novos sem IA treinada
-        df['elasticidade'] = df['elasticidade'].fillna(-1.5) 
+        df['elasticidade'] = np.where(df['elasticidade'].isna(), -1.5, df['elasticidade'])
     else:
         df = df_vendas
         df['elasticidade'] = -1.5

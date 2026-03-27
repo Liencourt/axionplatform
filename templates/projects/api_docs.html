@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axiom Pricing Engine — API Reference</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f1117;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        /* ── Top Bar ─────────────────────────────────────────────────────── */
+        .api-topbar {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-bottom: 1px solid rgba(99,102,241,0.3);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .api-topbar .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .api-topbar .logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .api-topbar h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #f1f5f9;
+            letter-spacing: -0.3px;
+        }
+
+        .api-topbar .version-badge {
+            background: rgba(99,102,241,0.2);
+            border: 1px solid rgba(99,102,241,0.4);
+            color: #a5b4fc;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .api-topbar .links {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .api-topbar .links a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.2s;
+        }
+
+        .api-topbar .links a:hover { color: #a5b4fc; }
+
+        .btn-schema {
+            background: rgba(99,102,241,0.15);
+            border: 1px solid rgba(99,102,241,0.4);
+            color: #a5b4fc;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .btn-schema:hover {
+            background: rgba(99,102,241,0.3);
+            color: #c7d2fe;
+        }
+
+        /* ── Auth Banner ─────────────────────────────────────────────────── */
+        .auth-banner {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            border-radius: 10px;
+            margin: 24px 32px 0;
+            padding: 16px 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        }
+
+        .auth-banner .icon {
+            font-size: 20px;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .auth-banner .content h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fbbf24;
+            margin-bottom: 4px;
+        }
+
+        .auth-banner .content p {
+            font-size: 13px;
+            color: #d1d5db;
+            line-height: 1.5;
+        }
+
+        .auth-banner code {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            color: #fcd34d;
+        }
+
+        /* ── Swagger UI Overrides ────────────────────────────────────────── */
+        #swagger-ui-container {
+            padding: 24px 32px 48px;
+        }
+
+        .swagger-ui { background: transparent; }
+
+        .swagger-ui .topbar { display: none; }
+
+        .swagger-ui .info {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(99,102,241,0.2);
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+        }
+
+        .swagger-ui .info .title {
+            color: #f1f5f9 !important;
+            font-size: 26px !important;
+            font-weight: 700 !important;
+        }
+
+        .swagger-ui .info .description p,
+        .swagger-ui .info .description li { color: #94a3b8 !important; }
+
+        .swagger-ui .info .version { display: none; }
+
+        .swagger-ui .scheme-container {
+            background: rgba(15,17,23,0.5) !important;
+            border: 1px solid rgba(255,255,255,0.06) !important;
+            border-radius: 8px;
+            padding: 12px 16px;
+        }
+
+        .swagger-ui .opblock-tag {
+            color: #e2e8f0 !important;
+            border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+        }
+
+        .swagger-ui .opblock {
+            background: rgba(30,41,59,0.5) !important;
+            border: 1px solid rgba(255,255,255,0.07) !important;
+            border-radius: 8px !important;
+            margin-bottom: 10px !important;
+            box-shadow: none !important;
+        }
+
+        .swagger-ui .opblock.opblock-get .opblock-summary-method { background: #0ea5e9 !important; }
+        .swagger-ui .opblock.opblock-post .opblock-summary-method { background: #10b981 !important; }
+
+        .swagger-ui .opblock .opblock-summary-description,
+        .swagger-ui .opblock-description-wrapper p { color: #94a3b8 !important; }
+
+        .swagger-ui .opblock-summary-path { color: #e2e8f0 !important; }
+
+        .swagger-ui .parameters-col_description p,
+        .swagger-ui table thead tr th,
+        .swagger-ui .response-col_status,
+        .swagger-ui .response-col_description p { color: #cbd5e1 !important; }
+
+        .swagger-ui .model-title, .swagger-ui .model { color: #a5b4fc !important; }
+
+        .swagger-ui input[type=text],
+        .swagger-ui textarea {
+            background: rgba(0,0,0,0.3) !important;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            color: #e2e8f0 !important;
+            border-radius: 6px;
+        }
+
+        .swagger-ui .btn.execute {
+            background: #6366f1 !important;
+            border-color: #6366f1 !important;
+            color: #fff !important;
+            font-weight: 600;
+            border-radius: 6px;
+        }
+
+        .swagger-ui .btn.authorize {
+            background: transparent !important;
+            border: 1px solid #6366f1 !important;
+            color: #a5b4fc !important;
+            border-radius: 6px;
+        }
+
+        .swagger-ui .microlight,
+        .swagger-ui pre.microlight {
+            background: rgba(0,0,0,0.4) !important;
+            color: #86efac !important;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.06) !important;
+        }
+
+        .swagger-ui section.models { display: none; }
+    </style>
+</head>
+<body>
+
+<!-- ── Top Bar ───────────────────────────────────────────────────────────── -->
+<div class="api-topbar">
+    <div class="brand">
+        <div class="logo">⚡</div>
+        <h1>Axiom Pricing Engine</h1>
+        <span class="version-badge">API v1</span>
+    </div>
+    <div class="links">
+        <a href="{% url 'api_v1_schema' %}" target="_blank" class="btn-schema">
+            📄 OpenAPI JSON
+        </a>
+    </div>
+</div>
+
+<!-- ── Auth Banner ───────────────────────────────────────────────────────── -->
+<div class="auth-banner">
+    <div class="icon">🔑</div>
+    <div class="content">
+        <h3>Autenticação obrigatória em todos os endpoints</h3>
+        <p>
+            Envie sua chave no header:
+            <code>X-Axiom-API-Key: sua-chave-uuid-aqui</code>
+            &nbsp;·&nbsp;
+            Encontre sua chave em <strong>Painel → Configurações → Integração API</strong>.
+            &nbsp;·&nbsp;
+            Clique em <strong>Authorize</strong> abaixo para autenticar e testar os endpoints.
+        </p>
+    </div>
+</div>
+
+<!-- ── Swagger UI ─────────────────────────────────────────────────────────── -->
+<div id="swagger-ui-container">
+    <div id="swagger-ui"></div>
+</div>
+
+<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>
+    const schemaUrl = "{% url 'api_v1_schema' %}";
+
+    SwaggerUIBundle({
+        url: schemaUrl,
+        dom_id: '#swagger-ui',
+        presets: [
+            SwaggerUIBundle.presets.apis,
+            SwaggerUIBundle.SwaggerUIStandalonePreset
+        ],
+        layout: 'BaseLayout',
+        deepLinking: true,
+        displayRequestDuration: true,
+        tryItOutEnabled: true,
+        defaultModelsExpandDepth: -1,
+        defaultModelExpandDepth: 3,
+        docExpansion: 'list',
+        filter: true,
+        requestInterceptor: (request) => {
+            // Injeta automaticamente a API Key se o usuário autorizou via modal
+            return request;
+        }
+    });
+</script>
+</body>
+</html>

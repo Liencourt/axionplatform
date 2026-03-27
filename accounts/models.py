@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -32,8 +33,18 @@ class Empresa(models.Model):
         help_text="ID da assinatura ativa (ex: sub_12345)"
     )
     is_active_subscriber = models.BooleanField(
-        default=False, 
+        default=False,
         help_text="Verdadeiro se a empresa tem uma assinatura paga e ativa."
+    )
+
+    # ==========================================
+    # INTEGRAÇÃO B2B — API KEY
+    # ==========================================
+    api_key = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        help_text="Chave de autenticação para integração via API REST (B2B). Enviar no header X-Axiom-API-Key."
     )
 
     def __str__(self):

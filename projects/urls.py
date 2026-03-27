@@ -1,7 +1,20 @@
 from django.urls import path
 from . import views
+from . import api_public
 
 urlpatterns = [
+
+    # ==========================================
+    # AXIOM PUBLIC REST API v1 (B2B)
+    # Autenticação: header X-Axiom-API-Key: <uuid>
+    # ==========================================
+    path('api/v1/elasticidade/<int:projeto_id>/', api_public.api_v1_elasticidade, name='api_v1_elasticidade'),
+    path('api/v1/simular-preco/', api_public.api_v1_simular_preco, name='api_v1_simular_preco'),
+    path('api/v1/otimizar-margem/', api_public.api_v1_otimizar_margem, name='api_v1_otimizar_margem'),
+    # Documentação interativa (Swagger UI)
+    path('api/v1/docs/', api_public.api_v1_docs, name='api_v1_docs'),
+    path('api/v1/schema/', api_public.api_v1_schema, name='api_v1_schema'),
+
     
     path('novo-estudo/', views.iniciar_projeto_upload, name='iniciar_projeto_upload'),
     
