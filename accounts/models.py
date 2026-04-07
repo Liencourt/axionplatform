@@ -10,8 +10,24 @@ class Empresa(models.Model):
     email_contato = models.EmailField(help_text="E-mail principal para faturamento e alertas do sistema", blank=True, null=True)
     telefone = models.CharField(max_length=20, blank=True, null=True)
     responsavel_tecnico = models.CharField(max_length=100, help_text="Nome do gestor de Pricing", blank=True, null=True)
- 
-    
+
+    # Localização — usado pelo módulo de enriquecimento para resolver coordenadas da sede
+    cep = models.CharField(
+        max_length=9,
+        blank=True,
+        null=True,
+        help_text="CEP da sede principal da empresa (ex: 01310-100). Usado para enriquecer dados com clima e IBGE.",
+    )
+    municipio = models.CharField(max_length=150, blank=True, null=True, help_text="Preenchido automaticamente via ViaCEP")
+    uf = models.CharField(max_length=2, blank=True, null=True)
+    numero = models.CharField(
+        max_length=20, blank=True, null=True,
+        help_text="Número do endereço (ex: 2701). Melhora a precisão do geocoding.",
+    )
+    codigo_ibge = models.CharField(max_length=10, blank=True, null=True, help_text="Código IBGE do município")
+    lat = models.FloatField(blank=True, null=True, help_text="Latitude (geocoding automático)")
+    lon = models.FloatField(blank=True, null=True, help_text="Longitude (geocoding automático)")
+
     ativo = models.BooleanField(default=True)
     margem_minima_padrao = models.FloatField(default=18.0)
     limite_variacao_preco = models.FloatField(default=20.0)

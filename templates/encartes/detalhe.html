@@ -1,0 +1,296 @@
+{% extends 'vertical.html' %}
+{% load static humanize %}
+
+{% block title %}{{ extracao.concorrente.nome }} — {{ extracao.vigencia_str }}{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid">
+
+  <!-- Cabeçalho -->
+  <div class="row mb-4 align-items-center">
+    <div class="col">
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <a href="{% url 'lista_extracoes' %}" class="btn btn-outline-secondary btn-sm rounded-pill">
+          <i class="ti ti-arrow-left me-1"></i>Voltar
+        </a>
+        <div>
+          <h3 class="page-title mb-0 fw-bold">
+            <i class="ti ti-tag text-primary me-2"></i>{{ extracao.concorrente.nome }}
+          </h3>
+          <p class="text-muted mb-0 small">
+            <i class="ti ti-calendar-event me-1"></i>{{ extracao.vigencia_str }}
+            &nbsp;·&nbsp;
+            <i class="ti ti-clock me-1"></i>Extraído em {{ extracao.data_extracao|date:"d/m/Y \à\s H:i" }}
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="col-auto">
+      <span class="badge bg-{{ extracao.status_badge_class }} rounded-pill px-3 py-2 fs-6">
+        {{ extracao.get_status_display }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Status: processando -->
+  {% if extracao.status == 'processando' %}
+  <div class="alert border-0 rounded-3 mb-4 d-flex align-items-center gap-3"
+       style="background:rgba(var(--bs-warning-rgb),.1); border-left:4px solid var(--bs-warning) !important;"
+       id="processingAlert">
+    <div class="spinner-border spinner-border-sm text-warning flex-shrink-0" role="status"></div>
+    <div>
+      <strong>Extração em andamento…</strong>
+      <span class="text-muted small ms-2">Esta página atualiza automaticamente a cada 10 segundos.</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Status: erro -->
+  {% if extracao.status == 'erro' %}
+  <div class="alert border-0 rounded-3 mb-4"
+       style="background:rgba(var(--bs-danger-rgb),.08); border-left:4px solid var(--bs-danger) !important;">
+    <strong class="text-danger"><i class="ti ti-alert-triangle me-2"></i>Erro na extração</strong>
+    <pre class="mt-2 mb-0 small text-muted">{{ extracao.erro_mensagem }}</pre>
+  </div>
+  {% endif %}
+
+  <!-- KPI cards -->
+  {% if extracao.status == 'concluido' %}
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small fw-semibold text-uppercase mb-1">Produtos</div>
+          <div class="fw-bold" style="font-size:1.8rem;">{{ extracao.total_produtos }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small fw-semibold text-uppercase mb-1">Total de Preços</div>
+          <div class="fw-bold" style="font-size:1.8rem;">{{ extracao.total_precos }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small fw-semibold text-uppercase mb-1">Clube / Fidelidade</div>
+          <div class="fw-bold text-primary" style="font-size:1.8rem;">{{ extracao.precos_clube }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small fw-semibold text-uppercase mb-1">Promocionais</div>
+          <div class="fw-bold text-warning" style="font-size:1.8rem;">{{ extracao.precos_promocional }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Avisos (se houver) -->
+  {% if extracao.avisos %}
+  <details class="mb-4">
+    <summary class="text-muted small" style="cursor:pointer;">
+      <i class="ti ti-alert-circle me-1 text-warning"></i>
+      {{ extracao.avisos|length }} aviso(s) da extração
+    </summary>
+    <ul class="small text-muted mt-2 ps-4 mb-0">
+      {% for aviso in extracao.avisos %}
+      <li>{{ aviso }}</li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+
+  <!-- Filtros -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-3">
+      <form method="GET" class="row g-2 align-items-end">
+        <!-- Busca -->
+        <div class="col-md-5">
+          <label class="form-label form-label-sm mb-1 text-muted">Buscar produto</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-transparent"><i class="ti ti-search text-muted"></i></span>
+            <input type="text" name="q" value="{{ busca }}" class="form-control" placeholder="Nome do produto…">
+          </div>
+        </div>
+        <!-- Categoria -->
+        <div class="col-md-4">
+          <label class="form-label form-label-sm mb-1 text-muted">Categoria</label>
+          <select name="categoria" class="form-select form-select-sm">
+            <option value="">Todas as categorias</option>
+            {% for cat in categorias %}
+            <option value="{{ cat }}" {% if categoria_selecionada == cat %}selected{% endif %}>
+              {{ cat|capfirst }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm flex-fill">Filtrar</button>
+          <a href="{% url 'detalhe_extracao' extracao.pk %}" class="btn btn-outline-secondary btn-sm">Limpar</a>
+        </div>
+      </form>
+    </div>
+    <div class="card-footer bg-transparent border-top py-2 px-3 d-flex justify-content-end">
+      <a href="{% url 'exportar_extracao_excel' extracao.pk %}?q={{ busca }}&categoria={{ categoria_selecionada }}"
+         class="btn btn-outline-success btn-sm">
+        <i class="ti ti-file-spreadsheet me-1"></i>Exportar Excel
+      </a>
+    </div>
+  <!-- Tabela de produtos -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-borderless align-middle mb-0">
+          <thead class="bg-body-tertiary text-muted small text-uppercase">
+            <tr>
+              <th class="ps-4 py-3" style="width:35%">Produto</th>
+              <th>Categoria</th>
+              <th>Qtd</th>
+              <th class="text-center">Preço Normal</th>
+              <th class="text-center">Melhor Preço</th>
+              <th class="text-center">Tipo</th>
+              <th class="text-center pe-3">Pág.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for produto in page_obj %}
+            {% with precos=produto.precos.all %}
+            {% with preco_normal=precos|dictsort:"valor" %}
+            <tr class="border-bottom">
+              <!-- Nome / Marca -->
+              <td class="ps-4">
+                <span class="fw-semibold">{{ produto.nome }}</span>
+                {% if produto.marca %}
+                <br><small class="text-muted">{{ produto.marca }}</small>
+                {% endif %}
+                {% if produto.condicao_especial %}
+                <br><small class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill mt-1 px-2">
+                  <i class="ti ti-tag me-1"></i>{{ produto.condicao_especial }}
+                </small>
+                {% endif %}
+              </td>
+              <!-- Categoria -->
+              <td>
+                {% if produto.categoria %}
+                <span class="badge bg-body-tertiary text-body rounded-pill px-2">{{ produto.categoria|capfirst }}</span>
+                {% else %}—{% endif %}
+              </td>
+              <!-- Quantidade -->
+              <td class="text-muted small">{{ produto.quantidade|default:"—" }}</td>
+              <!-- Preço Normal -->
+              <td class="text-center">
+                {% for p in precos %}
+                  {% if p.tipo == 'normal' %}
+                  <span class="fw-semibold">R$ {{ p.valor }}</span>
+                  {% endif %}
+                {% endfor %}
+              </td>
+              <!-- Melhor Preço (clube ou promocional) -->
+              <td class="text-center">
+                {% for p in precos %}
+                  {% if p.tipo == 'clube' %}
+                  <span class="fw-bold text-primary">R$ {{ p.valor }}</span>
+                  <br><small class="text-muted">{{ p.condicao }}</small>
+                  {% elif p.tipo == 'promocional' and not forloop.parentloop.first %}
+                  <span class="fw-bold text-warning">R$ {{ p.valor }}</span>
+                  {% elif p.tipo == 'condicional' %}
+                  <span class="fw-bold text-info">R$ {{ p.valor }}</span>
+                  <br><small class="text-muted">{{ p.condicao }}</small>
+                  {% endif %}
+                {% endfor %}
+              </td>
+              <!-- Tipos de preço -->
+              <td class="text-center">
+                {% for p in precos %}
+                  {% if p.tipo == 'clube' %}
+                  <span class="badge rounded-pill me-1 mb-1" style="background:#1d4ed8; color:#fff; font-size:.72rem;">Clube</span>
+                  {% elif p.tipo == 'promocional' %}
+                  <span class="badge rounded-pill me-1 mb-1" style="background:#d97706; color:#fff; font-size:.72rem;">Promo</span>
+                  {% elif p.tipo == 'condicional' %}
+                  <span class="badge rounded-pill me-1 mb-1" style="background:#0891b2; color:#fff; font-size:.72rem;">Cond.</span>
+                  {% else %}
+                  <span class="badge rounded-pill me-1 mb-1" style="background:#4b5563; color:#fff; font-size:.72rem;">Normal</span>
+                  {% endif %}
+                {% endfor %}
+              </td>
+              <!-- Página -->
+              <td class="text-center text-muted small pe-3">{{ produto.pagina }}</td>
+            </tr>
+            {% endwith %}
+            {% endwith %}
+            {% empty %}
+            <tr>
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="ti ti-search-off" style="font-size:2rem; opacity:.3;"></i>
+                <p class="mt-2 mb-0">Nenhum produto encontrado com os filtros aplicados.</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Paginação -->
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-transparent border-top-0 py-3">
+      <nav>
+        <ul class="pagination pagination-sm justify-content-center mb-0">
+          {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ busca }}&categoria={{ categoria_selecionada }}">&laquo;</a>
+          </li>
+          {% endif %}
+          {% for num in page_obj.paginator.page_range %}
+          <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+            <a class="page-link" href="?page={{ num }}&q={{ busca }}&categoria={{ categoria_selecionada }}">{{ num }}</a>
+          </li>
+          {% endfor %}
+          {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ busca }}&categoria={{ categoria_selecionada }}">&raquo;</a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+
+  {% elif extracao.status == 'pendente' %}
+  <div class="text-center py-5 text-muted">
+    <i class="ti ti-clock" style="font-size:2.5rem; opacity:.3;"></i>
+    <p class="mt-2">Aguardando início do processamento…</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+{% if extracao.status == 'processando' %}
+<script>
+  // Polling automático enquanto a extração estiver em andamento
+  (function poll() {
+    setTimeout(function () {
+      fetch("{% url 'status_extracao' extracao.pk %}")
+        .then(r => r.json())
+        .then(data => {
+          if (data.status !== 'processando') {
+            location.reload();
+          } else {
+            poll();
+          }
+        })
+        .catch(() => poll());
+    }, 10000);
+  })();
+</script>
+{% endif %}
+{% endblock %}

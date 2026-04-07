@@ -12,9 +12,14 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Carrega variáveis do .env (desenvolvimento local).
+# Em produção (GCP Cloud Run) as variáveis são injetadas diretamente no ambiente.
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -47,7 +52,8 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'accounts',
     'projects',
-    
+    'encartes',
+
 ]
 
 MIDDLEWARE = [
@@ -149,12 +155,44 @@ THOUSAND_SEPARATOR = '.'
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simples',
+        },
+    },
+    'formatters': {
+        'simples': {
+            'format': '%(asctime)s %(levelname)s %(message)s',
+            'datefmt': '%H:%M:%S',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'projects': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+
+# Uploads locais (apenas em desenvolvimento — em prod os arquivos vão direto para o GCS)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 
 
@@ -167,3 +205,26 @@ STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
 
 # Moeda padrão da plataforma
 STRIPE_CURRENCY = 'brl'
+
+# ==========================================
+# AXIOM TREND RADAR
+# ==========================================
+SERPAPI_KEY = os.getenv('SERPAPI_KEY', '')
+# Token secreto para o endpoint do Cloud Scheduler — deve ser uma string aleatória longa.
+# Gere com: python -c "import secrets; print(secrets.token_hex(32))"
+RADAR_WEBHOOK_TOKEN = os.getenv('RADAR_WEBHOOK_TOKEN', '')
+
+# ==========================================
+# AXIOM REPUTATION (Google Places + Claude)
+# ==========================================
+GOOGLE_PLACES_API_KEY = os.getenv('GOOGLE_PLACES_API_KEY', '')
+ANTHROPIC_API_KEY     = os.getenv('ANTHROPIC_API_KEY', '')
+
+# ==========================================
+# AXIOM ENCARTES (pdf2image + poppler)
+# ==========================================
+# Cloud Run (Linux): deixe vazio — poppler instalado via apt-get está no PATH.
+# Windows (dev): aponte para a pasta "bin" do poppler descompactado.
+#   Baixe em: https://github.com/oschwartz10612/poppler-windows/releases
+#   Exemplo:  POPPLER_PATH=C:\poppler\Library\bin
+POPPLER_PATH = os.getenv('POPPLER_PATH', '') or None

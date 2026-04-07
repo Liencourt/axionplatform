@@ -1,0 +1,644 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<style>
+  .corr-header { border-bottom: 1px solid var(--bs-border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem; }
+
+  /* ── Insight Card ── */
+  .insight-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 14px;
+    background: var(--bs-body-bg);
+    transition: border-color .2s, box-shadow .2s;
+    overflow: hidden;
+  }
+  .insight-card:hover { border-color: var(--bs-primary); box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+
+  /* Faixa de cor lateral por categoria */
+  .insight-card { border-left: 4px solid var(--bs-border-color); }
+  .insight-card.cat-CLIMA      { border-left-color: #3b82f6; }
+  .insight-card.cat-CALENDARIO { border-left-color: #f59e0b; }
+  .insight-card.cat-TENDENCIA  { border-left-color: #8b5cf6; }
+  .insight-card.cat-ECONOMICO  { border-left-color: #10b981; }
+
+  .insight-body { padding: 18px 20px; }
+
+  .cat-badge {
+    font-size: .65rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    padding: 2px 9px; border-radius: 20px; display: inline-block; margin-bottom: 10px;
+  }
+  .badge-CLIMA      { background: rgba(59,130,246,.12);  color: #3b82f6; }
+  .badge-CALENDARIO { background: rgba(245,158,11,.12);  color: #f59e0b; }
+  .badge-TENDENCIA  { background: rgba(139,92,246,.12);  color: #8b5cf6; }
+  .badge-ECONOMICO  { background: rgba(16,185,129,.12);  color: #10b981; }
+  .badge-GERAL      { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
+
+  .insight-title { font-size: .97rem; font-weight: 700; color: var(--bs-body-color); margin-bottom: 6px; line-height: 1.35; }
+  .insight-desc  { font-size: .84rem; color: var(--bs-secondary-color); margin-bottom: 0; line-height: 1.55; }
+
+  /* Faixa de ação no rodapé do card */
+  .insight-acao-bar {
+    background: var(--bs-body-tertiary);
+    border-top: 1px solid var(--bs-border-color);
+    padding: 11px 20px;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.45;
+  }
+  .insight-acao-bar .acao-icon {
+    flex-shrink: 0;
+    font-size: .85rem;
+    margin-top: 1px;
+    color: var(--bs-primary);
+  }
+
+  /* ── Impact pill (substitui o r numérico) ── */
+  .impact-pill {
+    font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px;
+    display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+  }
+  .impact-alto-pos  { background: rgba(16,185,129,.15); color: #10b981; }
+  .impact-alto-neg  { background: rgba(239,68,68,.15);  color: #ef4444; }
+  .impact-medio-pos { background: rgba(59,130,246,.12); color: #3b82f6; }
+  .impact-medio-neg { background: rgba(245,158,11,.15); color: #f59e0b; }
+  .impact-baixo     { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
+
+  /* ── Seção de prioridade ── */
+  .prio-section { margin-bottom: 2.5rem; }
+  .prio-label {
+    font-size: .72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;
+  }
+  .prio-label::after { content: ''; flex: 1; height: 1px; background: var(--bs-border-color); }
+  .prio-alta   { color: #ef4444; }
+  .prio-media  { color: #f59e0b; }
+  .prio-baixa  { color: var(--bs-secondary-color); }
+
+  /* ── Painel IBGE ── */
+  .ibge-panel {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 14px;
+    background: var(--bs-body-bg);
+    margin-bottom: 1.75rem;
+    overflow: hidden;
+  }
+  .ibge-panel-header {
+    background: var(--bs-body-tertiary);
+    border-bottom: 1px solid var(--bs-border-color);
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--bs-secondary-color);
+  }
+  .ibge-stat {
+    padding: 18px 20px;
+    border-right: 1px solid var(--bs-border-color);
+    text-align: center;
+    flex: 1;
+    min-width: 130px;
+  }
+  .ibge-stat:last-child { border-right: none; }
+  .ibge-stat .ibge-value { font-size: 1.4rem; font-weight: 800; color: var(--bs-body-color); line-height: 1.1; }
+  .ibge-stat .ibge-label { font-size: .73rem; color: var(--bs-secondary-color); margin-top: 4px; line-height: 1.3; }
+  .ibge-stat .ibge-sub   { font-size: .7rem; color: var(--bs-secondary-color); margin-top: 2px; }
+
+  .classe-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 50%;
+    font-size: 1.1rem; font-weight: 900; margin-bottom: 4px;
+  }
+  .classe-A { background: rgba(16,185,129,.15); color: #10b981; }
+  .classe-B { background: rgba(59,130,246,.15); color: #3b82f6; }
+  .classe-C { background: rgba(245,158,11,.15); color: #f59e0b; }
+  .classe-D { background: rgba(239,68,68,.12);  color: #ef4444; }
+  .classe-E { background: rgba(107,114,128,.12); color: #6b7280; }
+
+  .renda-bar-wrap { padding: 16px 20px; border-top: 1px solid var(--bs-border-color); }
+  .renda-bar-label { font-size: .75rem; color: var(--bs-secondary-color); margin-bottom: 3px; display: flex; justify-content: space-between; }
+  .renda-bar-track { height: 6px; border-radius: 3px; background: var(--bs-body-tertiary); overflow: hidden; margin-bottom: 10px; }
+  .renda-bar-fill  { height: 100%; border-radius: 3px; transition: width .6s ease; }
+
+  .ibge-insight-box {
+    padding: 14px 20px;
+    background: rgba(59,130,246,.04);
+    border-top: 1px solid var(--bs-border-color);
+    font-size: .82rem; color: var(--bs-secondary-color); line-height: 1.6;
+  }
+  .ibge-insight-box strong { color: var(--bs-body-color); }
+
+  /* ── Resumo executivo ── */
+  .resumo-card {
+    border: 1px solid var(--bs-border-color); border-radius: 14px;
+    padding: 22px 26px; background: var(--bs-body-bg);
+    border-left: 4px solid var(--bs-primary);
+    margin-bottom: 2rem;
+  }
+  .resumo-card .lead { font-size: .92rem; line-height: 1.75; color: var(--bs-body-color); }
+
+  /* ── Meta pills ── */
+  .meta-pill {
+    display: inline-flex; align-items: center; gap: 6px; font-size: .78rem;
+    padding: 4px 12px; border-radius: 20px;
+    background: var(--bs-body-tertiary); color: var(--bs-secondary-color);
+    border: 1px solid var(--bs-border-color);
+  }
+
+  /* ── Painel técnico colapsável ── */
+  .tech-toggle {
+    font-size: .78rem; color: var(--bs-secondary-color); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+    text-decoration: none; border: none; background: none; padding: 0;
+  }
+  .tech-toggle:hover { color: var(--bs-body-color); }
+  .tech-table { font-size: .8rem; }
+  .tech-table th { font-size: .72rem; text-transform: uppercase; letter-spacing: .8px; color: var(--bs-secondary-color); }
+
+  /* ── Empty / loading ── */
+  .empty-state { text-align: center; padding: 60px 20px; border: 2px dashed var(--bs-border-color); border-radius: 16px; }
+
+  /* ── Loading overlay ── */
+  #loadingOverlay {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,.78); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center;
+  }
+  #loadingOverlay.active { display: flex; }
+  .loader-card {
+    background: #ffffff; color: #111827; border-radius: 18px;
+    padding: 36px 40px; max-width: 380px; width: 90%; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,.4);
+  }
+  .loader-card h5 { font-weight: 700; color: #111827; margin-bottom: 6px; }
+  .loader-card p  { font-size: .85rem; color: #6b7280; margin-bottom: 20px; }
+  .loader-steps   { list-style: none; padding: 0; margin: 0; text-align: left; }
+  .loader-steps li { font-size: .82rem; padding: 5px 0; display: flex; align-items: center; gap: 8px; color: #9ca3af; }
+  .loader-steps li.active { color: #111827; font-weight: 600; }
+  .loader-steps li.done   { color: #10b981; }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #e5e7eb; }
+  .active .step-dot { background: #3b82f6; animation: pulse .8s infinite; }
+  .done   .step-dot { background: #10b981; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+</style>
+
+<div class="container-fluid pb-5">
+
+  {% include 'projects/_project_tabs.html' %}
+
+  <!-- Header -->
+  <div class="corr-header d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+      <h4 class="fw-bold mb-1" style="font-size:1.3rem"><i class="ti ti-chart-area-line me-2" style="color:#8b5cf6"></i>Enriquecimento & Correlações</h4>
+      <p class="text-muted mb-0" style="font-size:.85rem">O que está impulsionando ou freando suas vendas — em linguagem de negócios</p>
+    </div>
+    <form method="post" action="{% url 'rodar_analise_correlacoes' projeto.id %}" id="formRodar">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary px-4" id="btnRodar" onclick="iniciarLoader()">
+        <span id="btnTexto">{% if analise %}Atualizar Análise{% else %}Rodar Análise{% endif %}</span>
+        <span id="btnSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
+      </button>
+    </form>
+  </div>
+
+  <!-- Mensagens Django -->
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show rounded-3 mb-3" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if analise %}
+
+    {% if analise.status == 'sem_dados' %}
+      <div class="empty-state">
+        <div style="font-size:3rem">📊</div>
+        <h5 class="fw-bold mt-3">Dados insuficientes</h5>
+        <p class="text-muted">São necessários pelo menos 30 dias de histórico.<br>
+          Registros encontrados: <strong>{{ analise.n_registros }}</strong></p>
+      </div>
+
+    {% elif analise.status == 'erro' %}
+      <div class="empty-state">
+        <div style="font-size:3rem">⚠️</div>
+        <h5 class="fw-bold mt-3">Erro na análise</h5>
+        <p class="text-muted">Tente novamente. Se o problema persistir, contate o suporte.</p>
+      </div>
+
+    {% else %}
+
+      <!-- Meta pills -->
+      <div class="d-flex flex-wrap gap-2 mb-4">
+        <span class="meta-pill">
+          <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/></svg>
+          {{ analise.criado_em|date:"d/m/Y H:i" }}
+        </span>
+        <span class="meta-pill">📅 {{ analise.n_registros }} dias analisados</span>
+        {% if analise.estacao_nome %}
+        <span class="meta-pill">🌤 {{ analise.estacao_nome }}{% if analise.distancia_estacao_km %} · {{ analise.distancia_estacao_km|floatformat:0 }} km{% endif %}</span>
+        {% endif %}
+        {% if analise.ibge_municipio %}
+        <span class="meta-pill">🏙 {{ analise.ibge_municipio }}{% if analise.ibge_classe %} · Classe {{ analise.ibge_classe }}{% endif %}</span>
+        {% endif %}
+        {% if analise.insights %}
+        <span class="meta-pill" style="border-color: rgba(16,185,129,.4); color:#10b981;">
+          ✔ {{ analise.insights|length }} oportunidade{{ analise.insights|length|pluralize:"s" }} identificada{{ analise.insights|length|pluralize:"s" }}
+        </span>
+        {% endif %}
+      </div>
+
+      <!-- ── Painel IBGE: Perfil da Região ───────────────────────────── -->
+      {% if ibge_dados and ibge_dados.nome_municipio %}
+      <div class="ibge-panel">
+        <div class="ibge-panel-header">
+          <span>🏙</span> Perfil Socioeconômico da Região — {{ ibge_dados.nome_municipio }}/{{ ibge_dados.uf }}
+          <span class="ms-auto" style="font-weight:400; text-transform:none; letter-spacing:0; font-size:.72rem;">
+            Fonte: IBGE {{ ibge_dados.fonte_populacao|default:"2023" }}
+          </span>
+        </div>
+
+        <!-- KPIs principais -->
+        <div class="d-flex flex-wrap">
+          {% if ibge_dados.populacao %}
+          <div class="ibge-stat">
+            <div class="ibge-value">
+              {% if ibge_dados.populacao >= 1000000 %}
+                {{ ibge_dados.populacao|floatformat:"-0" |slice:"-6" }}<span style="font-size:.9rem">mi</span>
+              {% elif ibge_dados.populacao >= 1000 %}
+                {% widthratio ibge_dados.populacao 1000 1 %}<span style="font-size:.9rem">mil</span>
+              {% else %}
+                {{ ibge_dados.populacao }}
+              {% endif %}
+            </div>
+            <div class="ibge-label">habitantes</div>
+            <div class="ibge-sub">{{ ibge_dados.fonte_populacao|default:"IBGE 2023" }}</div>
+          </div>
+          {% endif %}
+
+          {% if ibge_dados.pib_per_capita %}
+          <div class="ibge-stat">
+            <div class="ibge-value">R$&nbsp;{{ ibge_dados.pib_per_capita|floatformat:"0" }}</div>
+            <div class="ibge-label">PIB per capita/ano</div>
+            <div class="ibge-sub">Renda est. R$&nbsp;{% widthratio ibge_dados.pib_per_capita|floatformat:"0" 12 1 %}/mês</div>
+          </div>
+          {% endif %}
+
+          {% if ibge_dados.classe_economica %}
+          <div class="ibge-stat">
+            <div class="d-flex justify-content-center">
+              <div class="classe-badge classe-{{ ibge_dados.classe_economica }}">{{ ibge_dados.classe_economica }}</div>
+            </div>
+            <div class="ibge-label">Segmento econômico<br>predominante</div>
+            <div class="ibge-sub">
+              {% if ibge_dados.classe_economica == 'A' %}Alta renda
+              {% elif ibge_dados.classe_economica == 'B' %}Média-alta
+              {% elif ibge_dados.classe_economica == 'C' %}Classe média
+              {% elif ibge_dados.classe_economica == 'D' %}Baixa renda
+              {% else %}Vulnerável{% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          {% if ibge_dados.pib_per_capita %}
+          <div class="ibge-stat">
+            <div class="ibge-value" style="font-size:1.1rem;">
+              {% if ibge_dados.pib_per_capita >= 80000 %}Alta
+              {% elif ibge_dados.pib_per_capita >= 40000 %}Média-Alta
+              {% elif ibge_dados.pib_per_capita >= 20000 %}Média
+              {% elif ibge_dados.pib_per_capita >= 10000 %}Baixa-Média
+              {% else %}Baixa{% endif %}
+            </div>
+            <div class="ibge-label">Poder de compra<br>do município</div>
+            <div class="ibge-sub">vs. média BR</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Barras de distribuição de renda estimada (baseado na classe econômica) -->
+        {% if ibge_dados.classe_economica %}
+        <div class="renda-bar-wrap">
+          <div style="font-size:.75rem; font-weight:700; color:var(--bs-secondary-color); text-transform:uppercase; letter-spacing:.8px; margin-bottom:10px;">
+            Estimativa de distribuição de renda — {{ ibge_dados.nome_municipio }}
+          </div>
+          {% with c=ibge_dados.classe_economica %}
+          <!-- Até 1 SM -->
+          <div class="renda-bar-label"><span>Até 1 salário mínimo (≤ R$ 1.412)</span>
+            <span>{% if c == 'E' %}45%{% elif c == 'D' %}38%{% elif c == 'C' %}28%{% elif c == 'B' %}14%{% else %}6%{% endif %}</span></div>
+          <div class="renda-bar-track"><div class="renda-bar-fill" style="width:{% if c == 'E' %}45{% elif c == 'D' %}38{% elif c == 'C' %}28{% elif c == 'B' %}14{% else %}6{% endif %}%; background:#ef4444;"></div></div>
+          <!-- 1–3 SM -->
+          <div class="renda-bar-label"><span>1 a 3 salários mínimos (R$ 1.412–4.236)</span>
+            <span>{% if c == 'E' %}35%{% elif c == 'D' %}40%{% elif c == 'C' %}38%{% elif c == 'B' %}28%{% else %}14%{% endif %}</span></div>
+          <div class="renda-bar-track"><div class="renda-bar-fill" style="width:{% if c == 'E' %}35{% elif c == 'D' %}40{% elif c == 'C' %}38{% elif c == 'B' %}28{% else %}14{% endif %}%; background:#f59e0b;"></div></div>
+          <!-- 3–10 SM -->
+          <div class="renda-bar-label"><span>3 a 10 salários mínimos (R$ 4.236–14.120)</span>
+            <span>{% if c == 'E' %}15%{% elif c == 'D' %}18%{% elif c == 'C' %}28%{% elif c == 'B' %}38%{% else %}30%{% endif %}</span></div>
+          <div class="renda-bar-track"><div class="renda-bar-fill" style="width:{% if c == 'E' %}15{% elif c == 'D' %}18{% elif c == 'C' %}28{% elif c == 'B' %}38{% else %}30{% endif %}%; background:#3b82f6;"></div></div>
+          <!-- +10 SM -->
+          <div class="renda-bar-label"><span>Acima de 10 salários mínimos (R$ 14.120+)</span>
+            <span>{% if c == 'E' %}5%{% elif c == 'D' %}4%{% elif c == 'C' %}6%{% elif c == 'B' %}20%{% else %}50%{% endif %}</span></div>
+          <div class="renda-bar-track" style="margin-bottom:0;"><div class="renda-bar-fill" style="width:{% if c == 'E' %}5{% elif c == 'D' %}4{% elif c == 'C' %}6{% elif c == 'B' %}20{% else %}50{% endif %}%; background:#10b981;"></div></div>
+          {% endwith %}
+          <div style="font-size:.68rem; color:var(--bs-secondary-color); margin-top:8px;">
+            ⚠ Estimativa baseada no PIB per capita municipal (IBGE) + dados da FGV Social. Não substitui dados censitários por bairro.
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Interpretação estratégica -->
+        <div class="ibge-insight-box">
+          {% with c=ibge_dados.classe_economica pop=ibge_dados.populacao pib=ibge_dados.pib_per_capita %}
+          <strong>📊 Interpretação para o seu negócio:</strong>
+          {% if c == 'A' or c == 'B' %}
+            Seu supermercado opera em uma região de <strong>alta renda</strong>. Os consumidores têm maior elasticidade de gasto e menor sensibilidade a preço — favorece estratégias de <strong>premium, marcas próprias de qualidade e conveniência</strong>. Itens de alto valor agregado tendem a ter melhor desempenho.
+          {% elif c == 'C' %}
+            Região de <strong>classe média</strong> com equilíbrio entre preço e qualidade. Os consumidores são sensíveis a promoções mas buscam marcas conhecidas. Estratégias de <strong>mix equilibrado, ofertas semanais e produtos de marca popular</strong> têm maior adesão.
+          {% else %}
+            Mercado de <strong>alta sensibilidade a preço</strong>. Volume e giro são as métricas mais críticas. Estratégias de <strong>preço competitivo em KVIs, embalagens econômicas e promoções agressivas</strong> geram mais impacto que premiumização.
+          {% endif %}
+          {% if pop %}
+            Com <strong>{{ pop|floatformat:"0" }} habitantes</strong>, o mercado endereçável da região representa um potencial relevante para expansão de mix.
+          {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Resumo Executivo -->
+      {% if analise.resumo_executivo %}
+      <div class="resumo-card">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <span style="font-size:1.1rem">🎯</span>
+          <span class="fw-bold text-primary" style="font-size:.78rem; text-transform:uppercase; letter-spacing:1px;">Resumo Executivo</span>
+        </div>
+        <p class="lead mb-0">{{ analise.resumo_executivo }}</p>
+      </div>
+      {% endif %}
+
+      <!-- Insights -->
+      {% if analise.insights %}
+
+        <!-- ALTA PRIORIDADE -->
+        {% with tem_alta=False %}{% for i in analise.insights %}{% if i.prioridade == 'alta' %}{% with tem_alta=True %}{% endwith %}{% endif %}{% endfor %}{% endwith %}
+        <div class="prio-section">
+          <div class="prio-label prio-alta"><span>🔴 Ação Imediata</span></div>
+          {% for insight in analise.insights %}
+            {% if insight.prioridade == 'alta' %}
+            <div class="insight-card cat-{{ insight.categoria }} mb-3">
+              <div class="insight-body">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                  <span class="cat-badge badge-{{ insight.categoria }}">{{ insight.categoria }}</span>
+                  <span class="impact-pill {% if insight.correlacao >= 0 %}impact-alto-pos{% else %}impact-alto-neg{% endif %}">
+                    {% if insight.correlacao >= 0 %}↑ Aumenta{% else %}↓ Reduz{% endif %} vendas
+                  </span>
+                </div>
+                <div class="insight-title">{{ insight.titulo }}</div>
+                <p class="insight-desc mb-0">{{ insight.descricao }}</p>
+              </div>
+              <div class="insight-acao-bar">
+                <i class="fas fa-bolt acao-icon"></i>
+                <span>{{ insight.acao }}</span>
+              </div>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        <!-- MÉDIA PRIORIDADE -->
+        <div class="prio-section">
+          <div class="prio-label prio-media"><span>🟡 Oportunidades de Melhoria</span></div>
+          <div class="row g-3">
+            {% for insight in analise.insights %}
+              {% if insight.prioridade == 'media' %}
+              <div class="col-md-6">
+                <div class="insight-card cat-{{ insight.categoria }} h-100">
+                  <div class="insight-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                      <span class="cat-badge badge-{{ insight.categoria }}">{{ insight.categoria }}</span>
+                      <span class="impact-pill {% if insight.correlacao >= 0 %}impact-medio-pos{% else %}impact-medio-neg{% endif %}">
+                        {% if insight.correlacao >= 0 %}↑{% else %}↓{% endif %} Impacto médio
+                      </span>
+                    </div>
+                    <div class="insight-title">{{ insight.titulo }}</div>
+                    <p class="insight-desc mb-0">{{ insight.descricao }}</p>
+                  </div>
+                  <div class="insight-acao-bar">
+                    <i class="fas fa-lightbulb acao-icon"></i>
+                    <span>{{ insight.acao }}</span>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- BAIXA PRIORIDADE -->
+        <div class="prio-section">
+          <div class="prio-label prio-baixa"><span>⚪ Monitorar</span></div>
+          <div class="row g-3">
+            {% for insight in analise.insights %}
+              {% if insight.prioridade == 'baixa' %}
+              <div class="col-md-6 col-xl-4">
+                <div class="insight-card cat-{{ insight.categoria }} h-100">
+                  <div class="insight-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                      <span class="cat-badge badge-{{ insight.categoria }}">{{ insight.categoria }}</span>
+                      <span class="impact-pill impact-baixo">
+                        {% if insight.correlacao >= 0 %}↑{% else %}↓{% endif %} Impacto baixo
+                      </span>
+                    </div>
+                    <div class="insight-title">{{ insight.titulo }}</div>
+                    <p class="insight-desc mb-0">{{ insight.descricao }}</p>
+                  </div>
+                  <div class="insight-acao-bar">
+                    <i class="fas fa-eye acao-icon"></i>
+                    <span>{{ insight.acao }}</span>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+      {% else %}
+        <div class="empty-state">
+          <div style="font-size:3rem">🔍</div>
+          <h5 class="fw-bold mt-3">Nenhuma correlação significativa encontrada</h5>
+          <p class="text-muted">Adicione mais histórico de vendas ou expanda o período de análise.</p>
+        </div>
+      {% endif %}
+
+      <!-- Detalhes técnicos — colapsável, para quem quiser ver -->
+      {% if analise.correlacoes %}
+      <div class="mt-2">
+        <button class="tech-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#techDetails">
+          <i class="fas fa-chevron-right" id="techChevron"></i>
+          Ver dados técnicos
+        </button>
+        <div class="collapse mt-3" id="techDetails">
+          <div style="border:1px solid var(--bs-border-color); border-radius:12px; overflow:hidden;">
+            <div style="background:var(--bs-body-tertiary); padding:10px 16px; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--bs-secondary-color);">
+              Correlações estatísticas (Pearson p&lt;0.05)
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm mb-0 tech-table">
+                <thead>
+                  <tr>
+                    <th class="ps-3 py-2">Variável</th>
+                    <th>Correlação (r)</th>
+                    <th>p-valor</th>
+                    <th>Observações</th>
+                    <th>Força</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for c in analise.correlacoes %}
+                  <tr>
+                    <td class="ps-3 fw-semibold">{{ c.variavel }}</td>
+                    <td>
+                      <span style="font-weight:700; color:{% if c.correlacao >= 0 %}#10b981{% else %}#ef4444{% endif %}">
+                        {{ c.correlacao|floatformat:3 }}
+                      </span>
+                    </td>
+                    <td class="text-muted">{{ c.p_value|floatformat:4 }}</td>
+                    <td class="text-muted">{{ c.n_observacoes }}</td>
+                    <td>
+                      <span class="badge bg-{% if c.forca == 'muito_forte' %}danger{% elif c.forca == 'forte' %}warning text-dark{% elif c.forca == 'moderada' %}info text-dark{% else %}secondary{% endif %}">
+                        {{ c.forca }}
+                      </span>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    {% endif %}
+
+  {% else %}
+    <!-- Estado inicial -->
+    <div class="empty-state">
+      <div style="font-size:3.5rem">🧠</div>
+      <h5 class="fw-bold mt-3 mb-2">Descubra o que move suas vendas</h5>
+      <p class="text-muted mb-4" style="max-width:480px; margin:0 auto 1.5rem;">
+        O Axiom vai cruzar seus dados com clima, calendário e indicadores econômicos
+        do seu município — e traduzir tudo em ações para o seu time comercial.
+      </p>
+      <form method="post" action="{% url 'rodar_analise_correlacoes' projeto.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary btn-lg px-5" onclick="iniciarLoader()">
+          Rodar Análise Agora
+        </button>
+      </form>
+      <div class="d-flex flex-wrap justify-content-center gap-3 mt-4" style="font-size:.8rem; color:var(--bs-secondary-color)">
+        <span>🌤 Clima INMET automático</span>
+        <span>📅 Feriados e sazonalidade</span>
+        <span>🏙 Indicadores IBGE</span>
+        <span>📊 Significância estatística garantida</span>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+  <div class="loader-card">
+    <h5>Analisando seus dados</h5>
+    <p>Pode levar até 20 segundos na primeira vez.</p>
+    <ul class="loader-steps" id="loaderSteps">
+      <li id="step0"><span class="step-dot"></span>Buscando histórico de vendas</li>
+      <li id="step1"><span class="step-dot"></span>Enriquecendo com calendário</li>
+      <li id="step2"><span class="step-dot"></span>Consultando estação INMET</li>
+      <li id="step3"><span class="step-dot"></span>Buscando dados IBGE</li>
+      <li id="step4"><span class="step-dot"></span>Calculando features</li>
+      <li id="step5"><span class="step-dot"></span>Calculando correlações</li>
+      <li id="step6"><span class="step-dot"></span>Gerando insights</li>
+    </ul>
+    <div class="progress mt-4" style="height:4px; border-radius:4px; background:#e5e7eb;">
+      <div id="loaderBar" class="progress-bar" style="width:0%; background:#3b82f6; transition:width .5s;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let _corrWatchdog = null;
+
+function resetLoader() {
+  if (_corrWatchdog) { clearTimeout(_corrWatchdog); _corrWatchdog = null; }
+  document.getElementById('loadingOverlay').classList.remove('active');
+  const btn = document.getElementById('btnRodar');
+  if (btn) btn.disabled = false;
+  const txt = document.getElementById('btnTexto');
+  if (txt) txt.textContent = '{% if analise %}Atualizar Análise{% else %}Rodar Análise{% endif %}';
+  const sp = document.getElementById('btnSpinner');
+  if (sp) sp.classList.add('d-none');
+}
+
+function iniciarLoader() {
+  document.getElementById('loadingOverlay').classList.add('active');
+  document.getElementById('btnRodar').disabled = true;
+  document.getElementById('btnTexto').textContent = 'Analisando...';
+  document.getElementById('btnSpinner').classList.remove('d-none');
+  const steps = document.querySelectorAll('#loaderSteps li');
+  const bar = document.getElementById('loaderBar');
+  const dur = [400, 800, 2000, 2500, 600, 800, 600];
+  let idx = 0;
+  function av() {
+    if (idx > 0) steps[idx-1].classList.replace('active','done');
+    if (idx < steps.length) {
+      steps[idx].classList.add('active');
+      bar.style.width = Math.round(((idx+1)/steps.length)*100)+'%';
+      idx++;
+      setTimeout(av, dur[idx-1] || 800);
+    }
+  }
+  av();
+
+  // Watchdog: 90s — mostra aviso se servidor não responder
+  _corrWatchdog = setTimeout(function() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (!overlay || !overlay.classList.contains('active')) return;
+    const card = overlay.querySelector('.loader-card');
+    if (card) {
+      card.innerHTML = `
+        <h5 style="font-weight:700;margin-bottom:8px;color:#f59e0b;">⚠️ Aguardando resposta do servidor</h5>
+        <p style="font-size:.85rem;color:#6b7280;margin-bottom:16px;">
+          O enriquecimento está levando mais de 90 segundos.<br>
+          APIs externas (INMET/IBGE) podem estar lentas. O processo continua em segundo plano.
+        </p>
+        <button onclick="location.reload()" class="btn btn-sm btn-outline-secondary">
+          Recarregar página
+        </button>`;
+    }
+  }, 90000);
+}
+
+// Chevron animado no botão de detalhes técnicos
+document.addEventListener('DOMContentLoaded', function() {
+  const el = document.getElementById('techDetails');
+  if (el) {
+    el.addEventListener('show.bs.collapse', function() {
+      document.getElementById('techChevron').style.transform = 'rotate(90deg)';
+    });
+    el.addEventListener('hide.bs.collapse', function() {
+      document.getElementById('techChevron').style.transform = 'rotate(0deg)';
+    });
+  }
+});
+
+// Limpa o loader tanto em bfcache quanto em carregamento normal
+window.addEventListener('pageshow', resetLoader);
+window.addEventListener('load', resetLoader);
+</script>
+{% endblock %}

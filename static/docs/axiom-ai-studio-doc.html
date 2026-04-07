@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axiom AI Studio - Documentação Oficial dos Módulos</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --axiom-primary: #0d6efd;
+            --axiom-dark: #0f172a;
+            --axiom-light: #f8fafc;
+            --text-main: #334155;
+            --radar-color: #06b6d4;
+            --rep-color: #f59e0b;
+            --corr-color: #8b5cf6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            background-color: #f1f5f9;
+            line-height: 1.6;
+        }
+
+        .doc-container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: #ffffff;
+            padding: 60px 80px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border-radius: 8px;
+        }
+
+        .doc-header {
+            border-bottom: 2px solid var(--axiom-primary);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .doc-title {
+            color: var(--axiom-dark);
+            font-weight: 700;
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .doc-subtitle {
+            color: #64748b;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .formula-box {
+            background-color: var(--axiom-light);
+            border-left: 4px solid var(--axiom-primary);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 15px;
+            color: var(--axiom-dark);
+        }
+
+        .formula-box.radar {
+            border-left-color: var(--radar-color);
+        }
+
+        .formula-box.reputacao {
+            border-left-color: var(--rep-color);
+        }
+
+        .formula-box.correlacao {
+            border-left-color: var(--corr-color);
+        }
+
+        .formula-title {
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .executive-summary {
+            padding: 25px;
+            border-radius: 8px;
+            margin-top: 40px;
+        }
+
+        .executive-summary.radar {
+            background-color: #ecfeff;
+            border: 1px solid #a5f3fc;
+        }
+
+        .executive-summary.reputacao {
+            background-color: #fffbeb;
+            border: 1px solid #fde68a;
+        }
+
+        .executive-summary.correlacao {
+            background-color: #f5f3ff;
+            border: 1px solid #ddd6fe;
+        }
+
+        h2 {
+            color: var(--axiom-dark);
+            font-weight: 700;
+            margin-top: 50px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 22px;
+        }
+
+        h2.radar   { background: #ecfeff; color: #0e7490; border-left: 5px solid var(--radar-color); }
+        h2.rep     { background: #fffbeb; color: #92400e; border-left: 5px solid var(--rep-color); }
+        h2.corr    { background: #f5f3ff; color: #5b21b6; border-left: 5px solid var(--corr-color); }
+
+        h3 {
+            color: var(--axiom-dark);
+            font-weight: 700;
+            margin-top: 35px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .weight-badge {
+            background-color: var(--axiom-dark);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+
+        .weight-badge.radar  { background-color: #0e7490; }
+        .weight-badge.rep    { background-color: #b45309; }
+        .weight-badge.corr   { background-color: #6d28d9; }
+
+        .module-divider {
+            border: none;
+            border-top: 3px dashed #e2e8f0;
+            margin: 60px 0;
+        }
+
+        .level-table td, .level-table th {
+            padding: 8px 14px;
+            font-size: 14px;
+        }
+
+        .toc-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px 30px;
+            margin-bottom: 40px;
+        }
+
+        .toc-box a {
+            color: var(--axiom-primary);
+            text-decoration: none;
+        }
+
+        .toc-box a:hover { text-decoration: underline; }
+
+        @media print {
+            body { background-color: #ffffff; }
+            .doc-container {
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                max-width: 100%;
+            }
+            .formula-box {
+                background-color: #f8f9fa !important;
+                -webkit-print-color-adjust: exact;
+            }
+            .executive-summary {
+                background-color: #f8f9fa !important;
+                border: 1px solid #dee2e6 !important;
+                -webkit-print-color-adjust: exact;
+            }
+            h2, .weight-badge { -webkit-print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="doc-container">
+
+    <!-- Cabeçalho -->
+    <header class="doc-header">
+        <div>
+            <div class="doc-subtitle">Scientific Intelligence Engine</div>
+            <h1 class="doc-title">Axiom AI Studio — Módulos de Inteligência</h1>
+        </div>
+        <div class="text-end">
+            <i class="fas fa-brain" style="font-size: 40px; color: var(--axiom-primary);"></i>
+            <div class="mt-2 text-muted" style="font-size: 12px;">Ref: AX-DOC-2026-AI</div>
+        </div>
+    </header>
+
+    <!-- Índice -->
+    <div class="toc-box">
+        <strong style="font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #64748b;">Índice de Módulos</strong>
+        <ul class="mt-2 mb-0" style="list-style: none; padding: 0;">
+            <li><a href="#trend-radar"><i class="fas fa-satellite me-2" style="color: var(--radar-color);"></i>Módulo 1 — Axiom Trend Radar</a></li>
+            <li class="mt-1"><a href="#reputacao"><i class="fas fa-star me-2" style="color: var(--rep-color);"></i>Módulo 2 — Axiom Reputação</a></li>
+            <li class="mt-1"><a href="#correlacoes"><i class="fas fa-project-diagram me-2" style="color: var(--corr-color);"></i>Módulo 3 — Correlações & Insights</a></li>
+        </ul>
+    </div>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- MÓDULO 1: TREND RADAR                  -->
+    <!-- ══════════════════════════════════════ -->
+
+    <section id="trend-radar">
+        <h2 class="radar"><i class="fas fa-satellite me-2"></i>Módulo 1 — Axiom Trend Radar</h2>
+
+        <p>O <strong>Axiom Trend Radar</strong> é um motor de detecção preemptiva de demanda. Ele monitora continuamente fontes externas de dados para identificar <em>aceleração</em> de interesse em palavras-chave do portfólio da empresa — antes que o impacto chegue no ponto de venda.</p>
+
+        <p>O princípio central é medir a <strong>taxa de variação das menções</strong>, não o volume absoluto. Um produto pode ter 10.000 menções hoje, mas se ontem tinha 10.000 também, não há sinal relevante. O sinal real é quando o volume dobra em 72 horas.</p>
+
+        <h3>1.1 Fontes de Dados e Pesos</h3>
+        <p>O radar combina quatro fontes com pesos distintos. Fontes mais confiáveis (dados estruturados de pesquisa) recebem maior peso.</p>
+
+        <div class="formula-box radar">
+            <span class="formula-title">Composição do Score de Aceleração</span>
+            <strong>Score Composto</strong> = (Google Trends × 0.50) + (NewsAPI × 0.25) + (RSS Varejo × 0.15) + (Reddit × 0.10)
+        </div>
+
+        <table class="table level-table mt-3">
+            <thead class="table-light">
+                <tr><th>Fonte</th><th>Peso</th><th>O que mede</th><th>Custo</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Google Trends (SerpAPI)</strong></td><td>50%</td><td>Interesse de busca ativo — intenção de compra direta</td><td>250 buscas/mês grátis</td></tr>
+                <tr><td><strong>NewsAPI</strong></td><td>25%</td><td>Cobertura jornalística — sinais de mídia e crises</td><td>Chave própria necessária</td></tr>
+                <tr><td><strong>RSS Varejo BR</strong></td><td>15%</td><td>Notícias setoriais (ABRAS, SuperHiper, G1, Valor)</td><td>Gratuito</td></tr>
+                <tr><td><strong>Reddit</strong></td><td>10%</td><td>Buzz orgânico de consumidores</td><td>Credenciais gratuitas</td></tr>
+            </tbody>
+        </table>
+
+        <h3>1.2 Cálculo de Aceleração por Fonte</h3>
+        <p>Para cada fonte, a série temporal de menções dos últimos 7 dias é dividida ao meio. A primeira metade representa o <em>baseline</em> e a segunda representa o período <em>recente</em>.</p>
+
+        <div class="formula-box radar">
+            <span class="formula-title">Fórmula de Aceleração (por fonte)</span>
+            <strong>Aceleração (%)</strong> = [ (Menções Recentes − Menções Baseline) ÷ max(Menções Baseline, 1) ] × 100
+        </div>
+
+        <div class="formula-box radar">
+            <span class="formula-title">Aceleração Composta Final</span>
+            <strong>Aceleração Final</strong> = Σ (Aceleração_fonte × Peso_fonte) para todas as fontes ativas
+        </div>
+
+        <h3>1.3 Classificação de Ondas (Níveis de Alerta) <span class="weight-badge radar">4 Níveis</span></h3>
+        <p>A aceleração composta é mapeada em quatro níveis de onda, com janelas de oportunidade distintas. Sinais negativos (recall, crise, boicote) sobem automaticamente um nível por urgência.</p>
+
+        <table class="table level-table">
+            <thead class="table-light">
+                <tr><th>Nível</th><th>Aceleração</th><th>Janela de Ação</th><th>Sinal Negativo</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>🟢 <strong>Baixo</strong></td><td>&lt; 50%</td><td>30–60 dias</td><td>Escalona para Moderado</td></tr>
+                <tr><td>🟡 <strong>Moderado</strong></td><td>50% – 100%</td><td>21–35 dias</td><td>Escalona para Alto</td></tr>
+                <tr><td>🟠 <strong>Alto</strong></td><td>100% – 200%</td><td>14–21 dias</td><td>Escalona para Viral</td></tr>
+                <tr><td>🔴 <strong>Viral</strong></td><td>&gt; 200%</td><td>7–14 dias</td><td>Nível máximo</td></tr>
+            </tbody>
+        </table>
+
+        <h3>1.4 Análise de Sentimento e Recomendação Prescritiva</h3>
+        <p>Após classificar o nível, o sistema analisa o <em>sentimento</em> dos títulos coletados (palavras-chave PT-BR ponderadas) e conecta o sinal aos <strong>SKUs reais</strong> do catálogo da empresa via similaridade de tokens.</p>
+        <p>A recomendação é gerada automaticamente considerando a elasticidade de preço do SKU. Se a elasticidade for inelástica (acima de -0.3), o sistema não sugere redução de preço — protegendo a margem.</p>
+
+        <div class="formula-box radar">
+            <span class="formula-title">Regra de Elasticidade na Recomendação</span>
+            SE elasticidade &gt; -0.3 (inelástico): NÃO sugerir redução de preço<br>
+            SE sinal POSITIVO + VIRAL: sugerir aumento de preço + reforço de estoque<br>
+            SE sinal NEGATIVO: sugerir manutenção de preço + redução conservadora de estoque
+        </div>
+
+        <div class="executive-summary radar">
+            <h4 class="fw-bold" style="color: #0e7490;"><i class="fas fa-comment-dots me-2"></i>Executive Pitch</h4>
+            <p class="mb-0">"O Trend Radar funciona como um sonar de mercado. Enquanto seus concorrentes reagem ao sell-out, o Axiom já detectou a onda antes de ela chegar na gôndola. <strong>50% do sinal vem da intenção de busca real do consumidor</strong> (Google Trends). Os outros 50% triangulam com mídia, notícias setoriais e redes sociais. Quando o sistema detecta aceleração, ele já entrega a ação: qual SKU ajustar, em que direção e em quantos dias."</p>
+        </div>
+    </section>
+
+    <hr class="module-divider">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- MÓDULO 2: REPUTAÇÃO                    -->
+    <!-- ══════════════════════════════════════ -->
+
+    <section id="reputacao">
+        <h2 class="rep"><i class="fas fa-star me-2"></i>Módulo 2 — Axiom Reputação</h2>
+
+        <p>O <strong>Axiom Reputação</strong> é um módulo de escuta ativa da voz do consumidor. Ele busca, processa e pontua as avaliações do Google de uma empresa usando inteligência artificial, entregando ao CEO um diagnóstico de imagem em menos de 60 segundos.</p>
+
+        <h3>2.1 Pipeline de Análise</h3>
+        <p>O processo opera em três etapas sequenciais, com cooldown de 7 dias entre análises para evitar custos desnecessários com dados que não mudaram.</p>
+
+        <div class="formula-box reputacao">
+            <span class="formula-title">Fluxo de Execução</span>
+            1. Busca no Google Places (até 10 candidatos por nome) →<br>
+            2. CEO seleciona o estabelecimento correto →<br>
+            3. Coleta detalhes + até 5 reviews (limite da Google Places API) →<br>
+            4. Claude Haiku analisa sentimento em lote (1 chamada de API) →<br>
+            5. Score gerado e histórico salvo
+        </div>
+
+        <h3>2.2 Score de Sentimento (0 a 100) <span class="weight-badge rep">2 Sinais</span></h3>
+        <p>O Score de Reputação combina dois sinais: a nota média do Google (dado estruturado, confiável) e a análise de linguagem natural das reviews (dado contextual, rico).</p>
+
+        <div class="formula-box reputacao">
+            <span class="formula-title">Score com Claude Haiku (modo padrão)</span>
+            <strong>Score</strong> = Calculado pelo modelo de IA a partir do conteúdo das reviews<br>
+            → 85–100: Clientes muito satisfeitos, elogios consistentes<br>
+            → 70–84: Maioria satisfeita, pontos de melhoria isolados<br>
+            → 50–69: Opinião dividida, problemas recorrentes<br>
+            → 30–49: Predominantemente negativo, problemas sérios<br>
+            → 0–29: Crise de imagem, rejeição generalizada
+        </div>
+
+        <div class="formula-box reputacao">
+            <span class="formula-title">Score Local — Fallback sem API (modo offline)</span>
+            <strong>Score_rating</strong> = (Nota Google ÷ 5.0) × 100<br>
+            <strong>Score_kw</strong> = (Total keywords positivas ÷ Total keywords detectadas) × 100<br>
+            <strong>Score Final</strong> = (Score_rating × 0.60) + (Score_kw × 0.40)<br>
+            <small>* Ativado automaticamente quando a API Anthropic está indisponível.</small>
+        </div>
+
+        <h3>2.3 Interpretação do Score e Custo</h3>
+
+        <table class="table level-table">
+            <thead class="table-light">
+                <tr><th>Faixa</th><th>Classificação</th><th>Cor</th><th>Ação Sugerida</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>≥ 70</td><td><strong>Positivo</strong></td><td>Verde</td><td>Manter padrão, usar como diferencial comercial</td></tr>
+                <tr><td>45–69</td><td><strong>Neutro</strong></td><td>Amarelo</td><td>Identificar e corrigir pontos críticos</td></tr>
+                <tr><td>&lt; 45</td><td><strong>Negativo</strong></td><td>Vermelho</td><td>Plano de crise imediato, responder reviews</td></tr>
+            </tbody>
+        </table>
+
+        <div class="formula-box reputacao">
+            <span class="formula-title">Custo Estimado por Análise (Claude Haiku)</span>
+            Custo (USD) = (tokens_input × 0.80 + tokens_output × 4.00) ÷ 1.000.000<br>
+            Média por análise: ~1.500 tokens input + ~500 tokens output = <strong>~$0.003/scan</strong>
+        </div>
+
+        <div class="executive-summary reputacao">
+            <h4 class="fw-bold" style="color: #b45309;"><i class="fas fa-comment-dots me-2"></i>Executive Pitch</h4>
+            <p class="mb-0">"A reputação online é o novo ponto de venda. <strong>88% dos consumidores consultam reviews antes de entrar numa loja.</strong> O Axiom Reputação transforma o ruído de avaliações em um único número de 0 a 100 com diagnóstico clínico. O sistema usa o mesmo modelo de IA que move bilhões em decisões corporativas — e entrega o resultado pelo custo de uma fração de centavo por análise."</p>
+        </div>
+    </section>
+
+    <hr class="module-divider">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- MÓDULO 3: CORRELAÇÕES & INSIGHTS       -->
+    <!-- ══════════════════════════════════════ -->
+
+    <section id="correlacoes">
+        <h2 class="corr"><i class="fas fa-project-diagram me-2"></i>Módulo 3 — Correlações & Insights</h2>
+
+        <p>O módulo de <strong>Correlações & Insights</strong> responde à pergunta que todo gerente de categoria já fez: <em>"O que explica a variação das minhas vendas além do preço?"</em> O sistema enriquece os dados transacionais com variáveis externas — clima, sazonalidade e perfil socioeconômico local — e calcula correlações estatísticas reais.</p>
+
+        <h3>3.1 Pipeline de Enriquecimento de Dados</h3>
+        <p>O processo opera em três camadas de enriquecimento antes de executar qualquer cálculo estatístico.</p>
+
+        <div class="formula-box correlacao">
+            <span class="formula-title">Camada 1 — Dados Climáticos (INMET)</span>
+            Localização da empresa → Busca estação INMET mais próxima →<br>
+            Coleta temperatura (min/med/max), precipitação, umidade →<br>
+            Join com histórico de vendas por data
+        </div>
+
+        <div class="formula-box correlacao">
+            <span class="formula-title">Camada 2 — Dados Socioeconômicos (IBGE)</span>
+            CEP/Município da empresa → API IBGE →<br>
+            Classe econômica predominante (A, B, C, D/E) →<br>
+            Enriquece o contexto interpretativo dos insights
+        </div>
+
+        <div class="formula-box correlacao">
+            <span class="formula-title">Camada 3 — Sazonalidade e Calendário</span>
+            Eventos corporativos cadastrados + datas comemorativas →<br>
+            Variáveis binárias (0/1) por data →<br>
+            Join com histórico de vendas
+        </div>
+
+        <h3>3.2 Cálculo Estatístico <span class="weight-badge corr">Pearson r</span></h3>
+        <p>O coeficiente de Pearson mede a força e direção da relação linear entre cada variável externa e o volume de vendas diário. O p-value define se a correlação é estatisticamente significativa (não aleatória).</p>
+
+        <div class="formula-box correlacao">
+            <span class="formula-title">Coeficiente de Pearson</span>
+            <strong>r</strong> = Σ[(Xi − X̄)(Yi − Ȳ)] ÷ √[Σ(Xi − X̄)² × Σ(Yi − Ȳ)²]<br><br>
+            Xi = valor da variável climática/sazonal no dia i<br>
+            Yi = volume de vendas no dia i<br>
+            X̄, Ȳ = médias do período analisado
+        </div>
+
+        <h3>3.3 Interpretação das Correlações</h3>
+
+        <table class="table level-table">
+            <thead class="table-light">
+                <tr><th>Força (|r|)</th><th>Classificação</th><th>Interpretação</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>0.7 – 1.0</td><td><strong>Forte</strong></td><td>Relação causal provável — incluir no modelo de previsão</td></tr>
+                <tr><td>0.4 – 0.7</td><td><strong>Moderada</strong></td><td>Relação relevante — monitorar e usar em precificação sazonal</td></tr>
+                <tr><td>0.2 – 0.4</td><td><strong>Fraca</strong></td><td>Sinal presente mas inconclusivo — coletar mais dados</td></tr>
+                <tr><td>0.0 – 0.2</td><td><strong>Inexistente</strong></td><td>Variável não influencia as vendas</td></tr>
+            </tbody>
+        </table>
+
+        <div class="formula-box correlacao">
+            <span class="formula-title">Critério de Significância Estatística</span>
+            p-value &lt; 0.05 → Correlação estatisticamente significativa (95% de confiança)<br>
+            p-value ≥ 0.05 → Correlação pode ser ruído aleatório → ignorar<br><br>
+            <strong>Regra do motor:</strong> apenas correlações com |r| ≥ 0.2 E p &lt; 0.05 geram insights
+        </div>
+
+        <h3>3.4 Geração de Insights Prescritivos</h3>
+        <p>O motor converte cada correlação significativa em um insight de negócio com prioridade e ação concreta. A prioridade é definida pela combinação da força da correlação e do impacto potencial na receita.</p>
+
+        <div class="formula-box correlacao">
+            <span class="formula-title">Hierarquia de Prioridade dos Insights</span>
+            <strong>Alta:</strong>   |r| ≥ 0.7 e p &lt; 0.01 → Ação imediata (precificação, estoque)<br>
+            <strong>Média:</strong>  |r| ≥ 0.4 e p &lt; 0.05 → Ação planejada (campanha sazonal)<br>
+            <strong>Baixa:</strong>  |r| ≥ 0.2 e p &lt; 0.05 → Monitoramento contínuo
+        </div>
+
+        <div class="executive-summary correlacao">
+            <h4 class="fw-bold" style="color: #5b21b6;"><i class="fas fa-comment-dots me-2"></i>Executive Pitch</h4>
+            <p class="mb-0">"A maioria dos varejistas sabe que vende mais sorvete no verão. O Axiom vai além: ele quantifica exatamente <strong>quanto</strong> cada grau de temperatura aumenta a demanda de cada SKU, no <em>seu</em> ponto de venda, no <em>seu</em> perfil socioeconômico. Essa informação transforma a precificação de uma arte em ciência — permitindo ajustar preços proativamente antes da onda climática ou sazonal chegar, não depois."</p>
+        </div>
+    </section>
+
+    <footer class="mt-5 pt-4 border-top text-center text-muted" style="font-size: 12px;">
+        <p>&copy; 2026 Axiom Platform. Inteligência Científica para Decisões Executivas. Uso Interno e Confidencial.</p>
+    </footer>
+
+</div>
+
+</body>
+</html>

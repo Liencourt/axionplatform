@@ -45,12 +45,14 @@
 
 import math
 import json
-from datetime import timedelta
+import logging
+from datetime import timedelta, date
 from functools import wraps
 
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction, IntegrityError
 from django.db.models import Avg, Max
 
 from accounts.models import Empresa
@@ -58,8 +60,12 @@ from projects.models import (
     ProjetoPrecificacao,
     ResultadoPrecificacao,
     VendaHistoricaDW,
+    FaturamentoEmpresaDW,
+    Loja,
 )
 from projects.views import extrair_dados_agrupados_do_dw, _montar_kpis
+
+logger = logging.getLogger(__name__)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -640,6 +646,457 @@ def api_v1_otimizar_margem(request):
         return JsonResponse({'status': 'erro', 'mensagem': f'Parâmetro inválido: {e}', 'kpis': {}, 'data': []}, status=400)
     except Exception as e:
         return JsonResponse({'status': 'erro', 'mensagem': str(e), 'kpis': {}, 'data': []}, status=500)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MÓDULO DE INGESTÃO — PUSH API v1
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Todos os endpoints abaixo são PUSH (o ERP envia dados para o Axiom).
+# Autenticação idêntica: header X-Axiom-API-Key
+# Regra de ouro: NUNCA processa dados sem validar empresa e loja no mesmo tenant.
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# HELPER: resolve Loja por id ou nome (com segurança tenant)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _resolver_loja(empresa, loja_raw):
+    """
+    Recebe empresa e loja_raw (int = loja_id | str = nome | None = sem filial).
+    Retorna o objeto Loja ou None.
+    Garante que a loja pertence à empresa (anti-IDOR).
+    Raises ValueError se o identificador for fornecido mas não encontrado.
+    """
+    if loja_raw is None:
+        return None
+    try:
+        loja_id = int(loja_raw)
+        return Loja.objects.get(id=loja_id, empresa=empresa)
+    except (ValueError, TypeError):
+        # loja_raw é string — busca por nome
+        try:
+            return Loja.objects.get(nome=str(loja_raw).strip(), empresa=empresa)
+        except Loja.DoesNotExist:
+            raise ValueError(f"Loja '{loja_raw}' não encontrada nesta empresa.")
+    except Loja.DoesNotExist:
+        raise ValueError(f"Loja id={loja_raw} não encontrada nesta empresa.")
+
+
+def _validar_campos(dados, campos):
+    """Retorna lista de campos obrigatórios ausentes ou None."""
+    faltando = [c for c in campos if dados.get(c) is None]
+    return faltando or None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# [4] POST /api/v1/lojas/
+#     Cria ou lista filiais da empresa autenticada.
+# ──────────────────────────────────────────────────────────────────────────────
+
+@csrf_exempt
+@require_api_key
+def api_v1_lojas(request):
+    """
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │  ENDPOINT: GET|POST /api/v1/lojas/                                      │
+    ├─────────────────────────────────────────────────────────────────────────┤
+    │  GET — Lista todas as filiais cadastradas da empresa.                   │
+    │                                                                          │
+    │  POST — Cria uma nova filial.                                            │
+    │  BODY (JSON):                                                            │
+    │  { "nome": "Filial SP-Centro" }                                          │
+    │                                                                          │
+    │  RESPOSTA POST — campo "data":                                           │
+    │  { "id": 3, "nome": "Filial SP-Centro", "ativo": true }                 │
+    └─────────────────────────────────────────────────────────────────────────┘
+    """
+    empresa = request.empresa
+
+    if request.method == 'GET':
+        lojas = Loja.objects.filter(empresa=empresa, ativo=True).values('id', 'nome', 'ativo')
+        return JsonResponse({'status': 'sucesso', 'mensagem': f'{len(list(lojas))} filial(ais).', 'kpis': {}, 'data': list(lojas)})
+
+    if request.method == 'POST':
+        try:
+            dados = json.loads(request.body)
+            nome = str(dados.get('nome', '')).strip()
+            if not nome:
+                return JsonResponse({'status': 'erro', 'mensagem': 'Campo "nome" é obrigatório.', 'kpis': {}, 'data': []}, status=400)
+
+            loja, criada = Loja.objects.get_or_create(empresa=empresa, nome=nome, defaults={'ativo': True})
+            return JsonResponse({
+                'status': 'sucesso',
+                'mensagem': 'Filial criada.' if criada else 'Filial já existia.',
+                'kpis': {},
+                'data': [{'id': loja.id, 'nome': loja.nome, 'ativo': loja.ativo}]
+            }, status=201 if criada else 200)
+
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'erro', 'mensagem': 'Body inválido — envie JSON válido.', 'kpis': {}, 'data': []}, status=400)
+        except Exception as e:
+            logger.error(f"[API] api_v1_lojas POST: {e}")
+            return JsonResponse({'status': 'erro', 'mensagem': str(e), 'kpis': {}, 'data': []}, status=500)
+
+    return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.', 'kpis': {}, 'data': []}, status=405)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# [5] POST /api/v1/projetos/
+#     Cria um projeto de precificação ou lista os existentes.
+# ──────────────────────────────────────────────────────────────────────────────
+
+@csrf_exempt
+@require_api_key
+def api_v1_projetos(request):
+    """
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │  ENDPOINT: GET|POST /api/v1/projetos/                                   │
+    ├─────────────────────────────────────────────────────────────────────────┤
+    │  GET — Lista projetos da empresa com id, nome, loja e data.             │
+    │  Parâmetros de query: ?loja_id=3                                         │
+    │                                                                          │
+    │  POST — Cria um novo projeto.                                            │
+    │  BODY (JSON) — campos OBRIGATÓRIOS:                                      │
+    │  { "nome": "Pricing Q4 2025" }                                           │
+    │                                                                          │
+    │  BODY (JSON) — campos OPCIONAIS:                                         │
+    │  {                                                                       │
+    │    "loja_id":  3,          // int — ID da filial (ver GET /api/v1/lojas/)│
+    │    "loja_nome": "Centro",  // str — alternativa ao loja_id              │
+    │    "configuracao_variaveis": {}  // Mapeamento de colunas (avançado)    │
+    │  }                                                                       │
+    │                                                                          │
+    │  RESPOSTA POST — campo "data":                                           │
+    │  { "projeto_id": 12, "nome": "Pricing Q4 2025", "loja": "Centro" }      │
+    └─────────────────────────────────────────────────────────────────────────┘
+    """
+    empresa = request.empresa
+
+    if request.method == 'GET':
+        qs = ProjetoPrecificacao.objects.filter(empresa=empresa).select_related('loja')
+        loja_id = request.GET.get('loja_id')
+        if loja_id:
+            qs = qs.filter(loja_id=loja_id)
+        data = [
+            {'projeto_id': p.id, 'nome': p.nome, 'loja': p.loja.nome if p.loja else None, 'criado_em': p.criado_em.strftime('%Y-%m-%d')}
+            for p in qs.order_by('-criado_em')
+        ]
+        return JsonResponse({'status': 'sucesso', 'mensagem': f'{len(data)} projeto(s).', 'kpis': {}, 'data': data})
+
+    if request.method == 'POST':
+        try:
+            dados = json.loads(request.body)
+            nome = str(dados.get('nome', '')).strip()
+            if not nome:
+                return JsonResponse({'status': 'erro', 'mensagem': 'Campo "nome" é obrigatório.', 'kpis': {}, 'data': []}, status=400)
+
+            loja_raw = dados.get('loja_id') or dados.get('loja_nome')
+            try:
+                loja = _resolver_loja(empresa, loja_raw)
+            except ValueError as e:
+                return JsonResponse({'status': 'erro', 'mensagem': str(e), 'kpis': {}, 'data': []}, status=400)
+
+            config = dados.get('configuracao_variaveis', {})
+            projeto = ProjetoPrecificacao.objects.create(
+                empresa=empresa,
+                loja=loja,
+                nome=nome,
+                configuracao_variaveis=config if isinstance(config, dict) else {}
+            )
+
+            return JsonResponse({
+                'status': 'sucesso',
+                'mensagem': f'Projeto "{nome}" criado com sucesso.',
+                'kpis': {},
+                'data': [{'projeto_id': projeto.id, 'nome': projeto.nome, 'loja': projeto.loja.nome if projeto.loja else None}]
+            }, status=201)
+
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'erro', 'mensagem': 'Body inválido — envie JSON válido.', 'kpis': {}, 'data': []}, status=400)
+        except Exception as e:
+            logger.error(f"[API] api_v1_projetos POST: {e}")
+            return JsonResponse({'status': 'erro', 'mensagem': str(e), 'kpis': {}, 'data': []}, status=500)
+
+    return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.', 'kpis': {}, 'data': []}, status=405)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# [6] POST /api/v1/ingestao/vendas/
+#     Batch de vendas históricas → DW (elasticidade + micro-forecast)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@csrf_exempt
+@require_api_key
+def api_v1_ingestao_vendas(request):
+    """
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │  ENDPOINT: POST /api/v1/ingestao/vendas/                                │
+    ├─────────────────────────────────────────────────────────────────────────┤
+    │  DESCRIÇÃO                                                               │
+    │  Recebe um batch de registros de vendas históricas do ERP e os armazena │
+    │  no Data Warehouse do Axiom. Esses dados alimentam:                      │
+    │    • Motor de Elasticidade-Preço (regressão automática)                  │
+    │    • Axiom Forecast Micro (previsão de demanda por SKU)                  │
+    │                                                                          │
+    │  ⚠ REGRA DE VOLUME: Envie no máximo 5.000 registros por requisição.      │
+    │    Para volumes maiores, pagine em múltiplos POSTs.                      │
+    │                                                                          │
+    │  BODY (JSON):                                                            │
+    │  {                                                                       │
+    │    "projeto_id":  12,        // int, OBRIGATÓRIO                         │
+    │    "loja_id":     3,         // int ou null (filial; null = global)      │
+    │    "loja_nome": "Centro",    // str alternativo ao loja_id               │
+    │    "registros": [            // array, OBRIGATÓRIO, max 5000 itens       │
+    │      {                                                                   │
+    │        "codigo_produto":  "SKU001",   // str, OBRIGATÓRIO               │
+    │        "nome_produto":    "Arroz 5kg",// str, opcional                  │
+    │        "data_venda":      "2025-01-15",// str YYYY-MM-DD, OBRIGATÓRIO   │
+    │        "quantidade":      120,         // number > 0, OBRIGATÓRIO        │
+    │        "preco_praticado": 12.90,       // number > 0, OBRIGATÓRIO        │
+    │        "custo_unitario":  8.20,        // number >= 0, opcional          │
+    │        "variaveis_extras": {}          // objeto JSON livre, opcional    │
+    │      }                                                                   │
+    │    ]                                                                     │
+    │  }                                                                       │
+    │                                                                          │
+    │  COMPORTAMENTO DE DUPLICATAS                                              │
+    │  Registros duplicados (mesma empresa + loja + SKU + data) são           │
+    │  atualizados (upsert). Nunca gera erro por duplicata.                    │
+    │                                                                          │
+    │  RESPOSTA — campo "kpis":                                                │
+    │  {                                                                       │
+    │    "recebidos":   150,   // Total de registros no batch                  │
+    │    "inseridos":   140,   // Novos registros criados                      │
+    │    "atualizados": 10,    // Registros duplicados atualizados             │
+    │    "rejeitados":  0      // Registros com erro de validação              │
+    │  }                                                                       │
+    └─────────────────────────────────────────────────────────────────────────┘
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.', 'kpis': {}, 'data': []}, status=405)
+
+    empresa = request.empresa
+
+    try:
+        dados = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Body inválido — envie JSON válido.', 'kpis': {}, 'data': []}, status=400)
+
+    # ── Validação dos campos raiz ────────────────────────────────────────────
+    projeto_id = dados.get('projeto_id')
+    registros = dados.get('registros')
+
+    if not projeto_id:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Campo "projeto_id" é obrigatório.', 'kpis': {}, 'data': []}, status=400)
+    if not isinstance(registros, list) or len(registros) == 0:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Campo "registros" deve ser uma lista não-vazia.', 'kpis': {}, 'data': []}, status=400)
+    if len(registros) > 5000:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Limite de 5.000 registros por requisição excedido.', 'kpis': {}, 'data': []}, status=400)
+
+    # ── Valida projeto (tenant-safe) ─────────────────────────────────────────
+    try:
+        projeto = ProjetoPrecificacao.objects.get(id=projeto_id, empresa=empresa)
+    except ProjetoPrecificacao.DoesNotExist:
+        return JsonResponse({'status': 'erro', 'mensagem': 'projeto_id não encontrado nesta empresa.', 'kpis': {}, 'data': []}, status=404)
+
+    # ── Resolve loja (tenant-safe) ───────────────────────────────────────────
+    loja_raw = dados.get('loja_id') or dados.get('loja_nome')
+    try:
+        loja = _resolver_loja(empresa, loja_raw)
+    except ValueError as e:
+        return JsonResponse({'status': 'erro', 'mensagem': str(e), 'kpis': {}, 'data': []}, status=400)
+
+    # ── Processa registros ───────────────────────────────────────────────────
+    inseridos = atualizados = rejeitados = 0
+    erros = []
+
+    CAMPOS_OBR = ['codigo_produto', 'data_venda', 'quantidade', 'preco_praticado']
+
+    for i, reg in enumerate(registros):
+        # Valida campos obrigatórios
+        faltando = [c for c in CAMPOS_OBR if reg.get(c) is None]
+        if faltando:
+            rejeitados += 1
+            erros.append({'linha': i, 'erro': f'Campos ausentes: {faltando}'})
+            continue
+
+        # Valida e converte tipos
+        try:
+            data_venda = date.fromisoformat(str(reg['data_venda']))
+            quantidade = float(reg['quantidade'])
+            preco = float(reg['preco_praticado'])
+            custo = float(reg['custo_unitario']) if reg.get('custo_unitario') is not None else None
+            if quantidade <= 0 or preco <= 0:
+                raise ValueError('quantidade e preco_praticado devem ser > 0')
+        except (ValueError, TypeError) as e:
+            rejeitados += 1
+            erros.append({'linha': i, 'erro': str(e)})
+            continue
+
+        extras = reg.get('variaveis_extras', {})
+        if not isinstance(extras, dict):
+            extras = {}
+
+        try:
+            obj, criado = VendaHistoricaDW.objects.update_or_create(
+                empresa=empresa,
+                loja=loja,
+                codigo_produto=str(reg['codigo_produto']).strip(),
+                data_venda=data_venda,
+                defaults={
+                    'projeto': projeto,
+                    'nome_produto': str(reg.get('nome_produto', '') or '').strip() or None,
+                    'quantidade': quantidade,
+                    'preco_praticado': preco,
+                    'custo_unitario': custo,
+                    'variaveis_extras': extras,
+                }
+            )
+            if criado:
+                inseridos += 1
+            else:
+                atualizados += 1
+        except Exception as e:
+            rejeitados += 1
+            erros.append({'linha': i, 'erro': str(e)})
+            logger.error(f"[API] ingestao_vendas linha {i}: {e}")
+
+    status_str = 'sucesso' if rejeitados == 0 else ('aviso' if inseridos + atualizados > 0 else 'erro')
+    http_status = 200 if rejeitados == 0 else (207 if inseridos + atualizados > 0 else 400)
+
+    return JsonResponse({
+        'status': status_str,
+        'mensagem': (
+            f'Batch processado: {inseridos} inserido(s), {atualizados} atualizado(s), {rejeitados} rejeitado(s).'
+        ),
+        'kpis': {
+            'recebidos': len(registros),
+            'inseridos': inseridos,
+            'atualizados': atualizados,
+            'rejeitados': rejeitados,
+        },
+        'data': erros[:50],  # Retorna até 50 erros detalhados
+    }, status=http_status)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# [7] POST /api/v1/ingestao/faturamento/
+#     Batch de faturamento macro → DW (Axiom Macro Forecast / Prophet)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@csrf_exempt
+@require_api_key
+def api_v1_ingestao_faturamento(request):
+    """
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │  ENDPOINT: POST /api/v1/ingestao/faturamento/                           │
+    ├─────────────────────────────────────────────────────────────────────────┤
+    │  DESCRIÇÃO                                                               │
+    │  Recebe um batch de faturamento diário total da empresa/filial e        │
+    │  armazena no DW Macro. Alimenta o motor Prophet (Axiom Macro Forecast). │
+    │                                                                          │
+    │  Use este endpoint para enviar o fechamento do caixa do dia.             │
+    │  Diferente de /vendas/ (que registra por SKU), este endpoint recebe      │
+    │  apenas a receita total consolidada por dia/loja.                        │
+    │                                                                          │
+    │  BODY (JSON):                                                            │
+    │  {                                                                       │
+    │    "loja_id":   3,          // int ou null (null = consolidado empresa)  │
+    │    "loja_nome": "Centro",   // str alternativo ao loja_id                │
+    │    "registros": [           // array, OBRIGATÓRIO, max 5000 itens        │
+    │      {                                                                   │
+    │        "data":       "2025-01-15",  // str YYYY-MM-DD, OBRIGATÓRIO      │
+    │        "faturamento": 58420.50     // number >= 0, OBRIGATÓRIO          │
+    │      }                                                                   │
+    │    ]                                                                     │
+    │  }                                                                       │
+    │                                                                          │
+    │  COMPORTAMENTO DE DUPLICATAS                                              │
+    │  Registros duplicados (empresa + loja + data) são atualizados (upsert). │
+    │                                                                          │
+    │  RESPOSTA — campo "kpis":                                                │
+    │  {                                                                       │
+    │    "recebidos":   30,                                                    │
+    │    "inseridos":   25,                                                    │
+    │    "atualizados":  5,                                                    │
+    │    "rejeitados":   0                                                     │
+    │  }                                                                       │
+    └─────────────────────────────────────────────────────────────────────────┘
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.', 'kpis': {}, 'data': []}, status=405)
+
+    empresa = request.empresa
+
+    try:
+        dados = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Body inválido — envie JSON válido.', 'kpis': {}, 'data': []}, status=400)
+
+    registros = dados.get('registros')
+    if not isinstance(registros, list) or len(registros) == 0:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Campo "registros" deve ser uma lista não-vazia.', 'kpis': {}, 'data': []}, status=400)
+    if len(registros) > 5000:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Limite de 5.000 registros por requisição excedido.', 'kpis': {}, 'data': []}, status=400)
+
+    # ── Resolve loja (tenant-safe) ───────────────────────────────────────────
+    loja_raw = dados.get('loja_id') or dados.get('loja_nome')
+    try:
+        loja = _resolver_loja(empresa, loja_raw)
+    except ValueError as e:
+        return JsonResponse({'status': 'erro', 'mensagem': str(e), 'kpis': {}, 'data': []}, status=400)
+
+    inseridos = atualizados = rejeitados = 0
+    erros = []
+
+    for i, reg in enumerate(registros):
+        if reg.get('data') is None or reg.get('faturamento') is None:
+            rejeitados += 1
+            erros.append({'linha': i, 'erro': 'Campos "data" e "faturamento" são obrigatórios.'})
+            continue
+
+        try:
+            data_fat = date.fromisoformat(str(reg['data']))
+            valor = float(reg['faturamento'])
+            if valor < 0:
+                raise ValueError('faturamento não pode ser negativo.')
+        except (ValueError, TypeError) as e:
+            rejeitados += 1
+            erros.append({'linha': i, 'erro': str(e)})
+            continue
+
+        try:
+            obj, criado = FaturamentoEmpresaDW.objects.update_or_create(
+                empresa=empresa,
+                loja=loja,
+                data_faturamento=data_fat,
+                defaults={'faturamento_total': valor}
+            )
+            if criado:
+                inseridos += 1
+            else:
+                atualizados += 1
+        except Exception as e:
+            rejeitados += 1
+            erros.append({'linha': i, 'erro': str(e)})
+            logger.error(f"[API] ingestao_faturamento linha {i}: {e}")
+
+    status_str = 'sucesso' if rejeitados == 0 else ('aviso' if inseridos + atualizados > 0 else 'erro')
+    http_status = 200 if rejeitados == 0 else (207 if inseridos + atualizados > 0 else 400)
+
+    return JsonResponse({
+        'status': status_str,
+        'mensagem': f'Batch processado: {inseridos} inserido(s), {atualizados} atualizado(s), {rejeitados} rejeitado(s).',
+        'kpis': {
+            'recebidos': len(registros),
+            'inseridos': inseridos,
+            'atualizados': atualizados,
+            'rejeitados': rejeitados,
+        },
+        'data': erros[:50],
+    }, status=http_status)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

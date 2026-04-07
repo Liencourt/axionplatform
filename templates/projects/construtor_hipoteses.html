@@ -2,11 +2,65 @@
 {% load static %}
 
 {% block page_content %}
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h2 class="page-title">Construtor de Hipóteses: {{ nome_projeto }}</h2>
-            <p class="text-muted">Mapeie as colunas obrigatórias e opcionais, e arraste as variáveis extras para criar seu modelo de precificação.</p>
+<style>
+    .cursor-move { cursor: grab; }
+    .drop-zone {
+        min-height: 200px;
+        border: 2px dashed var(--bs-border-color);
+        border-radius: 12px;
+        background: var(--bs-body-bg);
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .drop-zone:hover { border-color: var(--bs-primary); background: rgba(13,110,253,0.02); }
+    .var-chip {
+        cursor: grab;
+        border-radius: 10px;
+        padding: 10px 16px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        background: var(--bs-body-bg);
+        border: 1px solid var(--bs-border-color);
+        transition: all 0.2s;
+        color: var(--bs-body-color);
+    }
+    .var-chip:hover { transform: translateX(3px); border-color: var(--bs-primary); }
+    .var-chip.num { border-left: 4px solid #3b82f6; }
+    .var-chip.cat { border-left: 4px solid #f59e0b; }
+    .section-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--bs-border-color); }
+    .field-card {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 14px;
+        padding: 20px;
+        background: var(--bs-body-bg);
+        transition: border-color 0.2s;
+    }
+    .field-card:focus-within { border-color: var(--bs-primary); }
+    .field-card select.form-select { background-color: var(--bs-body-bg); color: var(--bs-body-color); }
+    .required-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; display: inline-block; margin-bottom: 1px; }
+    .optional-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--bs-secondary); display: inline-block; margin-bottom: 1px; }
+</style>
+
+<div class="container-fluid pb-5">
+    <div class="row mb-4 align-items-center mt-2">
+        <div class="col-md-8">
+            <h3 class="page-title mb-1 fw-bold text-body"><i class="fas fa-flask text-primary me-2"></i> Construtor de Hipóteses</h3>
+            <p class="text-muted mb-0">Projeto: <strong>{{ nome_projeto }}</strong> — Mapeie as colunas e defina o modelo de precificação.</p>
         </div>
     </div>
 
@@ -15,133 +69,214 @@
         <input type="hidden" name="nome_projeto" value="{{ nome_projeto }}">
         <input type="hidden" id="configuracao_variaveis" name="configuracao_variaveis">
 
-        <div class="card shadow-sm mb-4 border-primary">
-            <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0"><i class="fas fa-database"></i> 1. Mapeamento Core (Identidade e Finanças)</h5>
+        <!-- ── BLOCO 1: IDENTIDADE & FINANÇAS ──────── -->
+        <div class="card shadow-sm border-0 mb-4" style="border-top: 3px solid var(--bs-primary) !important; border-radius: 16px; overflow: hidden;">
+            <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
+                <h5 class="fw-bold text-body mb-0">
+                    <i class="fas fa-database text-primary me-2"></i>
+                    1. Mapeamento Core — Identidade & Finanças
+                </h5>
+                <p class="text-muted small mb-0 mt-1">Colunas obrigatórias para o cálculo de elasticidade e margem.</p>
             </div>
-            <div class="card-body">
-                
-                <h6 class="fw-bold text-primary mb-3 border-bottom pb-2">Identidade e Segmentação</h6>
-                <div class="row mb-4">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Código do Produto (SKU) <span class="text-danger">*</span></label>
-                        <select class="form-select border-primary select-coluna" name="sku_col" required>
-                            <option value="">Selecione a coluna de SKU...</option>
-                            {% for col in colunas_categoricas %}
-                                <option value="{{ col }}">{{ col }}</option>
-                            {% endfor %}
-                            {% for col in colunas_numericas %}
-                                <option value="{{ col }}">{{ col }}</option>
-                            {% endfor %}
-                        </select>
-                        <small class="text-muted">Usado para calcular a elasticidade individual de cada produto.</small>
-                    </div>
-                    
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Descrição do Produto <span class="badge bg-secondary ms-1">Opcional</span></label>
-                        <select class="form-select border-info select-coluna" name="nome_produto_col">
-                            <option value="">Selecione o Nome do Produto...</option>
-                            {% for col in colunas_categoricas %}
-                                <option value="{{ col }}">{{ col }}</option>
-                            {% endfor %}
-                        </select>
-                        <small class="text-muted">Melhora a leitura nos relatórios executivos.</small>
-                    </div>
+            <div class="card-body p-4">
 
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Filial / Loja <span class="badge bg-secondary ms-1">Opcional</span></label>
-                        <select class="form-select border-info select-coluna" name="loja_col">
-                            <option value="">Selecione a coluna de Loja...</option>
-                            {% for col in colunas_categoricas %}
-                                <option value="{{ col }}">{{ col }}</option>
-                            {% endfor %}
-                            {% for col in colunas_numericas %}
-                                <option value="{{ col }}">{{ col }}</option>
-                            {% endfor %}
-                        </select>
-                        <small class="text-muted">Se mapeado, a IA criará elasticidades e cenários isolados por filial.</small>
+                <p class="section-label">Identidade e Segmentação</p>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="field-card">
+                            <label class="form-label fw-bold text-body mb-1">
+                                Código do Produto (SKU)
+                                <span class="required-dot ms-1" title="Obrigatório"></span>
+                            </label>
+                            <select class="form-select border-0 bg-body ps-0 select-coluna" name="sku_col" required style="box-shadow: none;">
+                                <option value="">Selecione a coluna de SKU...</option>
+                                {% for col in colunas_categoricas %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                                {% for col in colunas_numericas %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                            </select>
+                            <small class="text-muted">Elasticidade calculada por SKU individual.</small>
+                        </div>
                     </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Data / Período <span class="text-danger">*</span></label>
-                        <select class="form-select border-primary select-coluna" name="data_col" required>
-                            <option value="">Selecione a coluna de Data...</option>
-                            {% for col in colunas_categoricas %}
-                                <option value="{{ col }}">{{ col }}</option>
-                            {% endfor %}
-                            {% for col in colunas_numericas %}
-                                <option value="{{ col }}">{{ col }}</option>
-                            {% endfor %}
-                        </select>
-                        <small class="text-muted">A regressão precisa do tempo para entender a curva de demanda.</small>
+                    <div class="col-md-6">
+                        <div class="field-card">
+                            <label class="form-label fw-bold text-body mb-1">
+                                Descrição do Produto
+                                <span class="optional-dot ms-1" title="Opcional"></span>
+                            </label>
+                            <select class="form-select border-0 bg-body ps-0 select-coluna" name="nome_produto_col" style="box-shadow: none;">
+                                <option value="">Selecione o Nome do Produto...</option>
+                                {% for col in colunas_categoricas %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                            </select>
+                            <small class="text-muted">Melhora a leitura nos relatórios executivos.</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-card">
+                            <label class="form-label fw-bold text-body mb-1">
+                                Filial / Loja
+                                <span class="optional-dot ms-1" title="Opcional"></span>
+                            </label>
+                            <select class="form-select border-0 bg-body ps-0 select-coluna" name="loja_col" style="box-shadow: none;">
+                                <option value="">Selecione a coluna de Loja...</option>
+                                {% for col in colunas_categoricas %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                                {% for col in colunas_numericas %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                            </select>
+                            <small class="text-muted">IA criará elasticidades isoladas por filial.</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-card">
+                            <label class="form-label fw-bold text-body mb-1">
+                                Data / Período
+                                <span class="required-dot ms-1" title="Obrigatório"></span>
+                            </label>
+                            <select class="form-select border-0 bg-body ps-0 select-coluna" name="data_col" required style="box-shadow: none;">
+                                <option value="">Selecione a coluna de Data...</option>
+                                {% for col in colunas_categoricas %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                                {% for col in colunas_numericas %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                            </select>
+                            <small class="text-muted">A regressão precisa do tempo para entender a curva de demanda.</small>
+                        </div>
                     </div>
                 </div>
 
-                <h6 class="fw-bold text-success mb-3 border-bottom pb-2">Variáveis Financeiras</h6>
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold text-success">Quantidade Vendida (Y) <span class="text-danger">*</span></label>
-                        <select class="form-select border-success select-coluna" name="target_col" required>
-                            <option value="">Selecione a Quantidade...</option>
-                            {% for col in colunas_numericas %}
-                                <option value="{{ col }}">{{ col }}</option>
-                            {% endfor %}
-                        </select>
+                <p class="section-label">Variáveis Financeiras</p>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="field-card" style="border-left: 4px solid #22c55e;">
+                            <label class="form-label fw-bold mb-1" style="color: #22c55e;">
+                                Quantidade Vendida (Y) <span class="required-dot"></span>
+                            </label>
+                            <select class="form-select border-0 bg-body ps-0 select-coluna" name="target_col" required style="box-shadow:none;">
+                                <option value="">Selecione a Quantidade...</option>
+                                {% for col in colunas_numericas %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                            </select>
+                            <small class="text-muted">Variável alvo da regressão.</small>
+                        </div>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold text-success">Preço Praticado (X) <span class="text-danger">*</span></label>
-                        <select class="form-select border-success select-coluna" name="preco_col" required>
-                            <option value="">Selecione o Preço...</option>
-                            {% for col in colunas_numericas %}
-                                <option value="{{ col }}">{{ col }}</option>
-                            {% endfor %}
-                        </select>
+                    <div class="col-md-4">
+                        <div class="field-card" style="border-left: 4px solid #3b82f6;">
+                            <label class="form-label fw-bold mb-1" style="color: #3b82f6;">
+                                Preço Praticado (X) <span class="required-dot"></span>
+                            </label>
+                            <select class="form-select border-0 bg-body ps-0 select-coluna" name="preco_col" required style="box-shadow:none;">
+                                <option value="">Selecione o Preço...</option>
+                                {% for col in colunas_numericas %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                            </select>
+                            <small class="text-muted">Principal preditor de demanda.</small>
+                        </div>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold text-danger">Custo Unitário <span class="text-danger">*</span></label>
-                        <select class="form-select border-danger select-coluna" name="custo_col" required>
-                            <option value="">Selecione o Custo...</option>
-                            {% for col in colunas_numericas %}
-                                <option value="{{ col }}">{{ col }}</option>
-                            {% endfor %}
-                        </select>
-                        <small class="text-danger"><i class="fas fa-lock"></i> Define o Piso de Margem.</small>
+                    <div class="col-md-4">
+                        <div class="field-card" style="border-left: 4px solid #ef4444;">
+                            <label class="form-label fw-bold mb-1" style="color: #ef4444;">
+                                Custo Unitário <span class="required-dot"></span>
+                            </label>
+                            <select class="form-select border-0 bg-body ps-0 select-coluna" name="custo_col" required style="box-shadow:none;">
+                                <option value="">Selecione o Custo...</option>
+                                {% for col in colunas_numericas %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                            </select>
+                            <small class="text-muted"><i class="fas fa-lock me-1"></i> Define o Piso de Margem.</small>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row">
+        <!-- ── BLOCO 2: HIPÓTESES EXTRAS ────────────── -->
+        <div class="row g-4 mb-4">
             <div class="col-md-6">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-light"><h5 class="card-title mb-0">Variáveis Disponíveis</h5></div>
-                    <div class="card-body">
-                        <ul id="lista-disponiveis" class="list-group list-group-flush" style="min-height: 200px; background-color: #f8f9fa;">
+                <div class="card shadow-sm border-0 h-100" style="border-radius: 16px; overflow: hidden;">
+                    <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
+                        <h5 class="fw-bold text-body mb-0"><i class="fas fa-table text-muted me-2"></i> Variáveis Disponíveis</h5>
+                        <small class="text-muted">Arraste para o painel de hipóteses</small>
+                    </div>
+                    <div class="card-body p-3">
+                        <ul id="lista-disponiveis" class="drop-zone list-unstyled p-2 m-0">
                             {% for col in colunas_numericas %}
-                                <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-info border-4" data-nome="{{ col }}" data-tipo="num">{{ col }}</li>
+                                <li class="var-chip num cursor-move" data-nome="{{ col }}" data-tipo="num">
+                                    <span>{{ col }}</span>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill" style="font-size:0.7rem;">NUM</span>
+                                </li>
                             {% endfor %}
                             {% for col in colunas_categoricas %}
-                                <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-warning border-4" data-nome="{{ col }}" data-tipo="cat">{{ col }}</li>
+                                <li class="var-chip cat cursor-move" data-nome="{{ col }}" data-tipo="cat">
+                                    <span>{{ col }}</span>
+                                    <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill" style="font-size:0.7rem;">CAT</span>
+                                </li>
                             {% endfor %}
                         </ul>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="card shadow-sm mb-4 border-info">
-                    <div class="card-header bg-info text-white"><h5 class="card-title mb-0">Suas Hipóteses Extras</h5></div>
-                    <div class="card-body">
-                        <p class="text-muted small">Arraste para cá fatores como Clima, Estoque, Feriados, etc.</p>
-                        <ul id="lista-modelo" class="list-group" style="min-height: 200px; background-color: #eef2f7; border: 2px dashed #b0c4de;"></ul>
+                <div class="card shadow-sm border-0 h-100" style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(13,110,253,0.2) !important;">
+                    <div class="card-header border-bottom py-3 px-4" style="background: rgba(13,110,253,0.06);">
+                        <h5 class="fw-bold text-body mb-0"><i class="fas fa-lightbulb text-primary me-2"></i> Suas Hipóteses Extras</h5>
+                        <small class="text-muted">Fatores como Clima, Estoque, Feriados, Promoções…</small>
+                    </div>
+                    <div class="card-body p-3">
+                        <ul id="lista-modelo" class="drop-zone list-unstyled p-2 m-0" style="border-color: rgba(13,110,253,0.3); background: rgba(13,110,253,0.02);">
+                        </ul>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="text-end mb-5">
-            <button type="submit" class="btn btn-lg btn-success"><i class="fas fa-cogs"></i> Rodar Inteligência Axiom</button>
+        <!-- ── CTA ────────────────────────────────────── -->
+        <div class="d-flex justify-content-end mb-5">
+            <button id="btn-rodar" type="submit" class="btn btn-success btn-lg rounded-pill px-5 shadow fw-bold">
+                <i class="fas fa-cogs me-2"></i> Rodar Inteligência Axiom
+            </button>
         </div>
     </form>
+</div>
+
+<!-- ── OVERLAY DE LOADING ──────────────────────────────────────────────────── -->
+<div id="axiom-loader" style="display:none; position:fixed; inset:0; z-index:9999;
+     background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                width: min(500px, 92vw);
+                background: #ffffff;
+                border-radius: 24px;
+                padding: 44px 40px 36px;
+                text-align: center;
+                box-shadow: 0 40px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.06);">
+
+        <!-- Anel animado -->
+        <div style="position:relative; width:80px; height:80px; margin:0 auto 28px;">
+            <svg viewBox="0 0 80 80" style="width:80px;height:80px;">
+                <circle cx="40" cy="40" r="34" fill="none" stroke="#e9ecef" stroke-width="5"/>
+                <circle id="loader-ring" cx="40" cy="40" r="34" fill="none"
+                        stroke="#198754" stroke-width="5" stroke-linecap="round"
+                        stroke-dasharray="214" stroke-dashoffset="214"
+                        style="transform-origin:center; transform:rotate(-90deg);
+                               transition: stroke-dashoffset 0.9s cubic-bezier(.4,0,.2,1);"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                        background:#f0faf4; border-radius:50%; margin:14px;">
+                <i id="loader-icon" class="fas fa-brain" style="font-size:1.4rem;color:#198754;"></i>
+            </div>
+        </div>
+
+        <h5 style="font-size:1.15rem; font-weight:700; color:#111827; margin-bottom:4px;">
+            Inteligência Axiom em execução
+        </h5>
+        <p style="font-size:0.84rem; color:#6b7280; margin-bottom:28px;">
+            Não feche ou recarregue esta página
+        </p>
+
+        <!-- Etapas -->
+        <div id="loader-steps" style="text-align:left; margin-bottom:24px;">
+            <!-- Preenchido pelo JS -->
+        </div>
+
+        <!-- Barra de progresso -->
+        <div style="background:#e9ecef; border-radius:99px; height:7px; overflow:hidden; margin-bottom:8px;">
+            <div id="loader-bar" style="height:100%; width:0%;
+                 background: linear-gradient(90deg,#198754,#20c997);
+                 border-radius:99px; transition: width 0.9s ease;"></div>
+        </div>
+        <p id="loader-pct" style="font-size:0.8rem; color:#6b7280; margin:0;">0%</p>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -151,12 +286,11 @@
         new Sortable(document.getElementById('lista-modelo'), { group: 'shared', animation: 150 });
 
         document.getElementById('form-automl').addEventListener('submit', function(e) {
+            // ── Serializa configuração ─────────────────────────────────────
             let variaveisEscolhidas = [];
             document.querySelectorAll('#lista-modelo li').forEach(item => {
                 variaveisEscolhidas.push({"nome": item.getAttribute('data-nome'), "tipo": item.getAttribute('data-tipo')});
             });
-
-            // Captura as colunas obrigatórias E as novas colunas opcionais
             let configFinal = {
                 "sku_col": document.querySelector('select[name="sku_col"]').value,
                 "nome_produto_col": document.querySelector('select[name="nome_produto_col"]').value,
@@ -167,52 +301,147 @@
                 "custo_col": document.querySelector('select[name="custo_col"]').value,
                 "variaveis_extras": variaveisEscolhidas
             };
-
             document.getElementById('configuracao_variaveis').value = JSON.stringify(configFinal);
+
+            // ── Ativa o overlay de loading ─────────────────────────────────
+            iniciarLoader();
         });
     });
 </script>
-<style>.cursor-move { cursor: grab; }</style>
 <script>
-// O seu excelente Poka-yoke de exclusão mútua!
 document.addEventListener('DOMContentLoaded', function() {
     const selects = document.querySelectorAll('.select-coluna');
-    const itensArrastaveis = document.querySelectorAll('.list-group-item');
+    const itensArrastaveis = document.querySelectorAll('.list-group-item, .var-chip');
 
     function atualizarOpcoes() {
-        const valoresEscolhidos = Array.from(selects)
-            .map(select => select.value)
-            .filter(valor => valor !== "");
-
+        const valoresEscolhidos = Array.from(selects).map(s => s.value).filter(v => v !== "");
         selects.forEach(select => {
-            const opcoes = select.querySelectorAll('option');
-            
-            opcoes.forEach(opcao => {
+            select.querySelectorAll('option').forEach(opcao => {
                 if (opcao.value !== "" && valoresEscolhidos.includes(opcao.value) && select.value !== opcao.value) {
-                    opcao.hidden = true;     
-                    opcao.disabled = true;   
+                    opcao.hidden = true; opcao.disabled = true;
                 } else {
-                    opcao.hidden = false;    
-                    opcao.disabled = false;
+                    opcao.hidden = false; opcao.disabled = false;
                 }
             });
         });
-
         itensArrastaveis.forEach(item => {
-            const nomeDaVariavel = item.getAttribute('data-nome');
-            if (valoresEscolhidos.includes(nomeDaVariavel)) {
-                item.style.display = 'none'; 
-            } else {
-                item.style.display = 'block';
-            }
+            item.style.display = valoresEscolhidos.includes(item.getAttribute('data-nome')) ? 'none' : '';
         });
     }
 
-    selects.forEach(select => {
-        select.addEventListener('change', atualizarOpcoes);
-    });
-
+    selects.forEach(s => s.addEventListener('change', atualizarOpcoes));
     atualizarOpcoes();
+});
+</script>
+<script>
+// ── Keyframe spin para o spinner inline das etapas ───────────────────────────
+(function() {
+    const s = document.createElement('style');
+    s.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+    document.head.appendChild(s);
+})();
+
+// ── Loader da Inteligência Axiom ─────────────────────────────────────────────
+const ETAPAS = [
+    { pct: 8,  icon: 'fa-database',    texto: 'Carregando dados históricos de vendas…' },
+    { pct: 22, icon: 'fa-filter',      texto: 'Filtrando e validando registros…' },
+    { pct: 38, icon: 'fa-chart-line',  texto: 'Estimando modelo Log-Log por produto…' },
+    { pct: 54, icon: 'fa-brain',       texto: 'Calculando elasticidades de preço…' },
+    { pct: 68, icon: 'fa-flask',       texto: 'Testando significância estatística…' },
+    { pct: 80, icon: 'fa-tags',        texto: 'Calculando preços sugeridos…' },
+    { pct: 92, icon: 'fa-chart-bar',   texto: 'Gerando portfólio de precificação…' },
+    { pct: 98, icon: 'fa-check-circle',texto: 'Finalizando… quase lá!' },
+];
+
+function iniciarLoader() {
+    const overlay   = document.getElementById('axiom-loader');
+    const bar       = document.getElementById('loader-bar');
+    const pctLabel  = document.getElementById('loader-pct');
+    const ring      = document.getElementById('loader-ring');
+    const loaderIcon= document.getElementById('loader-icon');
+    const stepsEl   = document.getElementById('loader-steps');
+    const btn       = document.getElementById('btn-rodar');
+
+    // Desabilita botão para evitar double-submit
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processando…';
+
+    overlay.style.display = 'block';
+
+    const totalDash = 214; // circunferência do anel (2π×34 ≈ 213.6)
+    let etapaAtual = 0;
+
+    function renderEtapas(ativa) {
+        // Cores fixas (fundo branco do card) — independentes do tema dark/light
+        stepsEl.innerHTML = ETAPAS.slice(0, ativa + 1).map((et, i) => {
+            const concluida = i < ativa;
+            const atual     = i === ativa;
+            const corIcone  = concluida || atual ? '#198754' : '#9ca3af';
+            const bgIcone   = concluida ? '#d1fae5' : atual ? '#bbf7d0' : '#f3f4f6';
+            const corTexto  = atual ? '#111827' : '#6b7280';
+            return `
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 0;
+                        border-bottom:1px solid #f0f0f0;">
+                <div style="width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;
+                            align-items:center;justify-content:center;font-size:0.75rem;
+                            background:${bgIcone};color:${corIcone};">
+                    ${concluida
+                        ? '<i class="fas fa-check" style="font-size:0.72rem;"></i>'
+                        : atual
+                            ? `<span style="display:inline-block;width:13px;height:13px;border:2px solid #198754;
+                                           border-top-color:transparent;border-radius:50%;
+                                           animation:spin .7s linear infinite;"></span>`
+                            : `<i class="fas ${et.icon}"></i>`
+                    }
+                </div>
+                <span style="font-size:0.83rem;font-weight:${atual ? 600 : 400};color:${corTexto};line-height:1.3;">
+                    ${et.texto}
+                </span>
+            </div>`;
+        }).join('');
+    }
+
+    function avancarEtapa() {
+        if (etapaAtual >= ETAPAS.length) return;
+
+        const etapa = ETAPAS[etapaAtual];
+
+        // Atualiza barra e percentual
+        bar.style.width = etapa.pct + '%';
+        pctLabel.textContent = etapa.pct + '%';
+
+        // Atualiza anel SVG
+        const offset = totalDash - (totalDash * etapa.pct / 100);
+        ring.style.strokeDashoffset = offset;
+
+        // Atualiza ícone central
+        loaderIcon.className = 'fas ' + etapa.icon;
+        loaderIcon.style.color = '#198754';
+
+        // Renderiza lista de etapas
+        renderEtapas(etapaAtual);
+
+        etapaAtual++;
+
+        // Intervalo variável — simula que algumas etapas demoram mais
+        const intervalos = [800, 1200, 2500, 3500, 2000, 1800, 2200, 99999];
+        if (etapaAtual < ETAPAS.length) {
+            setTimeout(avancarEtapa, intervalos[etapaAtual - 1] || 2000);
+        }
+    }
+
+    // Começa após 300ms para o overlay estar visível
+    setTimeout(avancarEtapa, 300);
+}
+
+// Caso o navegador volte com cache (bfcache), desabilita overlay e restaura botão
+window.addEventListener('pageshow', function(e) {
+    if (e.persisted) {
+        document.getElementById('axiom-loader').style.display = 'none';
+        const btn = document.getElementById('btn-rodar');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-cogs me-2"></i> Rodar Inteligência Axiom';
+    }
 });
 </script>
 {% endblock %}

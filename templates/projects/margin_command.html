@@ -23,17 +23,12 @@
 </style>
 
 <div class="container-fluid pb-5">
-    
-    <div class="row mb-4 align-items-center mt-3">
-        <div class="col-md-8">
-            <h3 class="page-title mb-1 fw-bold text-body"><i class="fas fa-ship text-primary me-2"></i> Axiom Margin Command</h3>
-            <p class="text-muted mb-0">Projeto: <strong>{{ projeto.nome }}</strong> | Motor Top-Down de Otimização Heurística</p>
-        </div>
-        <div class="col-md-4 text-end">
-            <a href="{% url 'dashboard_resultado' projeto.id %}" class="btn btn-outline-secondary shadow-sm rounded-pill px-4">
-                <i class="fas fa-arrow-left me-2"></i> Voltar ao Painel
-            </a>
-        </div>
+
+    {% include 'projects/_project_tabs.html' %}
+
+    <div class="mb-4 mt-1">
+        <h4 class="fw-bold mb-1" style="font-size:1.3rem"><i class="ti ti-ship me-2" style="color:#ef4444"></i>Axiom Margin Command</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem">Motor Top-Down de Otimização Heurística — {{ projeto.nome }}</p>
     </div>
 
     <div class="row mb-4">
@@ -106,10 +101,10 @@
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card shadow-sm border-0 h-100 bg-dark text-white">
+                <div class="card shadow-sm border-0 h-100 bg-body-tertiary">
                     <div class="card-body text-center p-4">
-                        <h6 class="text-uppercase fw-bold kpi-title mb-2 text-white-50">SKUs Afetados</h6>
-                        <h2 class="fw-bold mb-0" id="kpiSkus">--</h2>
+                        <h6 class="text-uppercase fw-bold kpi-title mb-2 text-muted">SKUs Afetados</h6>
+                        <h2 class="fw-bold mb-0 text-body" id="kpiSkus">--</h2>
                     </div>
                 </div>
             </div>

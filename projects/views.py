@@ -2,6 +2,8 @@ import pandas as pd
 import logging
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
 from django.db.models import Count
 import tempfile
 import os
@@ -12,7 +14,9 @@ import statsmodels.formula.api as smf
 from scipy.stats import shapiro
 from .models import(ProjetoPrecificacao, ResultadoPrecificacao,
                      VendaHistoricaDW,Loja,PrevisaoDemanda,
-                     PrevisaoFaturamentoMacro,FaturamentoEmpresaDW,EventoCalendario)
+                     PrevisaoFaturamentoMacro,FaturamentoEmpresaDW,EventoCalendario,
+                     CorrelacaoAnalise, TendenciaDetectada, RadarConfig,
+                     ReputacaoConfig, AnaliseReputacao)
 from .forms import EventoCalendarioForm
 from django.shortcuts import get_object_or_404
 import csv
@@ -37,30 +41,38 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def iniciar_projeto_upload(request):
-    """Passo 1: Recebe o caminho do arquivo no GCS e extrai as colunas"""
+    """Passo 1: Recebe o caminho do arquivo (GCS ou local) e extrai as colunas."""
 
     if request.method == 'POST' and request.POST.get('caminho_gcs'):
         caminho_gcs = request.POST.get('caminho_gcs')
         nome_projeto = request.POST.get('nome_projeto', 'Novo Projeto')
-        
-        print(f"-> 1. POST Recebido! Caminho GCS: {caminho_gcs}")
-        contexto = None 
-        
+
+        print(f"-> 1. POST Recebido! Caminho: {caminho_gcs}")
+        contexto = None
+
         try:
-            # Puxa o nome do bucket igual fizemos na outra função!
-            bucket_name = os.getenv('BUCKET_NAME', 'axiom-platform-datasets')
-            client = storage.Client()
-            bucket = client.bucket(bucket_name)
-            blob = bucket.blob(caminho_gcs)
-            
-            print(f"-> 2. Conectou no Bucket '{bucket_name}'. Baixando arquivo...")
-            
             extensao = '.csv' if caminho_gcs.lower().endswith('.csv') else '.xlsx'
-            fd, caminho_temp = tempfile.mkstemp(suffix=extensao)
-            
-            with os.fdopen(fd, 'wb') as f:
-                blob.download_to_file(f)
-            
+
+            # ── Modo local (DEBUG sem GCS) ──────────────────────────────────
+            caminho_local = os.path.join(settings.BASE_DIR, 'media', caminho_gcs)
+            usar_gcs = os.getenv('USE_GCS', 'false').lower() == 'true' or not settings.DEBUG
+
+            if not usar_gcs and os.path.exists(caminho_local):
+                print(f"-> 2. [LOCAL] Lendo arquivo em {caminho_local}")
+                caminho_temp = caminho_local
+            else:
+                # ── Modo produção: baixa do GCS ─────────────────────────────
+                bucket_name = os.getenv('BUCKET_NAME', 'axiom-platform-datasets')
+                client = storage.Client()
+                bucket = client.bucket(bucket_name)
+                blob = bucket.blob(caminho_gcs)
+
+                print(f"-> 2. [GCS] Conectou no Bucket '{bucket_name}'. Baixando...")
+
+                fd, caminho_temp = tempfile.mkstemp(suffix=extensao)
+                with os.fdopen(fd, 'wb') as f:
+                    blob.download_to_file(f)
+
             print(f"-> 3. Download concluído. Lendo com Pandas...")
             request.session['caminho_arquivo_temp'] = caminho_temp
 
@@ -72,7 +84,7 @@ def iniciar_projeto_upload(request):
             else:
                 df = pd.read_excel(caminho_temp)
 
-            df.dropna(axis=1, how='all', inplace=True) 
+            df.dropna(axis=1, how='all', inplace=True)
             print(f"-> 4. Sucesso! Colunas encontradas: {df.columns.tolist()}")
 
             colunas_numericas = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
@@ -84,15 +96,14 @@ def iniciar_projeto_upload(request):
                 'colunas_categoricas': colunas_categoricas,
             }
             print("-> 5. Tudo certo! Redirecionando para o Construtor de Hipóteses...")
-            
+
         except Exception as e:
-            # Esse print vai gritar o erro exato no log do Cloud Run!
             print(f"-> ERRO FATAL NO BACKEND: {str(e)}")
             messages.error(request, f"Falha na leitura do arquivo: {e}")
-            
+
         if contexto:
             return render(request, 'projects/construtor_hipoteses.html', contexto)
-            
+
     return render(request, 'projects/upload_dados.html')
 
 def tratar_nan(valor):
@@ -110,8 +121,10 @@ def processar_modelo_dinamico(request):
             config = json.loads(config_json)
             
             # --- NOVAS COLUNAS MAPEADAS ---
-            loja_col = config.get('loja_col') # Pode vir vazio se for projeto global
-            nome_produto_col = config.get('nome_produto_col') # Pode vir vazio
+            # loja_col é opcional: None ou "" significa projeto sem multi-loja
+            _loja_raw = config.get('loja_col', '')
+            loja_col = _loja_raw if _loja_raw else None
+            nome_produto_col = config.get('nome_produto_col') or None
             
             # Colunas Clássicas
             sku_col = config.get('sku_col')
@@ -256,16 +269,25 @@ def processar_modelo_dinamico(request):
             produtos_processados = 0
             
             # Define as colunas de agrupamento
-            colunas_agrupamento = [sku_col]
-            if loja_col and loja_col in df_model.columns:
-                colunas_agrupamento = [loja_col, sku_col]
-                # Não fazemos o sort aqui, deixamos para fazer isoladamente por SKU!
+            # loja_col é ignorado se: não foi selecionado, não existe no df,
+            # ou foi acidentalmente mapeado para a mesma coluna do sku.
+            usar_loja = (
+                loja_col
+                and loja_col in df_model.columns
+                and loja_col != sku_col
+            )
+            colunas_agrupamento = [loja_col, sku_col] if usar_loja else [sku_col]
 
             for keys, df_sku in df_model.groupby(colunas_agrupamento):
-                # Desempacota a chave
-                if isinstance(keys, tuple):
+                # Desempacota a chave de forma segura para qualquer combinação
+                # de colunas, inclusive quando loja_col == sku_col (pandas pode
+                # retornar 1-tuple nesses casos).
+                if isinstance(keys, tuple) and len(keys) == 2:
                     loja_val, sku = keys
                     loja_obj = dict_lojas.get(str(loja_val).strip())
+                elif isinstance(keys, tuple) and len(keys) == 1:
+                    sku = keys[0]
+                    loja_obj = None
                 else:
                     sku = keys
                     loja_obj = None
@@ -360,8 +382,10 @@ def processar_modelo_dinamico(request):
             return redirect('dashboard_resultado', projeto_id=projeto.id)
 
         except Exception as e:
+            import traceback
             messages.error(request, f"Erro crítico na Ingestão: {e}")
             print(f"[AXIOM CRITICO] {e}")
+            traceback.print_exc()   # imprime o stack trace completo no log do Cloud Run
             return redirect('iniciar_projeto_upload')
 
     return redirect('iniciar_projeto_upload')
@@ -388,10 +412,11 @@ def dashboard_resultado(request, projeto_id):
     elasticos_count = 0
     inelasticos_count = 0
 
+    _qs_nomes = VendaHistoricaDW.objects.filter(projeto=projeto)
+    if not _qs_nomes.exists():
+        _qs_nomes = VendaHistoricaDW.objects.filter(empresa=empresa_cliente)
     mapeamento_nomes = dict(
-        VendaHistoricaDW.objects.filter(projeto=projeto)
-        .values_list('codigo_produto', 'nome_produto')
-        .distinct()
+        _qs_nomes.values_list('codigo_produto', 'nome_produto').distinct()
     )
     
     # Processamento da Lógica de Negócio para a Tabela
@@ -625,15 +650,23 @@ def simulador_produto(request, resultado_id):
     })
 
     
+    nome_produto = (
+        VendaHistoricaDW.objects
+        .filter(projeto=resultado.projeto, codigo_produto=resultado.codigo_produto)
+        .exclude(nome_produto__isnull=True).exclude(nome_produto='')
+        .values_list('nome_produto', flat=True)
+        .first()
+    )
+
     contexto = {
         'resultado': resultado,
+        'nome_produto': nome_produto or '',
         'demanda_base': demanda_base_diaria,
         'margem_minima': empresa.margem_minima_padrao,
         'limite_choque': empresa.limite_variacao_preco,
         'detalhes_json': json.dumps(resultado.detalhes_variaveis),
         'historico_json': json.dumps(dados_grafico),
         'cenarios': cenarios
-        
     }
     
     return render(request, 'projects/simulador.html', contexto)
@@ -690,22 +723,33 @@ def configuracoes_conta(request):
         elif 'btn_salvar_empresa' in request.POST:
             empresa.nome = request.POST.get('nome_empresa', empresa.nome)
             try:
-                # Converte os valores financeiros, tratando possíveis vírgulas
                 margem_str = request.POST.get('margem_minima', str(empresa.margem_minima_padrao)).replace(',', '.')
                 limite_str = request.POST.get('limite_variacao', str(empresa.limite_variacao_preco)).replace(',', '.')
-                
                 empresa.margem_minima_padrao = float(margem_str)
                 empresa.limite_variacao_preco = float(limite_str)
                 empresa.save()
                 messages.success(request, "As regras de negócio da empresa foram atualizadas!")
             except ValueError:
                 messages.error(request, "Erro: Digite apenas números válidos na margem e limite.")
-                
+
+        elif 'btn_alterar_senha' in request.POST:
+            form_senha = PasswordChangeForm(request.user, request.POST)
+            if form_senha.is_valid():
+                user = form_senha.save()
+                update_session_auth_hash(request, user)
+                messages.success(request, "Senha alterada com sucesso! Você continua conectado.")
+            else:
+                for field, errs in form_senha.errors.items():
+                    for err in errs:
+                        messages.error(request, err)
+
         return redirect('configuracoes_conta')
 
+    num_projetos = ProjetoPrecificacao.objects.filter(empresa=empresa).count()
     contexto = {
         'usuario': usuario,
-        'empresa': empresa
+        'empresa': empresa,
+        'num_projetos': num_projetos,
     }
     return render(request, 'projects/configuracoes.html', contexto)
 
@@ -1320,9 +1364,24 @@ def painel_portfolio(request, projeto_id):
     projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=empresa)
 
     # ==========================================
+    # RESOLUÇÃO DO ESCOPO DE DADOS
+    # ==========================================
+    # Prioridade: dados vinculados ao projeto. Se projeto=NULL (ex: projeto recriado após
+    # importação, ou SET_NULL disparado por deleção), usa todos os dados da empresa como fallback.
+    _qs_projeto = VendaHistoricaDW.objects.filter(projeto=projeto)
+    if _qs_projeto.exists():
+        _qs_vendas = _qs_projeto
+        _escopo = 'projeto'
+    else:
+        _qs_vendas = VendaHistoricaDW.objects.filter(empresa=empresa)
+        _escopo = 'empresa'
+        if _qs_vendas.exists():
+            logger.info("painel_portfolio: dados sem vínculo de projeto — usando escopo da empresa %s.", empresa.id)
+
+    # ==========================================
     # BUSCAR O PERÍODO ANALISADO
     # ==========================================
-    datas_venda = VendaHistoricaDW.objects.filter(projeto=projeto).aggregate(
+    datas_venda = _qs_vendas.aggregate(
         primeira=Min('data_venda'),
         ultima=Max('data_venda')
     )
@@ -1333,9 +1392,7 @@ def painel_portfolio(request, projeto_id):
     # ==========================================
     # 1. DATABASE PUSHDOWN (SQL BRUTO EM C/C++)
     # ==========================================
-    # Em vez de carregar milhões de vendas, pedimos ao banco para agrupar tudo por SKU.
-    # O comando 'F' multiplica as colunas linha a linha no banco de dados e o 'Sum' soma o total.
-    agrupamento = VendaHistoricaDW.objects.filter(projeto=projeto).values(
+    agrupamento = _qs_vendas.values(
         'codigo_produto', 'nome_produto'
     ).annotate(
         volume_total=Coalesce(Sum('quantidade'), 0.0, output_field=FloatField()),
@@ -1346,7 +1403,6 @@ def painel_portfolio(request, projeto_id):
     # ==========================================
     # 2. PANDAS (TRABALHO LEVE NA MEMÓRIA)
     # ==========================================
-    # O banco devolve apenas 1 linha por produto. O Pandas engole isso em 0.01 segundos.
     df_vendas = pd.DataFrame(list(agrupamento))
 
     if df_vendas.empty:
@@ -1421,11 +1477,23 @@ def painel_portfolio(request, projeto_id):
 
 def extrair_dados_agrupados_do_dw(projeto):
     """
-    Helper Function: Busca milhões de linhas no banco, agrupa por SKU, 
+    Helper Function: Busca milhões de linhas no banco, agrupa por SKU,
     calcula a Curva ABC e junta com as Elasticidades.
+
+    Escopo: dados vinculados ao projeto. Fallback para empresa inteira quando
+    projeto=NULL (ex: projeto recriado após importação, SET_NULL por deleção).
     """
     # 1. DATABASE PUSHDOWN (SQL Bruto e Rápido)
-    agrupamento = VendaHistoricaDW.objects.filter(projeto=projeto).values(
+    _qs = VendaHistoricaDW.objects.filter(projeto=projeto)
+    if not _qs.exists():
+        _qs = VendaHistoricaDW.objects.filter(empresa=projeto.empresa)
+        if _qs.exists():
+            logger.info(
+                "extrair_dados_agrupados_do_dw: projeto %s sem dados vinculados — "
+                "usando escopo da empresa %s.", projeto.id, projeto.empresa_id
+            )
+
+    agrupamento = _qs.values(
         'codigo_produto', 'nome_produto'
     ).annotate(
         volume_total=Coalesce(Sum('quantidade'), 0.0, output_field=FloatField()),
@@ -1781,3 +1849,600 @@ def _montar_kpis(
 def painel_margin_command(request, projeto_id):
     projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=request.empresa)
     return render(request, 'projects/margin_command.html', {'projeto': projeto})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MÓDULO DE ENRIQUECIMENTO & CORRELAÇÕES (Fase 3)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@login_required
+def painel_correlacoes(request, projeto_id):
+    """Exibe o painel de Enriquecimento & Correlações para um projeto."""
+    from projects.enrichment.ibge import buscar_dados_municipio as _ibge_municipio
+
+    projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=request.empresa)
+    analise = CorrelacaoAnalise.objects.filter(projeto=projeto).first()
+
+    # Dados IBGE: usa snapshot salvo na análise; se vazio (análise antiga), busca ao vivo (cacheado)
+    ibge_dados = {}
+    if analise and analise.ibge_dados:
+        ibge_dados = analise.ibge_dados
+    elif request.empresa.codigo_ibge:
+        try:
+            ibge_dados = _ibge_municipio(request.empresa.codigo_ibge)
+        except Exception:
+            pass
+
+    return render(request, 'projects/correlacoes.html', {
+        'projeto': projeto,
+        'analise': analise,
+        'ibge_dados': ibge_dados,
+    })
+
+
+@login_required
+def rodar_analise_correlacoes(request, projeto_id):
+    """
+    Executa o pipeline completo de enriquecimento e correlações para o projeto.
+    Salva o resultado em CorrelacaoAnalise e redireciona para o painel.
+    """
+    if request.method != 'POST':
+        return redirect('painel_correlacoes', projeto_id=projeto_id)
+
+    from projects.enrichment import (
+        montar_dataset_completo,
+        calcular_correlacoes,
+        gerar_insights,
+        resumo_executivo,
+    )
+    from projects.enrichment.inmet import buscar_estacao_mais_proxima
+    from projects.enrichment.ibge import buscar_dados_municipio
+
+    projeto  = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=request.empresa)
+    empresa  = request.empresa
+
+    # Coordenadas efetivas: prioriza campos da loja quando disponíveis
+    loja = projeto.loja
+    _lat         = loja.lat         if (loja and loja.lat)         else empresa.lat
+    _lon         = loja.lon         if (loja and loja.lon)         else empresa.lon
+    _codigo_ibge = loja.codigo_ibge if (loja and loja.codigo_ibge) else empresa.codigo_ibge
+    _bairro      = loja.bairro      if (loja and loja.bairro)      else None
+
+    logger.info("[correlacoes] Iniciando análise — projeto=%s empresa=%s", projeto_id, empresa.id)
+
+    # ── 1. Busca dados do DW ────────────────────────────────────────────────
+    # Fallback: se não houver dados vinculados ao projeto (projeto=NULL por SET_NULL),
+    # usa todos os dados da empresa.
+    _qs_base = VendaHistoricaDW.objects.filter(empresa=empresa, projeto=projeto)
+    if not _qs_base.exists():
+        _qs_base = VendaHistoricaDW.objects.filter(empresa=empresa)
+        if _qs_base.exists():
+            logger.info("[correlacoes] Dados sem vínculo de projeto — usando escopo da empresa.")
+
+    vendas_qs = _qs_base.values('data_venda', 'quantidade', 'preco_praticado')
+
+    if not vendas_qs.exists():
+        messages.warning(
+            request,
+            "Sem dados de vendas para analisar. "
+            "Importe o histórico de vendas da empresa para usar este módulo."
+        )
+        CorrelacaoAnalise.objects.create(
+            projeto=projeto, empresa=empresa, status='sem_dados',
+        )
+        logger.info("[correlacoes] Sem dados para empresa=%s — abortando.", empresa.id)
+        return redirect('painel_correlacoes', projeto_id=projeto_id)
+
+    df_raw = pd.DataFrame(list(vendas_qs))
+    df_raw = df_raw.rename(columns={'data_venda': 'data', 'preco_praticado': 'preco'})
+
+    # Agrega para nível diário (soma quantidade, média de preço)
+    df_diario = (
+        df_raw.groupby('data')
+        .agg(quantidade=('quantidade', 'sum'), preco=('preco', 'mean'))
+        .reset_index()
+    )
+
+    if len(df_diario) < 30:
+        CorrelacaoAnalise.objects.create(
+            projeto=projeto, empresa=empresa, status='sem_dados',
+            n_registros=len(df_diario),
+        )
+        messages.warning(
+            request,
+            f"Dados insuficientes: {len(df_diario)} dias (mínimo 30). "
+            "Adicione mais histórico de vendas e tente novamente."
+        )
+        return redirect('painel_correlacoes', projeto_id=projeto_id)
+
+    # ── 2. Identifica estação INMET via lat/lon da Empresa ──────────────────
+    estacao_codigo = None
+    estacao_nome   = None
+    distancia_km   = None
+
+    if _lat and _lon:
+        logger.info("[correlacoes] Buscando estação INMET próxima a (%.4f, %.4f)...", _lat, _lon)
+        try:
+            estacao = buscar_estacao_mais_proxima(_lat, _lon)
+            if estacao:
+                estacao_codigo = estacao.get('CD_ESTACAO')
+                estacao_nome   = estacao.get('DC_NOME', '')
+                distancia_km   = estacao.get('distancia_km')
+                logger.info("[correlacoes] Estação INMET: %s (%s) — %.1f km", estacao_codigo, estacao_nome, distancia_km or 0)
+            else:
+                logger.info("[correlacoes] Nenhuma estação INMET próxima encontrada.")
+        except Exception as exc:
+            logger.warning("[correlacoes] Erro ao buscar estação INMET: %s", exc)
+    else:
+        logger.info("[correlacoes] Loja/Empresa sem lat/lon — dados de clima ignorados.")
+
+    # ── 3. Pipeline de enriquecimento + features ────────────────────────────
+    logger.info("[correlacoes] Iniciando montar_dataset_completo (ibge=%s, estacao=%s, bairro=%s)...",
+                _codigo_ibge or None, estacao_codigo, _bairro or "N/A")
+    try:
+        df_enriquecido = montar_dataset_completo(
+            df_diario,
+            codigo_ibge=_codigo_ibge or None,
+            codigo_estacao=estacao_codigo,
+            lat=_lat,
+            lon=_lon,
+            bairro=_bairro,
+        )
+        logger.info("[correlacoes] Dataset montado: %d linhas, %d colunas.", len(df_enriquecido), len(df_enriquecido.columns))
+    except Exception as exc:
+        import traceback; traceback.print_exc()
+        CorrelacaoAnalise.objects.create(
+            projeto=projeto, empresa=empresa, status='erro',
+            n_registros=len(df_diario),
+        )
+        messages.error(request, f"Erro no enriquecimento dos dados: {exc}")
+        return redirect('painel_correlacoes', projeto_id=projeto_id)
+
+    # ── 4. Correlações ──────────────────────────────────────────────────────
+    logger.info("[correlacoes] Calculando correlações...")
+    correlacoes = calcular_correlacoes(df_enriquecido, coluna_alvo='quantidade')
+    logger.info("[correlacoes] %d correlações calculadas.", len(correlacoes))
+
+    # ── 5. Insights ─────────────────────────────────────────────────────────
+    logger.info("[correlacoes] Gerando insights...")
+    contexto = {
+        'nome_empresa':    empresa.nome,
+        'ibge_municipio':  empresa.municipio or '',
+        'ibge_uf':         empresa.uf or '',
+        'ibge_classe':     df_enriquecido['ibge_classe'].iloc[0]
+                           if 'ibge_classe' in df_enriquecido.columns else '',
+        'ibge_nivel_geo':  df_enriquecido['ibge_nivel_geo'].iloc[0]
+                           if 'ibge_nivel_geo' in df_enriquecido.columns else 'municipio',
+        'ibge_bairro':     df_enriquecido['ibge_bairro'].iloc[0]
+                           if 'ibge_bairro' in df_enriquecido.columns else '',
+    }
+    insights = gerar_insights(correlacoes, contexto=contexto)
+    resumo   = resumo_executivo(insights, contexto=contexto)
+
+    # ── 6. Busca snapshot completo IBGE (cacheado 30 dias, sem custo extra) ──
+    ibge_dados = {}
+    if _codigo_ibge:
+        try:
+            ibge_dados = buscar_dados_municipio(_codigo_ibge)
+        except Exception as exc:
+            logger.warning("[correlacoes] Erro ao buscar dados IBGE completos: %s", exc)
+
+    # ── 7. Persiste ─────────────────────────────────────────────────────────
+    CorrelacaoAnalise.objects.create(
+        projeto=projeto,
+        empresa=empresa,
+        status='concluido',
+        correlacoes=correlacoes,
+        insights=insights,
+        resumo_executivo=resumo,
+        n_registros=len(df_diario),
+        estacao_codigo=estacao_codigo,
+        estacao_nome=estacao_nome,
+        distancia_estacao_km=distancia_km,
+        ibge_municipio=contexto.get('ibge_municipio') or None,
+        ibge_classe=contexto.get('ibge_classe') or None,
+        ibge_dados=ibge_dados,
+        ibge_bairro=contexto.get('ibge_bairro') or None,
+        ibge_setor_codigo=df_enriquecido['ibge_setor_codigo'].iloc[0]
+                          if 'ibge_setor_codigo' in df_enriquecido.columns else None,
+        ibge_nivel_geo=contexto.get('ibge_nivel_geo') or 'nenhum',
+    )
+
+    n_insights = len(insights)
+    messages.success(
+        request,
+        f"Análise concluída: {n_insights} driver{'s' if n_insights != 1 else ''} "
+        f"identificado{'s' if n_insights != 1 else ''} em {len(df_diario)} dias de dados."
+    )
+    return redirect('painel_correlacoes', projeto_id=projeto_id)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AXIOM TREND RADAR
+# ══════════════════════════════════════════════════════════════════════════════
+
+@login_required
+def trend_radar_dashboard(request, projeto_id):
+    """
+    Dashboard principal do Trend Radar.
+    Exibe tendências ativas (não arquivadas) do projeto.
+    """
+    empresa = request.empresa
+    projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=empresa)
+
+    # Busca tendências ativas (do último scan) do projeto
+    tendencias_qs = TendenciaDetectada.objects.filter(
+        empresa=empresa, projeto=projeto, arquivado=False,
+    )
+
+    # Ordena: negativo primeiro (crise), depois por nível e aceleração
+    nivel_order = {'viral': 0, 'alto': 1, 'moderado': 2, 'baixo': 3}
+    classif_order = {'negativo': 0, 'neutro': 1, 'positivo': 2}
+    tendencias = sorted(
+        tendencias_qs,
+        key=lambda t: (classif_order.get(t.classificacao, 1), nivel_order.get(t.nivel, 3), -t.aceleracao_pct),
+    )
+
+    # Marca todas como visualizadas
+    tendencias_qs.filter(visualizado=False).update(visualizado=True)
+
+    config = RadarConfig.objects.filter(empresa=empresa).first()
+
+    n_viral    = sum(1 for t in tendencias if t.nivel == 'viral')
+    n_alto     = sum(1 for t in tendencias if t.nivel == 'alto')
+    n_negativo = sum(1 for t in tendencias if t.classificacao == 'negativo')
+
+    context = {
+        'projeto': projeto,
+        'tendencias': tendencias,
+        'config': config,
+        'n_viral': n_viral,
+        'n_alto': n_alto,
+        'n_negativo': n_negativo,
+        'tem_alertas': n_viral + n_alto + n_negativo > 0,
+    }
+    return render(request, 'projects/trend_radar.html', context)
+
+
+@login_required
+def rodar_scan_radar(request, projeto_id):
+    """Executa o pipeline completo de scan e redireciona ao dashboard."""
+    if request.method != 'POST':
+        return redirect('trend_radar_dashboard', projeto_id=projeto_id)
+
+    from projects.trend_radar import executar_scan
+
+    empresa = request.empresa
+    projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=empresa)
+
+    # ── Validação prévia: evita entrar no pipeline sem keywords ──────────────
+    config = RadarConfig.objects.filter(empresa=empresa).first()
+    manuais = list((config.palavras_chave if config else None) or [])
+    if not manuais and (not config or config.usar_catalogo_automatico):
+        tem_catalogo = (
+            VendaHistoricaDW.objects
+            .filter(empresa=empresa)
+            .exclude(nome_produto__isnull=True)
+            .exclude(nome_produto='')
+            .exists()
+        )
+        if not tem_catalogo:
+            messages.error(
+                request,
+                "Scan bloqueado: nenhuma palavra-chave configurada e o catálogo de produtos está vazio. "
+                "Adicione palavras-chave manualmente (ex: 'cerveja', 'chocolate') em Configurações do Radar, "
+                "ou importe o histórico de vendas da empresa para gerar keywords automaticamente."
+            )
+            return redirect('trend_radar_dashboard', projeto_id=projeto_id)
+
+    try:
+        tendencias = executar_scan(empresa, projeto=projeto)
+        n = len(tendencias)
+        if n > 0:
+            messages.success(
+                request,
+                f"Scan concluído: {n} tendência{'s' if n != 1 else ''} detectada{'s' if n != 1 else ''} no seu mercado."
+            )
+        else:
+            messages.info(
+                request,
+                "Scan concluído. Nenhuma tendência significativa — mercado estável."
+            )
+    except Exception as exc:
+        logger.exception("Erro no scan do Trend Radar para empresa %s: %s", empresa.id, exc)
+        messages.error(request, f"Erro durante o scan: {exc}")
+
+    return redirect('trend_radar_dashboard', projeto_id=projeto_id)
+
+
+@login_required
+def arquivar_tendencia(request, projeto_id, tendencia_id):
+    """Arquiva uma tendência específica (via POST)."""
+    if request.method != 'POST':
+        return redirect('trend_radar_dashboard', projeto_id=projeto_id)
+    TendenciaDetectada.objects.filter(id=tendencia_id, empresa=request.empresa).update(arquivado=True)
+    return redirect('trend_radar_dashboard', projeto_id=projeto_id)
+
+
+@login_required
+def salvar_radar_config(request, projeto_id):
+    """Salva configurações do Radar."""
+    if request.method != 'POST':
+        return redirect('trend_radar_dashboard', projeto_id=projeto_id)
+
+    empresa = request.empresa
+    config, _ = RadarConfig.objects.get_or_create(
+        empresa=empresa, defaults={'fontes_ativas': ['google_trends', 'rss']},
+    )
+
+    kws_raw = request.POST.get('palavras_chave', '')
+    config.palavras_chave = [k.strip() for k in kws_raw.splitlines() if k.strip()]
+    config.usar_catalogo_automatico = request.POST.get('usar_catalogo_automatico') == 'on'
+    limiar_raw = request.POST.get('limiar_aceleracao', '').strip()
+    config.limiar_aceleracao = float(limiar_raw) if limiar_raw else 50.0
+
+    fontes = [f for f in ['google_trends', 'newsapi', 'rss', 'reddit'] if request.POST.get(f'fonte_{f}')]
+    if fontes:
+        config.fontes_ativas = fontes
+
+    nk = request.POST.get('newsapi_key', '').strip()
+    if nk:
+        config.newsapi_key = nk
+
+    config.save()
+    messages.success(request, "Configurações do Radar salvas.")
+    return redirect('trend_radar_dashboard', projeto_id=projeto_id)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AXIOM REPUTATION — Análise de Sentimento de Avaliações do Google
+# ══════════════════════════════════════════════════════════════════════════════
+
+_REPUTACAO_COOLDOWN_DIAS = 7
+
+
+def _dias_para_proximo_scan(ultima_analise) -> int | None:
+    """Retorna dias restantes para o próximo scan, ou None se já liberado."""
+    if ultima_analise is None:
+        return None
+    from django.utils import timezone
+    proxima = ultima_analise.criado_em + timedelta(days=_REPUTACAO_COOLDOWN_DIAS)
+    diff = proxima - timezone.now()
+    if diff.total_seconds() <= 0:
+        return None
+    return max(1, diff.days + 1)
+
+
+@login_required
+def reputacao_dashboard(request, projeto_id):
+    """
+    Dashboard principal do módulo Reputation.
+
+    Estados do template:
+      1. Candidatos na sessão → exibe lista para seleção
+      2. Sem config → exibe formulário de busca
+      3. Config definida → exibe última análise + botão de scan + histórico
+    """
+    empresa = request.empresa
+    projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=empresa)
+    config  = ReputacaoConfig.objects.filter(empresa=empresa).first()
+    ultima_analise = (
+        AnaliseReputacao.objects.filter(empresa=empresa, projeto=projeto).first()
+        if config else None
+    )
+
+    # Histórico para o gráfico (até 12 scans anteriores)
+    historico = []
+    if config:
+        historico = list(
+            AnaliseReputacao.objects
+            .filter(empresa=empresa, projeto=projeto, status='concluido')
+            .order_by('criado_em')
+            .values('criado_em', 'score_sentimento', 'rating_geral')[:12]
+        )
+
+    dias_bloqueado = _dias_para_proximo_scan(ultima_analise)
+    candidatos = request.session.pop('reputacao_candidatos', None)
+
+    context = {
+        'projeto':         projeto,
+        'config':          config,
+        'ultima_analise':  ultima_analise,
+        'historico_json':  json.dumps([
+            {
+                'data':  h['criado_em'].strftime('%d/%m/%Y'),
+                'score': h['score_sentimento'],
+                'rating': h['rating_geral'],
+            }
+            for h in historico
+        ]),
+        'dias_bloqueado':  dias_bloqueado,
+        'candidatos':      candidatos,  # list[dict] ou None
+    }
+    return render(request, 'projects/reputacao.html', context)
+
+
+@login_required
+def reputacao_buscar_lugar(request, projeto_id):
+    """POST: busca empresas pelo nome e armazena candidatos na sessão."""
+    if request.method != 'POST':
+        return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+    from django.conf import settings
+    from projects.reputation import buscar_empresas
+
+    nome = request.POST.get('nome_empresa', '').strip()
+    if not nome:
+        messages.error(request, "Digite o nome da empresa para buscar.")
+        return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+    api_key = getattr(settings, 'GOOGLE_PLACES_API_KEY', '')
+    try:
+        candidatos = buscar_empresas(nome, api_key)
+    except Exception as exc:
+        messages.error(request, f"Erro ao buscar no Google: {exc}")
+        return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+    if not candidatos:
+        messages.warning(request, f'Nenhuma empresa encontrada para "{nome}". Tente um nome diferente.')
+        return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+    # Armazena na sessão (temporário, para a tela de seleção)
+    request.session['reputacao_candidatos'] = candidatos
+    return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+
+@login_required
+def reputacao_confirmar_lugar(request, projeto_id):
+    """POST: confirma a seleção de um Place ID e salva em ReputacaoConfig."""
+    if request.method != 'POST':
+        return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+    from django.conf import settings
+    from projects.reputation import buscar_detalhes_lugar
+
+    place_id = request.POST.get('place_id', '').strip()
+    if not place_id:
+        messages.error(request, "Seleção inválida.")
+        return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+    api_key = getattr(settings, 'GOOGLE_PLACES_API_KEY', '')
+    try:
+        detalhes = buscar_detalhes_lugar(place_id, api_key)
+    except Exception as exc:
+        messages.error(request, f"Erro ao confirmar local: {exc}")
+        return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+    empresa = request.empresa
+
+    # Cria ou atualiza config (uma empresa pode trocar o local monitorado)
+    ReputacaoConfig.objects.filter(empresa=empresa).delete()
+    ReputacaoConfig.objects.create(
+        empresa=empresa,
+        nome_busca=request.POST.get('nome_busca', detalhes['nome']),
+        google_place_id=place_id,
+        google_place_nome=detalhes['nome'],
+        google_place_endereco=detalhes.get('endereco', ''),
+        google_place_url=detalhes.get('url_maps', ''),
+        google_place_foto=detalhes.get('foto_url', '') or '',
+    )
+
+    messages.success(
+        request,
+        f'"{detalhes["nome"]}" configurado com sucesso. Clique em "Rodar Análise" para gerar o primeiro relatório.'
+    )
+    return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+
+@login_required
+def reputacao_analisar(request, projeto_id):
+    """
+    POST: executa a análise completa (Google Reviews + Claude Haiku).
+    Respeita cooldown de 7 dias.
+    """
+    if request.method != 'POST':
+        return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+    from django.conf import settings
+    from projects.reputation import buscar_detalhes_lugar, analisar_sentimento_reviews
+
+    empresa = request.empresa
+    projeto = get_object_or_404(ProjetoPrecificacao, id=projeto_id, empresa=empresa)
+    config  = ReputacaoConfig.objects.filter(empresa=empresa).first()
+
+    if not config:
+        messages.error(request, "Configure um local antes de rodar a análise.")
+        return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+    # Verifica cooldown
+    ultima = AnaliseReputacao.objects.filter(empresa=empresa, projeto=projeto).first()
+    dias   = _dias_para_proximo_scan(ultima)
+    if dias:
+        messages.warning(
+            request,
+            f"Análise disponível em {dias} dia{'s' if dias != 1 else ''}. "
+            f"O cooldown de {_REPUTACAO_COOLDOWN_DIAS} dias evita cobranças desnecessárias de API."
+        )
+        return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+    places_key    = getattr(settings, 'GOOGLE_PLACES_API_KEY', '')
+    anthropic_key = getattr(settings, 'ANTHROPIC_API_KEY', '')
+
+    try:
+        # 1. Busca reviews no Google
+        detalhes = buscar_detalhes_lugar(config.google_place_id, places_key)
+        reviews  = detalhes.get('reviews', [])
+        rating   = detalhes.get('rating')
+        total    = detalhes.get('total_avaliacoes', 0)
+
+        if not reviews:
+            AnaliseReputacao.objects.create(
+                empresa=empresa, projeto=projeto, config=config,
+                status='sem_reviews',
+                rating_geral=rating, total_avaliacoes=total,
+            )
+            messages.warning(request, "Nenhuma avaliação disponível para este local no momento.")
+            return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+        # 2. Análise de sentimento via Claude Haiku
+        resultado = analisar_sentimento_reviews(
+            reviews=reviews,
+            nome_empresa=config.google_place_nome,
+            rating_geral=rating,
+            total_avaliacoes=total,
+            api_key=anthropic_key,
+        )
+
+        # 3. Enriquece as reviews com sentimento individual do Claude
+        por_review_map = {r['indice']: r for r in resultado.get('por_review', [])}
+        reviews_enriquecidas = []
+        for i, rv in enumerate(reviews):
+            rv_extra = por_review_map.get(i, {})
+            reviews_enriquecidas.append({
+                **rv,
+                'sentimento': rv_extra.get('sentimento', 'neutro'),
+                'temas':      rv_extra.get('temas', []),
+            })
+
+        # 4. Persiste
+        AnaliseReputacao.objects.create(
+            empresa=empresa,
+            projeto=projeto,
+            config=config,
+            status='concluido',
+            rating_geral=rating,
+            total_avaliacoes=total,
+            sentimento_geral=resultado['sentimento_geral'],
+            score_sentimento=resultado['score'],
+            temas_positivos=resultado['temas_positivos'],
+            temas_negativos=resultado['temas_negativos'],
+            resumo_executivo=resultado.get('resumo_executivo', ''),
+            reviews=reviews_enriquecidas,
+            tokens_input=resultado.get('tokens_input', 0),
+            tokens_output=resultado.get('tokens_output', 0),
+        )
+
+        messages.success(
+            request,
+            f"Análise concluída — Score: {resultado['score']}/100 "
+            f"({resultado['sentimento_geral'].capitalize()}) com base em {len(reviews)} avaliação(ões)."
+        )
+
+    except Exception as exc:
+        logger.exception("Erro na análise de reputação para empresa %s: %s", empresa.id, exc)
+        AnaliseReputacao.objects.create(
+            empresa=empresa, projeto=projeto, config=config, status='erro',
+        )
+        messages.error(request, f"Erro durante a análise: {exc}")
+
+    return redirect('reputacao_dashboard', projeto_id=projeto_id)
+
+
+@login_required
+def reputacao_trocar_lugar(request, projeto_id):
+    """POST: remove a configuração atual e volta para a tela de busca."""
+    if request.method != 'POST':
+        return redirect('reputacao_dashboard', projeto_id=projeto_id)
+    ReputacaoConfig.objects.filter(empresa=request.empresa).delete()
+    messages.info(request, "Local removido. Busque um novo estabelecimento para monitorar.")
+    return redirect('reputacao_dashboard', projeto_id=projeto_id)

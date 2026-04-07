@@ -1,72 +1,397 @@
 {% load static %}
+{% load i18n %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="utf-8" />
-    <title>Login | Axiom Platform</title>
+    <title>Entrar | Axiom Platform</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="{% static 'css/app.min.css' %}" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
+        /* ============================================
+           AXIOM PLATFORM — LOGIN PREMIUM
+           ============================================ */
         :root {
-            --cor-principal: #0d6efd; /* Cole a mesma cor da Landing Page aqui */
+            --axiom-blue:   #0d6efd;
+            --axiom-dark:   #020617;
+            --axiom-dark2:  #0f172a;
+            --axiom-dark3:  #1e293b;
+            --axiom-muted:  #94a3b8;
+            --axiom-text:   #e2e8f0;
         }
-        .auth-bg { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .auth-card { width: 100%; max-width: 450px; background: #fff; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); overflow: hidden; }
-        
-        .btn-axiom-principal {
-            background-color: var(--cor-principal);
-            color: #ffffff;
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--axiom-dark);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            display: flex;
+        }
+
+        /* ─── SPLIT LAYOUT ─────────────────────────── */
+        .login-wrapper {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        /* LEFT PANEL — branding */
+        .login-brand-panel {
+            flex: 1;
+            background: linear-gradient(145deg, #020617 0%, #0f172a 50%, #1e293b 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 48px;
+            position: relative;
+            overflow: hidden;
+        }
+        .login-brand-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(13,110,253,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(13,110,253,0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+        }
+        .brand-orb {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .brand-orb-1 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(13,110,253,0.12) 0%, transparent 70%);
+            top: -150px; left: -150px;
+        }
+        .brand-orb-2 {
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 70%);
+            bottom: -100px; right: -80px;
+        }
+
+        .brand-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            max-width: 420px;
+        }
+
+        .brand-logo {
+            width: 320px;
+            margin-bottom: 2.5rem;
+            filter: drop-shadow(0 0 30px rgba(13,110,253,0.25));
+            animation: logo-float 4s ease-in-out infinite;
+        }
+        @keyframes logo-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .brand-tagline {
+            font-size: 1.55rem;
+            font-weight: 800;
+            color: #f1f5f9;
+            line-height: 1.25;
+            margin-bottom: 1rem;
+        }
+        .brand-tagline .accent {
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand-sub {
+            font-size: 0.92rem;
+            color: var(--axiom-muted);
+            line-height: 1.75;
+            margin-bottom: 2.5rem;
+        }
+
+        .brand-pills {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        .brand-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 999px;
+            padding: 7px 14px;
+            font-size: 0.78rem;
+            color: var(--axiom-muted);
+        }
+        .brand-pill i { color: #3b82f6; font-size: 0.7rem; }
+
+        /* RIGHT PANEL — form */
+        .login-form-panel {
+            width: 480px;
+            flex-shrink: 0;
+            background: #0b1120;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 48px;
+            border-left: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .form-box {
+            width: 100%;
+            max-width: 360px;
+        }
+
+        .form-logo {
+            height: 56px;
+            margin-bottom: 2rem;
+            display: block;
+        }
+
+        .form-heading {
+            font-size: 1.55rem;
+            font-weight: 800;
+            color: #f1f5f9;
+            margin-bottom: 0.4rem;
+        }
+        .form-sub {
+            font-size: 0.88rem;
+            color: var(--axiom-muted);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        /* Form fields */
+        .field-group { margin-bottom: 1.25rem; }
+        .field-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.3px;
+        }
+        .field-wrap {
+            position: relative;
+        }
+        .field-wrap .field-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--axiom-muted);
+            font-size: 0.85rem;
+            pointer-events: none;
+            transition: color 0.2s;
+        }
+        .field-wrap input {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 12px 14px 12px 40px;
+            color: #f1f5f9;
+            font-size: 0.92rem;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+        .field-wrap input::placeholder { color: var(--axiom-muted); }
+        .field-wrap input:focus {
+            background: rgba(13,110,253,0.06);
+            border-color: rgba(13,110,253,0.5);
+            box-shadow: 0 0 0 3px rgba(13,110,253,0.12);
+            color: #f1f5f9;
+        }
+        .field-wrap input:focus + .field-icon,
+        .field-wrap:focus-within .field-icon {
+            color: #60a5fa;
+        }
+        /* icon before input — reorder */
+        .field-wrap input { order: 2; }
+        .field-wrap .field-icon { order: 1; }
+
+        .forgot-link {
+            font-size: 0.8rem;
+            color: var(--axiom-muted);
+            text-decoration: none;
+            float: right;
+            margin-top: -6px;
+        }
+        .forgot-link:hover { color: #60a5fa; }
+
+        /* Error */
+        .alert-axiom {
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.25);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            color: #fca5a5;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Submit button */
+        .btn-login {
+            width: 100%;
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            color: #fff;
             border: none;
-            transition: all 0.3s ease; /* Deixa a transição mais suave */
+            border-radius: 10px;
+            padding: 13px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(37,99,235,0.35);
+            margin-top: 0.5rem;
         }
-        
-        .btn-axiom-principal:hover {
-            background-color: var(--cor-principal); /* Trava a cor de fundo */
-            opacity: 0.85;
-            color: #ffffff !important; /* O !important impede o Bootstrap de mudar a cor do texto */
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(37,99,235,0.5);
+        }
+        .btn-login:active { transform: translateY(0); }
+
+        /* Footer of form */
+        .form-footer {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            text-align: center;
+        }
+        .form-footer p {
+            font-size: 0.8rem;
+            color: var(--axiom-muted);
+            margin: 0;
+        }
+        .form-footer a { color: var(--axiom-muted); text-decoration: none; }
+        .form-footer a:hover { color: #60a5fa; }
+        .form-footer img { height: 28px; opacity: 0.45; margin-bottom: 0.5rem; display: block; margin-inline: auto; }
+
+        /* ─── RESPONSIVE ──────────────────────────── */
+        @media (max-width: 900px) {
+            .login-brand-panel { display: none; }
+            .login-form-panel {
+                width: 100%;
+                border-left: none;
+                padding: 40px 24px;
+            }
         }
     </style>
 </head>
-<body class="auth-bg">
+<body>
 
-    <div class="auth-card">
-        <div class="p-5">
-            <div class="text-center mb-4">
-                <h3 class="fw-bold text-primary mb-1">AXIOM PLATFORM</h3>
-                <p class="text-muted small">Scientific Intelligence for Executive Decisions</p>
+<div class="login-wrapper">
+
+    <!-- ── LEFT: BRAND PANEL ──────────────────── -->
+    <div class="login-brand-panel">
+        <div class="brand-orb brand-orb-1"></div>
+        <div class="brand-orb brand-orb-2"></div>
+
+        <div class="brand-content">
+            <img src="{% static 'images/logo-axiom-dark-4k.png' %}" alt="Axiom Platform" class="brand-logo">
+
+            <h2 class="brand-tagline">
+                O Fim do Achismo.<br>
+                A Ciência da <span class="accent">Rentabilidade.</span>
+            </h2>
+            <p class="brand-sub">
+                Transforme os dados do seu ERP em decisões executivas claras.
+                IA preditiva para quem não pode depender do feeling.
+            </p>
+
+            <div class="brand-pills">
+                <span class="brand-pill"><i class="fas fa-brain"></i> IA Preditiva Explicável</span>
+                <span class="brand-pill"><i class="fas fa-chart-bar"></i> Rigor Matemático</span>
+                <span class="brand-pill"><i class="fas fa-bolt"></i> Software Prescritivo</span>
+                <span class="brand-pill"><i class="fas fa-heartbeat"></i> Health Score em Tempo Real</span>
             </div>
-
-            {% if form.errors %}
-                <div class="alert alert-danger py-2 text-center small">Usuário ou senha incorretos. Tente novamente.</div>
-            {% endif %}
-
-            <form method="post" action="{% url 'login' %}">
-                {% csrf_token %}
-                
-                <div class="mb-3">
-                    <label class="form-label fw-bold">E-mail corporativo</label>
-                    <input type="text" name="username" class="form-control" placeholder="executivo@empresa.com" required autofocus>
-                </div>
-
-                <div class="mb-4">
-                    <div class="d-flex justify-content-between">
-                        <label class="form-label fw-bold">Senha</label>
-                        <a href="#" class="text-muted small">Esqueceu a senha?</a>
-                    </div>
-                    <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-                </div>
-
-                <div class="d-grid mb-3">
-                   <button class="btn btn-axiom-principal btn-lg fw-bold" type="submit">Entrar na Plataforma</button>
-                </div>
-                
-                <input type="hidden" name="next" value="{% url 'lista_projetos' %}" />
-            </form>
-        </div>
-        <div class="bg-light text-center py-3">
-            <p class="text-muted mb-0 small">Axiom Engine &copy; {% now "Y" %}. Todos os direitos reservados.</p>
         </div>
     </div>
+
+    <!-- ── RIGHT: FORM PANEL ──────────────────── -->
+    <div class="login-form-panel">
+        <div class="form-box">
+
+            <img src="{% static 'images/logo-axiom-dark-4k.png' %}" alt="Axiom Platform" class="form-logo">
+
+            <h1 class="form-heading">Bem-vindo de volta</h1>
+            <p class="form-sub">Acesse sua plataforma de inteligência executiva.</p>
+
+            {% if form.errors %}
+            <div class="alert-axiom">
+                <i class="fas fa-exclamation-circle"></i>
+                Usuário ou senha incorretos. Tente novamente.
+            </div>
+            {% endif %}
+
+            <form method="post" action="{% url 'login' %}" autocomplete="off">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'lista_projetos' %}">
+
+                <div class="field-group">
+                    <label for="id_username">E-mail corporativo</label>
+                    <div class="field-wrap">
+                        <i class="fas fa-envelope field-icon"></i>
+                        <input
+                            type="text"
+                            id="id_username"
+                            name="username"
+                            placeholder="executivo@empresa.com"
+                            required
+                            autofocus
+                        >
+                    </div>
+                </div>
+
+                <div class="field-group">
+                    <label for="id_password">
+                        Senha
+                        <a href="#" class="forgot-link">Esqueceu a senha?</a>
+                    </label>
+                    <div class="field-wrap">
+                        <i class="fas fa-lock field-icon"></i>
+                        <input
+                            type="password"
+                            id="id_password"
+                            name="password"
+                            placeholder="••••••••"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login">
+                    <i class="fas fa-sign-in-alt me-2"></i>Entrar na Plataforma
+                </button>
+            </form>
+
+            <div class="form-footer">
+                <img src="{% static 'images/logo-axiom-dark-4k.png' %}" alt="Axiom">
+                <p>Axiom Platform &copy; {% now "Y" %} — Todos os direitos reservados.</p>
+                <p style="margin-top:6px;">
+                    <a href="/">← Voltar ao site</a>
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+</div>
 
 </body>
 </html>

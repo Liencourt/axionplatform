@@ -15,6 +15,12 @@ urlpatterns = [
     path('api/v1/docs/', api_public.api_v1_docs, name='api_v1_docs'),
     path('api/v1/schema/', api_public.api_v1_schema, name='api_v1_schema'),
 
+    # ── MÓDULO DE INGESTÃO (PUSH API) ──────────────────────────────────────
+    path('api/v1/lojas/',                api_public.api_v1_lojas,               name='api_v1_lojas'),
+    path('api/v1/projetos/',             api_public.api_v1_projetos,            name='api_v1_projetos'),
+    path('api/v1/ingestao/vendas/',      api_public.api_v1_ingestao_vendas,     name='api_v1_ingestao_vendas'),
+    path('api/v1/ingestao/faturamento/', api_public.api_v1_ingestao_faturamento, name='api_v1_ingestao_faturamento'),
+
     
     path('novo-estudo/', views.iniciar_projeto_upload, name='iniciar_projeto_upload'),
     
@@ -69,5 +75,28 @@ urlpatterns = [
     # ==========================================
     path('projeto/<int:projeto_id>/margin-command/', views.painel_margin_command, name='painel_margin_command'),
     path('api/otimizar-margem/', views.api_otimizar_margem_global, name='api_otimizar_margem_global'),
-    
+
+    # ==========================================
+    # ENRIQUECIMENTO & CORRELAÇÕES
+    # ==========================================
+    path('projeto/<int:projeto_id>/correlacoes/', views.painel_correlacoes, name='painel_correlacoes'),
+    path('projeto/<int:projeto_id>/correlacoes/rodar/', views.rodar_analise_correlacoes, name='rodar_analise_correlacoes'),
+
+    # ==========================================
+    # AXIOM REPUTATION — Sentimento Google
+    # ==========================================
+    path('projeto/<int:projeto_id>/reputacao/', views.reputacao_dashboard, name='reputacao_dashboard'),
+    path('projeto/<int:projeto_id>/reputacao/buscar/', views.reputacao_buscar_lugar, name='reputacao_buscar_lugar'),
+    path('projeto/<int:projeto_id>/reputacao/confirmar/', views.reputacao_confirmar_lugar, name='reputacao_confirmar_lugar'),
+    path('projeto/<int:projeto_id>/reputacao/analisar/', views.reputacao_analisar, name='reputacao_analisar'),
+    path('projeto/<int:projeto_id>/reputacao/trocar/', views.reputacao_trocar_lugar, name='reputacao_trocar_lugar'),
+
+    # ==========================================
+    # AXIOM TREND RADAR
+    # ==========================================
+    path('projeto/<int:projeto_id>/trend-radar/', views.trend_radar_dashboard, name='trend_radar_dashboard'),
+    path('projeto/<int:projeto_id>/trend-radar/scan/', views.rodar_scan_radar, name='rodar_scan_radar'),
+    path('projeto/<int:projeto_id>/trend-radar/arquivar/<int:tendencia_id>/', views.arquivar_tendencia, name='arquivar_tendencia'),
+    path('projeto/<int:projeto_id>/trend-radar/configurar/', views.salvar_radar_config, name='salvar_radar_config'),
+
 ]

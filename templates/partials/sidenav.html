@@ -3,13 +3,13 @@
 
     <a href="{% url 'iniciar_projeto_upload' %}" class="logo">
         <span class="logo-light">
-            <span class="logo-lg"><img src="{% static '/images/logo.png' %}" alt="logo" style="height: 45px; width: auto; object-fit: contain;"></span>
-            <span class="logo-sm"><img src="{% static '/images/logo-sm.png' %}" alt="small logo"></span>
+            <span class="logo-lg"><img src="{% static 'images/logo-axiom-dark-4k.png' %}" alt="Axiom Platform" style="height: 42px; width: auto; object-fit: contain;"></span>
+            <span class="logo-sm"><img src="{% static '/images/logo-sm.png' %}" alt="Axiom"></span>
         </span>
 
         <span class="logo-dark">
-            <span class="logo-lg"><img src="{% static '/images/logo-dark.png' %}" alt="logo" style="height: 45px; width: auto; object-fit: contain;"></span>
-            <span class="logo-sm"><img src="{% static '/images/logo-sm.png' %}" alt="small logo"></span>
+            <span class="logo-lg"><img src="{% static 'images/logo-axiom-dark-4k.png' %}" alt="Axiom Platform" style="height: 42px; width: auto; object-fit: contain;"></span>
+            <span class="logo-sm"><img src="{% static '/images/logo-sm.png' %}" alt="Axiom"></span>
         </span>
     </a>
     
@@ -66,6 +66,32 @@
                 </div>
             </li>
 
+            {% if projeto %}
+            <li class="side-nav-item">
+                <a data-bs-toggle="collapse" href="#sidebarInteligencia" aria-expanded="{% if request.resolver_match.url_name in 'trend_radar_dashboard,reputacao_dashboard' %}true{% else %}false{% endif %}" aria-controls="sidebarInteligencia" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-satellite text-warning"></i></span>
+                    <span class="menu-text"> Inteligência de Mercado </span>
+                    <span class="menu-arrow"></span>
+                </a>
+                <div class="collapse {% if request.resolver_match.url_name in 'trend_radar_dashboard,reputacao_dashboard' %}show{% endif %}" id="sidebarInteligencia">
+                    <ul class="side-nav-second-level">
+                        <li>
+                            <a href="{% url 'trend_radar_dashboard' projeto_id=projeto.id %}" class="{% if request.resolver_match.url_name == 'trend_radar_dashboard' %}active{% endif %}">
+                                <i class="ti ti-radar nav-icon" style="color:#06b6d4;"></i>
+                                <span>Trend Radar</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'reputacao_dashboard' projeto_id=projeto.id %}" class="{% if request.resolver_match.url_name == 'reputacao_dashboard' %}active{% endif %}">
+                                <i class="ti ti-star nav-icon" style="color:#f59e0b;"></i>
+                                <span>Reputação</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+            {% endif %}
+
             <li class="side-nav-item">
                 <a href="#" class="side-nav-link">
                     <span class="menu-icon"><i class="ti ti-chart-bubble text-info"></i></span>
@@ -74,18 +100,28 @@
                 </a>
             </li>
             
+            <li class="side-nav-title">Inteligência Competitiva</li>
+
+            <li class="side-nav-item">
+                <a href="{% url 'lista_extracoes' %}" class="side-nav-link">
+                    <span class="menu-icon"><i class="ti ti-tag" style="color:#f59e0b;"></i></span>
+                    <span class="menu-text"> Encartes de Concorrentes </span>
+                </a>
+            </li>
+
             <li class="side-nav-title">Administração</li>
 
             <li class="side-nav-item">
                 <a href="{% url 'configuracoes_conta' %}" class="side-nav-link">
-                    <span class="menu-icon"><i class="ti ti-settings"></i></span>
-                    <span class="menu-text"> Configurações da Conta </span>
+                    <span class="menu-icon"><i class="ti ti-user-circle"></i></span>
+                    <span class="menu-text"> Minha Conta </span>
                 </a>
             </li>
             
         </ul>
 
-        <div class="mx-3 mt-4 mb-3 p-3 text-center bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-4 shadow-sm">
+        <!-- Premium card — full (sidebar expandida) -->
+        <div class="premium-card-full mx-3 mt-4 mb-3 p-3 text-center bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-4 shadow-sm">
             <h5 class="fw-bold text-primary mb-1"><i class="ti ti-diamond"></i> Premium</h5>
             <p class="text-muted small mb-3">Libere todo o poder preditivo do Axiom Forecast.</p>
             <a href="{% url 'configuracoes_conta' %}" class="btn btn-primary btn-sm rounded-pill w-100 shadow">
@@ -93,6 +129,25 @@
             </a>
         </div>
 
+        <!-- Premium card — ícone (sidebar condensada) -->
+        <div class="premium-card-icon text-center mt-3 mb-2">
+            <a href="{% url 'configuracoes_conta' %}" class="text-primary" title="Fazer Upgrade Premium" style="font-size: 1.3rem;">
+                <i class="ti ti-diamond"></i>
+            </a>
+        </div>
+
         <div class="clearfix"></div>
     </div>
 </div>
+
+<style>
+    /* Sidebar expandida: mostra card completo, esconde ícone */
+    .premium-card-icon { display: none; }
+
+    /* Sidebar condensada (condensed ou sm-hover): esconde card, mostra ícone */
+    html[data-sidenav-size="condensed"] .premium-card-full,
+    html[data-sidenav-size="sm-hover"]  .premium-card-full { display: none !important; }
+
+    html[data-sidenav-size="condensed"] .premium-card-icon,
+    html[data-sidenav-size="sm-hover"]  .premium-card-icon { display: block !important; }
+</style>

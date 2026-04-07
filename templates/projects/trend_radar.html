@@ -1,0 +1,623 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<style>
+  /* ── Layout ── */
+  .radar-header { border-bottom: 1px solid var(--bs-border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem; }
+
+  /* ── Alert banner (crises negativas) ── */
+  .crisis-banner {
+    background: rgba(239,68,68,.08);
+    border: 1px solid rgba(239,68,68,.3);
+    border-left: 4px solid #ef4444;
+    border-radius: 12px;
+    padding: 14px 20px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .crisis-banner .crisis-icon { font-size: 1.4rem; flex-shrink: 0; }
+  .crisis-banner .crisis-text { font-size: .88rem; color: var(--bs-body-color); }
+  .crisis-banner strong { color: #ef4444; }
+
+  /* ── Trend Card ── */
+  .trend-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 16px;
+    background: var(--bs-body-bg);
+    overflow: hidden;
+    transition: box-shadow .2s, border-color .2s;
+    margin-bottom: 1rem;
+  }
+  .trend-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); border-color: var(--bs-primary); }
+
+  /* Faixa lateral por classificação */
+  .trend-card.classif-positivo { border-left: 5px solid #10b981; }
+  .trend-card.classif-negativo { border-left: 5px solid #ef4444; }
+  .trend-card.classif-neutro   { border-left: 5px solid #6b7280; }
+
+  .trend-card-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--bs-border-color);
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .trend-card-body { padding: 16px 20px; }
+  .trend-card-footer {
+    background: var(--bs-body-tertiary);
+    border-top: 1px solid var(--bs-border-color);
+    padding: 14px 20px;
+  }
+
+  /* ── Badges de nível ── */
+  .nivel-badge {
+    font-size: .72rem; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+    padding: 4px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px;
+    white-space: nowrap;
+  }
+  .nivel-viral    { background: rgba(239,68,68,.15);   color: #ef4444; }
+  .nivel-alto     { background: rgba(249,115,22,.15);  color: #f97316; }
+  .nivel-moderado { background: rgba(245,158,11,.15);  color: #f59e0b; }
+  .nivel-baixo    { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
+
+  /* ── Aceleração pill ── */
+  .acc-pill {
+    font-size: 1.1rem; font-weight: 800;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .acc-pill.positivo { color: #10b981; }
+  .acc-pill.negativo { color: #ef4444; }
+  .acc-pill.neutro   { color: var(--bs-secondary-color); }
+
+  /* ── Keyword title ── */
+  .keyword-title {
+    font-size: 1.05rem; font-weight: 700; color: var(--bs-body-color);
+    text-transform: capitalize; flex: 1; min-width: 160px;
+  }
+
+  /* ── Fonte pill ── */
+  .fonte-pill {
+    font-size: .7rem; font-weight: 600; padding: 2px 9px; border-radius: 20px;
+    background: var(--bs-body-tertiary); color: var(--bs-secondary-color);
+    border: 1px solid var(--bs-border-color);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+
+  /* ── Recomendação ── */
+  .rec-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: .85rem; color: var(--bs-body-color);
+    padding: 5px 0;
+    border-bottom: 1px dashed var(--bs-border-color);
+  }
+  .rec-row:last-child { border-bottom: none; }
+  .rec-arrow { font-weight: 800; color: var(--bs-primary); flex-shrink: 0; width: 16px; }
+  .rec-label { font-weight: 600; width: 80px; flex-shrink: 0; color: var(--bs-secondary-color); font-size: .78rem; text-transform: uppercase; letter-spacing: .5px; }
+  .rec-value { flex: 1; line-height: 1.45; }
+
+  /* ── Janela de oportunidade ── */
+  .janela-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: .78rem; font-weight: 600;
+    padding: 4px 12px; border-radius: 20px;
+    background: rgba(59,130,246,.1); color: #3b82f6;
+    border: 1px solid rgba(59,130,246,.2);
+  }
+
+  /* ── SKU pills ── */
+  .sku-pill {
+    font-size: .72rem; padding: 3px 10px; border-radius: 20px;
+    background: var(--bs-body-tertiary); color: var(--bs-body-color);
+    border: 1px solid var(--bs-border-color);
+    display: inline-block;
+  }
+
+  /* ── Seção label ── */
+  .section-label {
+    font-size: .72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--bs-secondary-color); margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--bs-border-color); }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    border: 2px dashed var(--bs-border-color); border-radius: 16px;
+  }
+
+  /* ── Header KPI pills ── */
+  .radar-kpi {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 14px; border-radius: 20px; font-size: .8rem; font-weight: 700;
+    border: 1px solid var(--bs-border-color); background: var(--bs-body-tertiary);
+  }
+  .radar-kpi.kpi-fire  { border-color: rgba(239,68,68,.4);   background: rgba(239,68,68,.08);   color: #ef4444; }
+  .radar-kpi.kpi-warn  { border-color: rgba(249,115,22,.4);  background: rgba(249,115,22,.08);  color: #f97316; }
+  .radar-kpi.kpi-alert { border-color: rgba(245,158,11,.4);  background: rgba(245,158,11,.08);  color: #f59e0b; }
+
+  /* ── Loading overlay ── */
+  #loadingOverlay {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,.78); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center;
+  }
+  #loadingOverlay.active { display: flex; }
+  .loader-card {
+    background: #ffffff; color: #111827; border-radius: 18px;
+    padding: 36px 40px; max-width: 380px; width: 90%; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,.4);
+  }
+  .loader-steps { list-style: none; padding: 0; margin: 0; text-align: left; }
+  .loader-steps li { font-size: .82rem; padding: 5px 0; display: flex; align-items: center; gap: 8px; color: #9ca3af; }
+  .loader-steps li.active { color: #111827; font-weight: 600; }
+  .loader-steps li.done   { color: #10b981; }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #e5e7eb; }
+  .active .step-dot { background: #3b82f6; animation: pulse .8s infinite; }
+  .done   .step-dot { background: #10b981; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── Config modal ── */
+  .config-section-title {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--bs-secondary-color); margin-bottom: .75rem;
+  }
+  .fonte-toggle { cursor: pointer; }
+</style>
+
+<div class="container-fluid pb-5">
+
+  {% include 'projects/_project_tabs.html' %}
+
+  <!-- Header -->
+  <div class="radar-header mb-4">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+      <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <h4 class="fw-bold mb-0" style="font-size:1.3rem"><i class="ti ti-radar me-2" style="color:#06b6d4"></i>Axiom Trend Radar</h4>
+        </div>
+        <p class="text-muted mb-2" style="font-size:.85rem">
+          Detecta ondas de tendência e crises de imagem que afetam a demanda dos seus SKUs.
+        </p>
+        <!-- KPIs de alerta -->
+        <div class="d-flex flex-wrap gap-2 mt-2">
+          {% if n_viral %}
+          <span class="radar-kpi kpi-fire">🔥 {{ n_viral }} viral{% if n_viral != 1 %}is{% endif %}</span>
+          {% endif %}
+          {% if n_alto %}
+          <span class="radar-kpi kpi-warn">🚀 {{ n_alto }} alto{% if n_alto != 1 %}s{% endif %}</span>
+          {% endif %}
+          {% if n_negativo %}
+          <span class="radar-kpi kpi-alert">⚠️ {{ n_negativo }} crise{% if n_negativo != 1 %}s{% endif %} de imagem</span>
+          {% endif %}
+          {% if not tendencias %}
+          <span class="radar-kpi" style="color:var(--bs-secondary-color);">✓ Mercado estável</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Ações -->
+      <div class="d-flex gap-2 flex-wrap align-items-center">
+        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#configModal">
+          <i class="fas fa-sliders-h me-1"></i>Configurar
+        </button>
+        <form method="post" action="{% url 'rodar_scan_radar' projeto_id=projeto.id %}" id="formScan">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary px-4" id="btnScan" onclick="iniciarLoader()">
+            <i class="fas fa-radar me-2" id="btnIcon"></i>
+            <span id="btnTexto">Rodar Scan</span>
+            <span id="btnSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mensagens Django -->
+  {% if messages %}
+    {% for msg in messages %}
+      {% if msg.tags == 'error' %}
+        <div class="alert alert-danger alert-dismissible fade show rounded-3 mb-3 d-flex align-items-start gap-3" role="alert" style="border-left:4px solid #ef4444;">
+          <span style="font-size:1.3rem;line-height:1.4;">🚫</span>
+          <div class="flex-grow-1">
+            <strong>Atenção:</strong> {{ msg }}
+            <div class="mt-2">
+              <button class="btn btn-sm btn-outline-danger me-2" data-bs-toggle="modal" data-bs-target="#configModal">
+                <i class="fas fa-sliders-h me-1"></i>Abrir Configurações
+              </button>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% elif msg.tags == 'success' %}
+        <div class="alert alert-success alert-dismissible fade show rounded-3 mb-3 d-flex align-items-center gap-2" role="alert">
+          <span style="font-size:1.1rem;">✅</span>
+          <span class="flex-grow-1">{{ msg }}</span>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% elif msg.tags == 'warning' %}
+        <div class="alert alert-warning alert-dismissible fade show rounded-3 mb-3 d-flex align-items-center gap-2" role="alert">
+          <span style="font-size:1.1rem;">⚠️</span>
+          <span class="flex-grow-1">{{ msg }}</span>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% else %}
+        <div class="alert alert-info alert-dismissible fade show rounded-3 mb-3 d-flex align-items-center gap-2" role="alert">
+          <span style="font-size:1.1rem;">ℹ️</span>
+          <span class="flex-grow-1">{{ msg }}</span>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+
+  {% if tendencias %}
+
+    <!-- Banner de crise (se houver sinais negativos de alto nível) -->
+    {% for t in tendencias %}
+      {% if t.classificacao == 'negativo' and t.nivel != 'baixo' %}
+      <div class="crisis-banner">
+        <div class="crisis-icon">🚨</div>
+        <div class="crisis-text">
+          <strong>Crise detectada:</strong> "{{ t.palavra_chave }}" —
+          {{ t.aceleracao_formatada }} de menções negativas nas últimas 72h.
+          Verifique os SKUs relacionados e ajuste preço/estoque conforme recomendado.
+        </div>
+      </div>
+      {% if forloop.first %}{% endif %}
+      {% endif %}
+    {% endfor %}
+
+    <!-- Tendências: negativas + virais primeiro -->
+    {% for t in tendencias %}
+    <div class="trend-card classif-{{ t.classificacao }}">
+
+      <!-- Card Header -->
+      <div class="trend-card-header">
+        <!-- Nível badge -->
+        <span class="nivel-badge nivel-{{ t.nivel }}">{{ t.emoji_nivel }} {{ t.get_nivel_display }}</span>
+
+        <!-- Keyword -->
+        <div class="keyword-title">{{ t.palavra_chave }}</div>
+
+        <!-- Aceleração -->
+        <div class="acc-pill {{ t.classificacao }}">
+          {% if t.classificacao == 'negativo' %}↓{% else %}↑{% endif %}
+          {{ t.aceleracao_formatada }}
+          <span style="font-size:.72rem;font-weight:500;color:var(--bs-secondary-color);margin-left:2px;">menções / 72h</span>
+        </div>
+
+        <!-- Fontes -->
+        <div class="ms-auto d-flex gap-1 flex-wrap">
+          {% for fonte in t.fontes %}
+          <span class="fonte-pill">
+            {% if fonte.fonte == 'google_trends' %}📈{% elif fonte.fonte == 'newsapi' %}📰{% elif fonte.fonte == 'reddit' %}💬{% elif fonte.fonte == 'rss' %}📡{% endif %}
+            {{ fonte.fonte|cut:"_" }}
+          </span>
+          {% endfor %}
+        </div>
+
+        <!-- Arquivar -->
+        <form method="post" action="{% url 'arquivar_tendencia' projeto_id=projeto.id tendencia_id=t.id %}" style="margin-left: auto;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-link text-muted p-0" title="Arquivar tendência" style="font-size:.8rem;">
+            <i class="fas fa-archive"></i>
+          </button>
+        </form>
+      </div>
+
+      <!-- Card Body: 2 colunas -->
+      <div class="trend-card-body">
+        <div class="row g-4">
+
+          <!-- Coluna 1: Contexto -->
+          <div class="col-md-5">
+            <div class="config-section-title mb-2">Contexto</div>
+
+            {% if t.fontes %}
+            <div class="mb-3">
+              {% for fonte in t.fontes %}
+                {% if fonte.titulos %}
+                <div class="mb-2">
+                  <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--bs-secondary-color);margin-bottom:4px;">
+                    {% if fonte.fonte == 'google_trends' %}📈 Termos em alta{% elif fonte.fonte == 'newsapi' %}📰 Notícias recentes{% elif fonte.fonte == 'reddit' %}💬 Reddit{% elif fonte.fonte == 'rss' %}📡 Imprensa especializada{% endif %}
+                  </div>
+                  {% for titulo in fonte.titulos|slice:":3" %}
+                  <div style="font-size:.8rem;padding:3px 0;color:var(--bs-body-color);border-bottom:1px solid var(--bs-border-color);">
+                    {{ titulo }}
+                  </div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- SKUs relacionados -->
+            {% if t.skus_relacionados %}
+            <div class="config-section-title mb-2">SKUs no seu catálogo</div>
+            <div class="d-flex flex-wrap gap-1">
+              {% for sku in t.skus_relacionados %}
+              <span class="sku-pill" title="{{ sku.codigo_produto }}">{{ sku.nome_produto }}</span>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="config-section-title mb-2">SKUs no seu catálogo</div>
+            <span style="font-size:.82rem;color:var(--bs-secondary-color);">Nenhum SKU diretamente relacionado encontrado no catálogo.</span>
+            {% endif %}
+          </div>
+
+          <!-- Coluna 2: Recomendação Axiom -->
+          <div class="col-md-7">
+            <div class="config-section-title mb-2">
+              <i class="fas fa-bolt" style="color:var(--bs-primary);"></i> Recomendação Axiom
+            </div>
+
+            {% if t.recomendacao %}
+            {% with r=t.recomendacao %}
+            <div class="rec-row">
+              <span class="rec-arrow">→</span>
+              <span class="rec-label">Preço</span>
+              <span class="rec-value">
+                {{ r.preco_acao }}
+                {% if r.preco_pct != 0 %}
+                <span style="font-weight:700;color:{% if r.preco_pct < 0 %}#ef4444{% else %}#10b981{% endif %};">
+                  ({{ r.preco_pct|floatformat:1 }}%)
+                </span>
+                {% endif %}
+              </span>
+            </div>
+            <div class="rec-row">
+              <span class="rec-arrow">→</span>
+              <span class="rec-label">Estoque</span>
+              <span class="rec-value">
+                {{ r.estoque_acao }}
+                {% if r.estoque_pct != 0 %}
+                <span style="font-weight:700;color:{% if r.estoque_pct > 0 %}#10b981{% else %}#ef4444{% endif %};">
+                  ({% if r.estoque_pct > 0 %}+{% endif %}{{ r.estoque_pct }}%)
+                </span>
+                {% endif %}
+              </span>
+            </div>
+            <div class="rec-row">
+              <span class="rec-arrow">→</span>
+              <span class="rec-label">Gôndola</span>
+              <span class="rec-value">{{ r.gondola }}</span>
+            </div>
+            {% endwith %}
+            {% endif %}
+
+            <!-- Janela de oportunidade -->
+            {% if t.recomendacao.janela_min %}
+            <div class="mt-3">
+              <span class="janela-badge">
+                <i class="fas fa-clock"></i>
+                Janela estimada: {{ t.recomendacao.janela_min }}–{{ t.recomendacao.janela_max }} dias
+              </span>
+            </div>
+            {% endif %}
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Card Footer: timestamp -->
+      <div class="trend-card-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span style="font-size:.75rem;color:var(--bs-secondary-color);">
+          Detectado em {{ t.criado_em|date:"d/m/Y H:i" }}
+        </span>
+        {% if t.aceleracao_por_fonte %}
+        <div class="d-flex gap-2 flex-wrap">
+          {% for fonte, acc in t.aceleracao_por_fonte.items %}
+          <span style="font-size:.72rem;color:var(--bs-secondary-color);">
+            {{ fonte }}: <strong>+{{ acc|floatformat:0 }}%</strong>
+          </span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+    {% endfor %}
+
+  {% else %}
+
+    <!-- Estado inicial / sem tendências -->
+    <div class="empty-state">
+      <div style="font-size:3.5rem">📡</div>
+      <h5 class="fw-bold mt-3 mb-2">Radar pronto para o primeiro scan</h5>
+      <p class="text-muted mb-4" style="max-width:500px;margin:0 auto 1.5rem;">
+        O Axiom vai monitorar Google Trends, notícias, Reddit e feeds especializados —
+        cruzando tudo com o seu catálogo de produtos para gerar alertas acionáveis.
+      </p>
+      <form method="post" action="{% url 'rodar_scan_radar' projeto_id=projeto.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary btn-lg px-5" onclick="iniciarLoader()">
+          Iniciar Primeiro Scan
+        </button>
+      </form>
+      <div class="d-flex flex-wrap justify-content-center gap-3 mt-4" style="font-size:.8rem;color:var(--bs-secondary-color);">
+        <span>📈 Google Trends BR</span>
+        <span>📰 NewsAPI + RSS varejo</span>
+        <span>💬 Reddit BR</span>
+        <span>⚡ Detecção por aceleração de menções</span>
+      </div>
+    </div>
+
+  {% endif %}
+
+</div>
+
+<!-- Modal de Configuração -->
+<div class="modal fade" id="configModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="post" action="{% url 'salvar_radar_config' projeto_id=projeto.id %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Configurar Trend Radar</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-4">
+
+            <!-- Palavras-chave -->
+            <div class="col-md-6">
+              <div class="config-section-title">Palavras-chave customizadas</div>
+              <textarea name="palavras_chave" class="form-control" rows="6"
+                style="font-size:.85rem;"
+                placeholder="Uma por linha&#10;Ex: azeite de oliva&#10;leite condensado&#10;proteína whey">{% if config %}{% for kw in config.palavras_chave %}{{ kw }}
+{% endfor %}{% endif %}</textarea>
+              <div class="form-text">Além das keywords geradas automaticamente do seu catálogo.</div>
+            </div>
+
+            <!-- Configurações -->
+            <div class="col-md-6">
+              <div class="config-section-title">Fontes de dados</div>
+              <div class="d-flex flex-column gap-2 mb-3">
+                {% for fonte, label, icon in fontes_disponiveis|default:"" %}
+                {% empty %}
+                <div class="form-check fonte-toggle">
+                  <input class="form-check-input" type="checkbox" name="fonte_google_trends" id="f_gt" {% if not config or 'google_trends' in config.fontes_ativas %}checked{% endif %}>
+                  <label class="form-check-label" for="f_gt">📈 Google Trends (gratuito)</label>
+                </div>
+                <div class="form-check fonte-toggle">
+                  <input class="form-check-input" type="checkbox" name="fonte_rss" id="f_rss" {% if not config or 'rss' in config.fontes_ativas %}checked{% endif %}>
+                  <label class="form-check-label" for="f_rss">📡 RSS Varejo BR (SuperHiper, ABRAS, G1)</label>
+                </div>
+                <div class="form-check fonte-toggle">
+                  <input class="form-check-input" type="checkbox" name="fonte_newsapi" id="f_news" {% if config and 'newsapi' in config.fontes_ativas %}checked{% endif %}>
+                  <label class="form-check-label" for="f_news">📰 NewsAPI (requer chave)</label>
+                </div>
+                <div class="form-check fonte-toggle">
+                  <input class="form-check-input" type="checkbox" name="fonte_reddit" id="f_reddit" {% if config and 'reddit' in config.fontes_ativas %}checked{% endif %}>
+                  <label class="form-check-label" for="f_reddit">💬 Reddit BR (requer credenciais)</label>
+                </div>
+                {% endfor %}
+              </div>
+
+              <div class="config-section-title">Sensibilidade do radar</div>
+              <label class="form-label" style="font-size:.82rem;">Aceleração mínima para gerar alerta</label>
+              <div class="input-group input-group-sm mb-3">
+                <input type="number" name="limiar_aceleracao" class="form-control"
+                  value="{{ config.limiar_aceleracao|default:50 }}"
+                  min="10" max="500" step="10"
+                  style="">
+                <span class="input-group-text" style="">%</span>
+              </div>
+              <div class="form-text">50% = moderado. 100% = alto. 200% = viral.</div>
+
+              <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" name="usar_catalogo_automatico" id="cb_cat"
+                  {% if not config or config.usar_catalogo_automatico %}checked{% endif %}>
+                <label class="form-check-label" for="cb_cat" style="font-size:.85rem;">
+                  Gerar keywords automaticamente do catálogo de produtos
+                </label>
+              </div>
+
+              <!-- NewsAPI key opcional -->
+              <div class="mt-3">
+                <label class="form-label" style="font-size:.82rem;">Chave NewsAPI (opcional)</label>
+                <input type="text" name="newsapi_key" class="form-control form-control-sm"
+                  placeholder="sua-chave-newsapi"
+                  style=""
+                  value="{{ config.newsapi_key|default:'' }}">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-sm btn-primary px-4">Salvar Configurações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+  <div class="loader-card">
+    <h5 style="font-weight:700;margin-bottom:6px;">Escaneando o mercado</h5>
+    <p style="font-size:.85rem;color:#6b7280;margin-bottom:20px;">Consultando fontes externas. Pode levar até 30 segundos.</p>
+    <ul class="loader-steps" id="loaderSteps">
+      <li id="step0"><span class="step-dot"></span>Gerando keywords do catálogo</li>
+      <li id="step1"><span class="step-dot"></span>Google Trends — verificando aceleração</li>
+      <li id="step2"><span class="step-dot"></span>RSS varejo — escaneando notícias</li>
+      <li id="step3"><span class="step-dot"></span>Calculando sentimento</li>
+      <li id="step4"><span class="step-dot"></span>Classificando ondas</li>
+      <li id="step5"><span class="step-dot"></span>Conectando aos seus SKUs</li>
+      <li id="step6"><span class="step-dot"></span>Gerando recomendações prescritivas</li>
+    </ul>
+    <div class="progress mt-4" style="height:4px;border-radius:4px;background:#e5e7eb;">
+      <div id="loaderBar" class="progress-bar" style="width:0%;background:#3b82f6;transition:width .5s;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let _scanWatchdog = null;
+
+function iniciarLoader() {
+  document.getElementById('loadingOverlay').classList.add('active');
+  const btn = document.getElementById('btnScan');
+  if (btn) btn.disabled = true;
+  const txt = document.getElementById('btnTexto');
+  if (txt) txt.textContent = 'Escaneando...';
+  const sp = document.getElementById('btnSpinner');
+  if (sp) sp.classList.remove('d-none');
+
+  const steps = document.querySelectorAll('#loaderSteps li');
+  const bar = document.getElementById('loaderBar');
+  const durs = [300, 1500, 2000, 1000, 600, 800, 700];
+  let idx = 0;
+  function av() {
+    if (idx > 0) steps[idx-1].classList.replace('active', 'done');
+    if (idx < steps.length) {
+      steps[idx].classList.add('active');
+      bar.style.width = Math.round(((idx+1)/steps.length)*100) + '%';
+      idx++;
+      setTimeout(av, durs[idx-1] || 800);
+    }
+  }
+  av();
+
+  // Watchdog: se o servidor não responder em 2 minutos, mostra aviso
+  _scanWatchdog = setTimeout(function() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (!overlay || !overlay.classList.contains('active')) return;
+    const card = overlay.querySelector('.loader-card');
+    if (card) {
+      card.innerHTML = `
+        <h5 style="font-weight:700;margin-bottom:8px;color:#f59e0b;">⚠️ Demorando mais que o esperado</h5>
+        <p style="font-size:.85rem;color:#6b7280;margin-bottom:16px;">
+          O scan está levando mais de 2 minutos. Pode haver lentidão em fontes externas.<br>
+          O processo continua em segundo plano — aguarde ou recarregue a página.
+        </p>
+        <button onclick="location.reload()" class="btn btn-sm btn-outline-secondary">
+          Recarregar página
+        </button>`;
+    }
+  }, 120000);
+}
+
+function resetLoader() {
+  if (_scanWatchdog) { clearTimeout(_scanWatchdog); _scanWatchdog = null; }
+  document.getElementById('loadingOverlay').classList.remove('active');
+  const btn = document.getElementById('btnScan');
+  if (btn) btn.disabled = false;
+  const txt = document.getElementById('btnTexto');
+  if (txt) txt.textContent = 'Rodar Scan';
+  const sp = document.getElementById('btnSpinner');
+  if (sp) sp.classList.add('d-none');
+}
+
+// Limpa o loader quando a página carrega (inclui retorno do bfcache)
+window.addEventListener('pageshow', resetLoader);
+window.addEventListener('load', resetLoader);
+</script>
+{% endblock %}

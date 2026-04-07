@@ -1,0 +1,196 @@
+{% load static %}
+{% with active=request.resolver_match.url_name %}
+<div class="project-tabbar">
+  <div class="project-tabbar-inner">
+
+    <!-- Breadcrumb do projeto -->
+    <div class="project-crumb">
+      <a href="{% url 'lista_projetos' %}" class="crumb-link">
+        <i class="ti ti-folder me-1"></i>Projetos
+      </a>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-current text-truncate" style="max-width:180px;" title="{{ projeto.nome }}">{{ projeto.nome }}</span>
+    </div>
+
+    <!-- Tabs de módulos -->
+    <nav class="module-tabs" aria-label="Módulos do projeto">
+
+      <!-- GRUPO: Pricing -->
+      <a href="{% url 'dashboard_resultado' projeto.id %}"
+         class="module-tab {% if active == 'dashboard_resultado' %}tab-active tab-overview{% endif %}"
+         title="Visão Geral">
+        <i class="ti ti-layout-dashboard tab-icon"></i>
+        <span class="tab-label">Visão Geral</span>
+      </a>
+
+      <a href="{% url 'painel_portfolio' projeto.id %}"
+         class="module-tab {% if active == 'painel_portfolio' %}tab-active tab-portfolio{% endif %}"
+         title="Portfolio BCG">
+        <i class="ti ti-chart-donut-4 tab-icon" style="color:#f59e0b"></i>
+        <span class="tab-label">Portfolio BCG</span>
+      </a>
+
+      <a href="{% url 'painel_correlacoes' projeto.id %}"
+         class="module-tab {% if active == 'painel_correlacoes' %}tab-active tab-correlacoes{% endif %}"
+         title="Correlações & Insights">
+        <i class="ti ti-chart-area-line tab-icon" style="color:#8b5cf6"></i>
+        <span class="tab-label">Correlações</span>
+      </a>
+
+      <a href="{% url 'painel_margin_command' projeto.id %}"
+         class="module-tab {% if active == 'painel_margin_command' %}tab-active tab-margin{% endif %}"
+         title="Margin Command">
+        <i class="ti ti-ship tab-icon" style="color:#ef4444"></i>
+        <span class="tab-label">Margin Command</span>
+      </a>
+
+      <!-- Divisor -->
+      <span class="tab-divider" aria-hidden="true"></span>
+
+      <!-- GRUPO: Inteligência -->
+      <a href="{% url 'trend_radar_dashboard' projeto_id=projeto.id %}"
+         class="module-tab {% if active == 'trend_radar_dashboard' %}tab-active tab-radar{% endif %}"
+         title="Trend Radar">
+        <i class="ti ti-radar tab-icon" style="color:#06b6d4"></i>
+        <span class="tab-label">Trend Radar</span>
+      </a>
+
+      <a href="{% url 'reputacao_dashboard' projeto_id=projeto.id %}"
+         class="module-tab {% if active == 'reputacao_dashboard' %}tab-active tab-reputacao{% endif %}"
+         title="Reputação">
+        <i class="ti ti-star tab-icon" style="color:#f59e0b"></i>
+        <span class="tab-label">Reputação</span>
+      </a>
+    </nav>
+
+    <!-- Ação global -->
+    <a href="{% url 'exportar_erp' projeto.id %}" class="tab-export-btn" title="Exportar para ERP">
+      <i class="ti ti-file-spreadsheet"></i>
+      <span class="tab-export-label">Exportar ERP</span>
+    </a>
+
+  </div>
+</div>
+
+<style>
+  /* ═══════════════════════════════════════════════
+     PROJECT TAB BAR
+  ═══════════════════════════════════════════════ */
+  .project-tabbar {
+    background: var(--bs-body-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    margin-bottom: 1.75rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .project-tabbar-inner {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 0.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .project-tabbar-inner::-webkit-scrollbar { display: none; }
+
+  /* Breadcrumb */
+  .project-crumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .75rem;
+    white-space: nowrap;
+    padding: 0 1rem 0 0.25rem;
+    border-right: 1px solid var(--bs-border-color);
+    margin-right: 4px;
+    flex-shrink: 0;
+  }
+  .crumb-link {
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+    transition: color .15s;
+  }
+  .crumb-link:hover { color: var(--bs-primary); }
+  .crumb-sep { color: var(--bs-border-color); }
+  .crumb-current {
+    font-weight: 600;
+    color: var(--bs-body-color);
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Tab nav */
+  .module-tabs {
+    display: flex;
+    align-items: stretch;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .module-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.65rem 0.9rem;
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color .15s, border-color .15s, background .15s;
+    flex-shrink: 0;
+  }
+  .module-tab:hover {
+    color: var(--bs-body-color);
+    background: var(--bs-body-tertiary);
+  }
+  .tab-icon { font-size: .95rem; }
+
+  /* Aba ativa — borda colorida na base */
+  .module-tab.tab-active { font-weight: 600; color: var(--bs-body-color); }
+
+  .tab-active.tab-overview   { border-bottom-color: var(--bs-primary);  color: var(--bs-primary); }
+  .tab-active.tab-portfolio  { border-bottom-color: #f59e0b; color: #f59e0b; }
+  .tab-active.tab-correlacoes{ border-bottom-color: #8b5cf6; color: #8b5cf6; }
+  .tab-active.tab-margin     { border-bottom-color: #ef4444; color: #ef4444; }
+  .tab-active.tab-radar      { border-bottom-color: #06b6d4; color: #06b6d4; }
+  .tab-active.tab-reputacao  { border-bottom-color: #f59e0b; color: #f59e0b; }
+
+  /* Divisor vertical entre grupos */
+  .tab-divider {
+    width: 1px;
+    background: var(--bs-border-color);
+    margin: 8px 4px;
+    flex-shrink: 0;
+  }
+
+  /* Botão Exportar ERP */
+  .tab-export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .75rem;
+    font-weight: 500;
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+    padding: 0 0.75rem;
+    border-left: 1px solid var(--bs-border-color);
+    margin-left: auto;
+    flex-shrink: 0;
+    transition: color .15s;
+  }
+  .tab-export-btn:hover { color: var(--bs-body-color); }
+
+  /* Responsivo: esconde labels em telas muito pequenas */
+  @media (max-width: 640px) {
+    .tab-label { display: none; }
+    .module-tab { padding: 0.65rem 0.6rem; }
+    .crumb-current { display: none; }
+    .tab-export-label { display: none; }
+  }
+</style>
+{% endwith %}

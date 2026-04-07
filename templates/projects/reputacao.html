@@ -1,0 +1,599 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block page_content %}
+<style>
+  .rep-header { border-bottom: 1px solid var(--bs-border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem; }
+
+  /* ── Score gauge ── */
+  .score-gauge {
+    width: 140px; height: 140px; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 6px solid; flex-shrink: 0;
+    transition: border-color .3s;
+  }
+  .score-gauge .score-number { font-size: 2.4rem; font-weight: 800; line-height: 1; }
+  .score-gauge .score-label  { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+  /* ── Summary card ── */
+  .rep-summary-card {
+    border: 1px solid var(--bs-border-color); border-radius: 16px;
+    background: var(--bs-body-bg); padding: 28px;
+    display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── Temas ── */
+  .tema-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 13px; border-radius: 20px; font-size: .8rem; font-weight: 600;
+    margin: 3px;
+  }
+  .tema-pos { background: rgba(16,185,129,.12); color: #10b981; border: 1px solid rgba(16,185,129,.25); }
+  .tema-neg { background: rgba(239,68,68,.10);  color: #ef4444; border: 1px solid rgba(239,68,68,.2); }
+
+  /* ── Review card ── */
+  .review-card {
+    border: 1px solid var(--bs-border-color); border-radius: 12px;
+    padding: 16px 18px; background: var(--bs-body-bg);
+    margin-bottom: .75rem; transition: box-shadow .18s;
+  }
+  .review-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+  .review-card.sent-positivo { border-left: 4px solid #10b981; }
+  .review-card.sent-negativo { border-left: 4px solid #ef4444; }
+  .review-card.sent-neutro   { border-left: 4px solid #6b7280; }
+
+  .review-autor  { font-size: .88rem; font-weight: 700; color: var(--bs-body-color); }
+  .review-data   { font-size: .75rem; color: var(--bs-secondary-color); }
+  .review-texto  { font-size: .85rem; color: var(--bs-body-color); line-height: 1.6; margin-top: 8px; }
+  .star-row      { font-size: .85rem; letter-spacing: 1px; }
+  .star-filled   { color: #f59e0b; }
+  .star-empty    { color: var(--bs-border-color); }
+  .sent-pill {
+    font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+    margin-left: 6px;
+  }
+  .sp-positivo { background: rgba(16,185,129,.12); color: #10b981; }
+  .sp-negativo { background: rgba(239,68,68,.10);  color: #ef4444; }
+  .sp-neutro   { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
+
+  /* ── Place card (header do local) ── */
+  .place-card {
+    border: 1px solid var(--bs-border-color); border-radius: 14px;
+    padding: 16px 20px; margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    background: var(--bs-body-bg);
+  }
+  .place-foto {
+    width: 56px; height: 56px; border-radius: 10px; object-fit: cover;
+    flex-shrink: 0; background: var(--bs-body-tertiary);
+  }
+  .place-foto-placeholder {
+    width: 56px; height: 56px; border-radius: 10px;
+    background: var(--bs-body-tertiary); display: flex; align-items: center;
+    justify-content: center; font-size: 1.5rem; flex-shrink: 0;
+  }
+
+  /* ── Candidate cards ── */
+  .candidate-card {
+    border: 1px solid var(--bs-border-color); border-radius: 12px;
+    padding: 14px 16px; background: var(--bs-body-bg);
+    display: flex; align-items: center; gap: 14px;
+    transition: border-color .18s, box-shadow .18s; cursor: pointer;
+  }
+  .candidate-card:hover { border-color: var(--bs-primary); box-shadow: 0 4px 14px rgba(0,0,0,.1); }
+  .cand-info { flex: 1; min-width: 0; }
+  .cand-nome { font-weight: 700; font-size: .92rem; color: var(--bs-body-color); }
+  .cand-end  { font-size: .78rem; color: var(--bs-secondary-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cand-rating { font-size: .8rem; color: #f59e0b; font-weight: 600; white-space: nowrap; }
+
+  /* ── Empty state ── */
+  .empty-state { text-align: center; padding: 60px 20px; border: 2px dashed var(--bs-border-color); border-radius: 16px; }
+
+  /* ── Section label ── */
+  .section-label {
+    font-size: .72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--bs-secondary-color); margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--bs-border-color); }
+
+  /* ── Cooldown badge ── */
+  .cooldown-badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600;
+    padding: 5px 14px; border-radius: 20px;
+    background: var(--bs-body-tertiary); color: var(--bs-secondary-color);
+    border: 1px solid var(--bs-border-color);
+  }
+
+  /* ── History chart ── */
+  #historyChart { width: 100%; height: 220px; }
+
+  /* ── Loading overlay ── */
+  #loadingOverlay {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,.78); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center;
+  }
+  #loadingOverlay.active { display: flex; }
+  .loader-card {
+    background: #ffffff; color: #111827; border-radius: 18px;
+    padding: 36px 40px; max-width: 360px; width: 90%; text-align: center;
+  }
+  .loader-steps { list-style: none; padding: 0; margin: 0; text-align: left; }
+  .loader-steps li { font-size: .82rem; padding: 5px 0; display: flex; align-items: center; gap: 8px; color: #9ca3af; }
+  .loader-steps li.active { color: #111827; font-weight: 600; }
+  .loader-steps li.done   { color: #10b981; }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #e5e7eb; }
+  .active .step-dot { background: #3b82f6; animation: pulse .8s infinite; }
+  .done   .step-dot { background: #10b981; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+</style>
+
+<div class="container-fluid pb-5">
+
+  {% include 'projects/_project_tabs.html' %}
+
+  <!-- Header -->
+  <div class="rep-header mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div>
+        <h4 class="fw-bold mb-1" style="font-size:1.3rem"><i class="ti ti-star me-2" style="color:#f59e0b"></i>Reputação & Sentimento</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem">
+          Análise de avaliações do Google com IA — o que seus clientes dizem sobre você.
+        </p>
+      </div>
+      {% if config %}
+      <div class="d-flex gap-2">
+        <form method="post" action="{% url 'reputacao_trocar_lugar' projeto_id=projeto.id %}" onsubmit="return confirm('Trocar o local remove o histórico de análises. Continuar?');">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-exchange-alt me-1"></i>Trocar Local
+          </button>
+        </form>
+        <form method="post" action="{% url 'reputacao_analisar' projeto_id=projeto.id %}" id="formAnalisar">
+          {% csrf_token %}
+          {% if dias_bloqueado %}
+          <button class="btn btn-primary px-4" disabled title="Cooldown ativo">
+            <i class="fas fa-clock me-1"></i>Próximo scan em {{ dias_bloqueado }} dia{{ dias_bloqueado|pluralize:"s" }}
+          </button>
+          {% else %}
+          <button class="btn btn-primary px-4" onclick="iniciarLoader()">
+            <i class="fas fa-brain me-1" id="btnIcon"></i>
+            <span id="btnTexto">Rodar Análise</span>
+            <span id="btnSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
+          </button>
+          {% endif %}
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Mensagens Django -->
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show rounded-3 mb-3">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       ESTADO 1: Candidatos aguardando seleção
+       ════════════════════════════════════════════════════════════════════ -->
+  {% if candidatos %}
+  <div class="mb-2">
+    <div class="section-label">
+      <span>{{ candidatos|length }} resultado{{ candidatos|length|pluralize:"s" }} encontrado{{ candidatos|length|pluralize:"s" }} — selecione o local correto</span>
+    </div>
+    <div class="row g-3">
+      {% for c in candidatos %}
+      <div class="col-md-6 col-xl-4">
+        <form method="post" action="{% url 'reputacao_confirmar_lugar' projeto_id=projeto.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="place_id" value="{{ c.place_id }}">
+          <input type="hidden" name="nome_busca" value="{{ c.nome }}">
+          <button type="submit" class="w-100 border-0 bg-transparent p-0 text-start">
+            <div class="candidate-card">
+              {% if c.foto_url %}
+              <img src="{{ c.foto_url }}" class="place-foto" alt="{{ c.nome }}" loading="lazy">
+              {% else %}
+              <div class="place-foto-placeholder">🏪</div>
+              {% endif %}
+              <div class="cand-info">
+                <div class="cand-nome">{{ c.nome }}</div>
+                <div class="cand-end">{{ c.endereco }}</div>
+                {% if c.rating %}
+                <div class="cand-rating mt-1">
+                  ★ {{ c.rating }} · {{ c.total_avaliacoes }} avaliações
+                </div>
+                {% endif %}
+              </div>
+              <i class="fas fa-chevron-right text-muted" style="font-size:.8rem;"></i>
+            </div>
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="mt-3 text-center">
+      <a href="{% url 'reputacao_dashboard' projeto_id=projeto.id %}" class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-search me-1"></i>Buscar novamente
+      </a>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       ESTADO 2: Sem configuração → Formulário de busca
+       ════════════════════════════════════════════════════════════════════ -->
+  {% elif not config %}
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <div class="empty-state">
+        <div style="font-size:3.5rem">🔍</div>
+        <h5 class="fw-bold mt-3 mb-2">Qual empresa você quer monitorar?</h5>
+        <p class="text-muted mb-4" style="max-width:440px;margin:0 auto 1.5rem;">
+          Digite o nome da empresa e encontraremos o perfil correto no Google.
+          Funciona com redes com múltiplas lojas — você escolhe qual unidade monitorar.
+        </p>
+        <form method="post" action="{% url 'reputacao_buscar_lugar' projeto_id=projeto.id %}" class="d-flex gap-2 justify-content-center flex-wrap">
+          {% csrf_token %}
+          <input type="text" name="nome_empresa" class="form-control"
+            placeholder="Ex: Supermercado Silva Leblon"
+            style="max-width:340px;"
+            required>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="fas fa-search me-1"></i>Buscar
+          </button>
+        </form>
+        <div class="d-flex flex-wrap justify-content-center gap-3 mt-4" style="font-size:.78rem;color:var(--bs-secondary-color);">
+          <span>⭐ Avaliações Google Maps</span>
+          <span>🤖 Sentimento via Claude Haiku</span>
+          <span>📊 Histórico de evolução</span>
+          <span>🔄 Atualização semanal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       ESTADO 3 & 4: Config definida — com ou sem análise
+       ════════════════════════════════════════════════════════════════════ -->
+
+  <!-- Cabeçalho do local monitorado -->
+  <div class="place-card">
+    {% if config.google_place_foto %}
+    <img src="{{ config.google_place_foto }}" class="place-foto" alt="{{ config.google_place_nome }}">
+    {% else %}
+    <div class="place-foto-placeholder">🏪</div>
+    {% endif %}
+    <div style="flex:1; min-width:0;">
+      <div class="fw-bold" style="font-size:1rem;">{{ config.google_place_nome }}</div>
+      <div class="text-muted" style="font-size:.8rem;">{{ config.google_place_endereco }}</div>
+      {% if ultima_analise %}
+      <div class="text-muted" style="font-size:.75rem;margin-top:3px;">
+        Última análise: {{ ultima_analise.criado_em|date:"d/m/Y H:i" }}
+        {% if dias_bloqueado %}
+        · <span class="cooldown-badge"><i class="fas fa-clock"></i>Próximo em {{ dias_bloqueado }} dia{{ dias_bloqueado|pluralize:"s" }}</span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% if config.google_place_url %}
+    <a href="{{ config.google_place_url }}" target="_blank" rel="noopener"
+       class="btn btn-sm btn-outline-secondary ms-auto">
+      <i class="fas fa-map-marker-alt me-1"></i>Ver no Maps
+    </a>
+    {% endif %}
+  </div>
+
+  {% if not ultima_analise %}
+  <!-- Aguardando primeira análise -->
+  <div class="empty-state">
+    <div style="font-size:3rem">🧠</div>
+    <h5 class="fw-bold mt-3 mb-2">Pronto para a primeira análise</h5>
+    <p class="text-muted mb-4">
+      Clique em "Rodar Análise" acima para buscar as avaliações e gerar o relatório de sentimento.
+    </p>
+  </div>
+
+  {% elif ultima_analise.status == 'erro' %}
+  <div class="empty-state">
+    <div style="font-size:3rem">⚠️</div>
+    <h5 class="fw-bold mt-3">Erro na última análise</h5>
+    <p class="text-muted">Tente novamente. Se o problema persistir, verifique as chaves de API em settings.py.</p>
+  </div>
+
+  {% elif ultima_analise.status == 'sem_reviews' %}
+  <div class="empty-state">
+    <div style="font-size:3rem">📭</div>
+    <h5 class="fw-bold mt-3">Sem avaliações disponíveis</h5>
+    <p class="text-muted">
+      O Google não retornou avaliações textuais para este local.<br>
+      Nota geral: <strong>{{ ultima_analise.rating_geral|default:"—" }}/5</strong>
+      · {{ ultima_analise.total_avaliacoes }} avaliação(ões).
+    </p>
+  </div>
+
+  {% else %}
+  <!-- ─── Dashboard principal da análise ─── -->
+
+  <!-- Resumo executivo + score -->
+  <div class="rep-summary-card">
+
+    <!-- Score gauge -->
+    <div class="score-gauge"
+         style="border-color:{{ ultima_analise.cor_score }};color:{{ ultima_analise.cor_score }};">
+      <div class="score-number">{{ ultima_analise.score_sentimento }}</div>
+      <div class="score-label">{{ ultima_analise.label_score }}</div>
+    </div>
+
+    <!-- Detalhe -->
+    <div style="flex:1; min-width:220px;">
+      <!-- Google rating -->
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span style="font-size:1.2rem;">⭐</span>
+        <span style="font-size:1.4rem;font-weight:800;color:#f59e0b;">
+          {{ ultima_analise.rating_geral|floatformat:1 }}
+        </span>
+        <span class="text-muted" style="font-size:.82rem;">
+          / 5 · {{ ultima_analise.total_avaliacoes }} avaliações no Google
+        </span>
+      </div>
+
+      <!-- Resumo executivo -->
+      {% if ultima_analise.resumo_executivo %}
+      <p style="font-size:.9rem;line-height:1.65;color:var(--bs-body-color);margin-bottom:14px;">
+        {{ ultima_analise.resumo_executivo }}
+      </p>
+      {% endif %}
+
+      <!-- Temas -->
+      <div class="row g-3">
+        <div class="col-sm-6">
+          <div class="section-label mb-2" style="font-size:.68rem;">💚 Pontos fortes</div>
+          {% for tema in ultima_analise.temas_positivos %}
+          <span class="tema-pill tema-pos">✓ {{ tema }}</span>
+          {% empty %}
+          <span class="text-muted" style="font-size:.8rem;">Nenhum tema identificado</span>
+          {% endfor %}
+        </div>
+        <div class="col-sm-6">
+          <div class="section-label mb-2" style="font-size:.68rem;">❤️ Pontos de melhoria</div>
+          {% for tema in ultima_analise.temas_negativos %}
+          <span class="tema-pill tema-neg">✗ {{ tema }}</span>
+          {% empty %}
+          <span class="text-muted" style="font-size:.8rem;">Nenhum tema identificado</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reviews -->
+  {% if ultima_analise.reviews %}
+  <div class="section-label mt-2">Avaliações analisadas</div>
+
+  <!-- Tabs: mais relevantes (maior nota absoluta de diferença) vs mais recentes -->
+  <ul class="nav nav-tabs mb-3" style="border-color:var(--bs-border-color);">
+    <li class="nav-item">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-relevantes"
+              style="font-size:.85rem;">
+        <i class="fas fa-star me-1" style="color:#f59e0b;"></i>Mais relevantes
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-recentes"
+              style="font-size:.85rem;">
+        <i class="fas fa-clock me-1"></i>Mais recentes
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+    <!-- Mais relevantes: extremos primeiro (1★ e 5★ têm mais informação) -->
+    <div class="tab-pane fade show active" id="tab-relevantes">
+      {% for review in ultima_analise.reviews|dictsortreversed:"rating" %}
+      <div class="review-card sent-{{ review.sentimento|default:'neutro' }}">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+          <div>
+            <span class="review-autor">{{ review.autor }}</span>
+            <span class="sent-pill sp-{{ review.sentimento|default:'neutro' }}">
+              {% if review.sentimento == 'positivo' %}↑{% elif review.sentimento == 'negativo' %}↓{% else %}→{% endif %}
+              {{ review.sentimento|default:'neutro'|capfirst }}
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="star-row">
+              {% for i in "12345" %}
+                {% if forloop.counter <= review.rating %}
+                <span class="star-filled">★</span>
+                {% else %}
+                <span class="star-empty">★</span>
+                {% endif %}
+              {% endfor %}
+            </span>
+            <span class="review-data">{{ review.data_relativa }}</span>
+          </div>
+        </div>
+        {% if review.temas %}
+        <div class="mt-1 mb-1">
+          {% for tema in review.temas %}
+          <span style="font-size:.68rem;background:var(--bs-body-tertiary);padding:1px 7px;border-radius:10px;color:var(--bs-secondary-color);margin-right:3px;">{{ tema }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if review.texto %}
+        <p class="review-texto mb-0">{{ review.texto }}</p>
+        {% else %}
+        <p class="review-texto mb-0 text-muted fst-italic" style="font-size:.8rem;">(Avaliação sem comentário)</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Mais recentes: ordenadas por data_unix desc -->
+    <div class="tab-pane fade" id="tab-recentes">
+      {% for review in ultima_analise.reviews|dictsortreversed:"data_unix" %}
+      <div class="review-card sent-{{ review.sentimento|default:'neutro' }}">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+          <div>
+            <span class="review-autor">{{ review.autor }}</span>
+            <span class="sent-pill sp-{{ review.sentimento|default:'neutro' }}">
+              {% if review.sentimento == 'positivo' %}↑{% elif review.sentimento == 'negativo' %}↓{% else %}→{% endif %}
+              {{ review.sentimento|default:'neutro'|capfirst }}
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="star-row">
+              {% for i in "12345" %}
+                {% if forloop.counter <= review.rating %}
+                <span class="star-filled">★</span>
+                {% else %}
+                <span class="star-empty">★</span>
+                {% endif %}
+              {% endfor %}
+            </span>
+            <span class="review-data">{{ review.data_relativa }}</span>
+          </div>
+        </div>
+        {% if review.temas %}
+        <div class="mt-1 mb-1">
+          {% for tema in review.temas %}
+          <span style="font-size:.68rem;background:var(--bs-body-tertiary);padding:1px 7px;border-radius:10px;color:var(--bs-secondary-color);margin-right:3px;">{{ tema }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if review.texto %}
+        <p class="review-texto mb-0">{{ review.texto }}</p>
+        {% else %}
+        <p class="review-texto mb-0 text-muted fst-italic" style="font-size:.8rem;">(Avaliação sem comentário)</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Histórico de evolução do score -->
+  {% if historico_json != '[]' %}
+  <div class="section-label mt-4">Evolução do score ao longo do tempo</div>
+  <div style="border:1px solid var(--bs-border-color);border-radius:14px;padding:16px;background:var(--bs-body-bg);">
+    <div id="historyChart"></div>
+  </div>
+  {% endif %}
+
+  {% endif %} {# fim status == 'concluido' #}
+  {% endif %} {# fim candidatos / config / sem-config #}
+
+</div><!-- /container -->
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+  <div class="loader-card">
+    <h5 style="font-weight:700;margin-bottom:6px;">Analisando reputação</h5>
+    <p style="font-size:.85rem;color:#6b7280;margin-bottom:20px;">Consultando Google e processando com IA.</p>
+    <ul class="loader-steps">
+      <li id="step0"><span class="step-dot"></span>Buscando avaliações no Google</li>
+      <li id="step1"><span class="step-dot"></span>Lendo reviews dos clientes</li>
+      <li id="step2"><span class="step-dot"></span>Analisando sentimento com Claude Haiku</li>
+      <li id="step3"><span class="step-dot"></span>Identificando temas recorrentes</li>
+      <li id="step4"><span class="step-dot"></span>Gerando resumo executivo</li>
+    </ul>
+    <div class="progress mt-4" style="height:4px;border-radius:4px;background:#e5e7eb;">
+      <div id="loaderBar" class="progress-bar" style="width:0%;background:#3b82f6;transition:width .6s;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script>
+// ── Loading overlay ────────────────────────────────────────────────────────
+function iniciarLoader() {
+  document.getElementById('loadingOverlay').classList.add('active');
+  const btn = document.querySelector('#formAnalisar button[type=submit]');
+  if (btn) btn.disabled = true;
+  const txt = document.getElementById('btnTexto');
+  if (txt) txt.textContent = 'Analisando...';
+  const sp = document.getElementById('btnSpinner');
+  if (sp) sp.classList.remove('d-none');
+
+  const steps = document.querySelectorAll('.loader-steps li');
+  const bar = document.getElementById('loaderBar');
+  const durs = [600, 1200, 3000, 1000, 800];
+  let idx = 0;
+  function av() {
+    if (idx > 0) steps[idx-1].classList.replace('active','done');
+    if (idx < steps.length) {
+      steps[idx].classList.add('active');
+      bar.style.width = Math.round(((idx+1)/steps.length)*100) + '%';
+      idx++;
+      setTimeout(av, durs[idx-1] || 800);
+    }
+  }
+  av();
+}
+
+window.addEventListener('pageshow', function(e) {
+  if (e.persisted) {
+    document.getElementById('loadingOverlay').classList.remove('active');
+  }
+});
+
+// ── Gráfico de histórico ──────────────────────────────────────────────────
+(function() {
+  const rawJson = '{{ historico_json|escapejs }}';
+  if (!rawJson || rawJson === '[]') return;
+
+  let dados;
+  try { dados = JSON.parse(rawJson); } catch(e) { return; }
+  if (!dados.length) return;
+
+  const datas  = dados.map(d => d.data);
+  const scores = dados.map(d => d.score);
+  const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+  const fontColor = isDark ? '#aaa' : '#666';
+
+  Plotly.newPlot('historyChart', [
+    {
+      x: datas, y: scores,
+      type: 'scatter', mode: 'lines+markers',
+      line:   { color: '#3b82f6', width: 2.5, shape: 'spline' },
+      marker: { color: scores.map(s => s >= 70 ? '#10b981' : s >= 50 ? '#f59e0b' : '#ef4444'), size: 9 },
+      hovertemplate: '<b>%{x}</b><br>Score: %{y}/100<extra></extra>',
+    }
+  ], {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor:  'rgba(0,0,0,0)',
+    margin: { t: 10, b: 36, l: 40, r: 10 },
+    xaxis: {
+      color: fontColor,
+      showgrid: false, zeroline: false,
+      tickfont: { size: 11 },
+    },
+    yaxis: {
+      color: fontColor,
+      range: [0, 105], showgrid: true,
+      gridcolor: isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)',
+      zeroline: false, tickfont: { size: 11 },
+      ticksuffix: '',
+    },
+    shapes: [
+      { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 70, y1: 70,
+        line: { color: '#10b981', width: 1, dash: 'dot' } },
+      { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 50, y1: 50,
+        line: { color: '#f59e0b', width: 1, dash: 'dot' } },
+    ],
+    annotations: [
+      { x: 1, xref: 'paper', y: 70, text: 'Bom', showarrow: false,
+        xanchor: 'right', font: { size: 10, color: '#10b981' } },
+      { x: 1, xref: 'paper', y: 50, text: 'Regular', showarrow: false,
+        xanchor: 'right', font: { size: 10, color: '#f59e0b' } },
+    ],
+  }, { displayModeBar: false, responsive: true });
+})();
+</script>
+{% endblock %}

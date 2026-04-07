@@ -1,305 +1,734 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Axiom Pricing Engine — API Reference</title>
-    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+{% extends 'vertical.html' %}
+{% load static %}
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #0f1117;
-            color: #e2e8f0;
-            min-height: 100vh;
-        }
+{% block page_title %}{% endblock %}
 
-        /* ── Top Bar ─────────────────────────────────────────────────────── */
-        .api-topbar {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            border-bottom: 1px solid rgba(99,102,241,0.3);
-            padding: 16px 32px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            backdrop-filter: blur(8px);
-        }
+{% block page_content %}
+<style>
+    /* ── AXIOM API DOCS ─────────────────────────────── */
+    .doc-sidebar {
+        position: sticky;
+        top: 70px;
+        max-height: calc(100vh - 90px);
+        overflow-y: auto;
+    }
+    .doc-sidebar .nav-link {
+        font-size: 0.83rem;
+        color: var(--bs-secondary-color);
+        padding: 5px 12px;
+        border-radius: 6px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .doc-sidebar .nav-link:hover,
+    .doc-sidebar .nav-link.active { background: var(--bs-primary-bg-subtle); color: var(--bs-primary); font-weight: 600; }
+    .doc-sidebar .nav-section { font-size: 0.68rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--bs-secondary-color); padding: 12px 12px 4px; }
 
-        .api-topbar .brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+    .method-badge {
+        display: inline-block;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: monospace;
+        min-width: 44px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .method-get    { background: rgba(25,135,84,0.12);  color: #198754; border: 1px solid rgba(25,135,84,0.25); }
+    .method-post   { background: rgba(13,110,253,0.12); color: #0d6efd; border: 1px solid rgba(13,110,253,0.25); }
+    .method-gp     { background: rgba(111,66,193,0.10); color: #6f42c1; border: 1px solid rgba(111,66,193,0.25); }
 
-        .api-topbar .logo {
-            width: 36px;
-            height: 36px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-        }
+    .endpoint-card {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 28px;
+        scroll-margin-top: 80px;
+    }
+    .endpoint-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 15px 22px;
+        background: var(--bs-body-tertiary);
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .endpoint-path {
+        font-family: 'Courier New', monospace;
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: var(--bs-body-color);
+        flex: 1;
+    }
+    .endpoint-desc { font-size: 0.8rem; color: var(--bs-secondary-color); }
+    .endpoint-body { padding: 22px; background: var(--bs-body-bg); }
 
-        .api-topbar h1 {
-            font-size: 18px;
-            font-weight: 700;
-            color: #f1f5f9;
-            letter-spacing: -0.3px;
-        }
+    .code-block {
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 10px;
+        padding: 15px 18px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+        overflow-x: auto;
+        position: relative;
+        white-space: pre;
+    }
+    .code-block .c  { color: #64748b; }
+    .code-block .s  { color: #a3e635; }
+    .code-block .k  { color: #7dd3fc; }
+    .code-block .n  { color: #fb923c; }
+    .code-block .kw { color: #c084fc; }
 
-        .api-topbar .version-badge {
-            background: rgba(99,102,241,0.2);
-            border: 1px solid rgba(99,102,241,0.4);
-            color: #a5b4fc;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 20px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
+    .copy-btn {
+        position: absolute;
+        top: 8px; right: 10px;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 6px;
+        color: #94a3b8;
+        font-size: 0.72rem;
+        padding: 3px 9px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.2s;
+    }
+    .copy-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
 
-        .api-topbar .links {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
+    .param-table { font-size: 0.83rem; }
+    .param-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--bs-secondary-color); }
+    .param-table code { background: var(--bs-primary-bg-subtle); color: var(--bs-primary); padding: 1px 5px; border-radius: 4px; font-size: 0.78rem; }
+    .req { background: rgba(220,53,69,0.1); color: #dc3545; border: 1px solid rgba(220,53,69,0.2); border-radius: 4px; font-size: 0.66rem; padding: 1px 6px; font-weight: 700; }
+    .opt { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); border-radius: 4px; font-size: 0.66rem; padding: 1px 6px; font-weight: 600; }
 
-        .api-topbar .links a {
-            color: #94a3b8;
-            text-decoration: none;
-            font-size: 13px;
-            transition: color 0.2s;
-        }
+    .callout-warn {
+        background: rgba(253,126,20,0.07);
+        border: 1px solid rgba(253,126,20,0.22);
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 0.84rem;
+    }
+    .callout-info {
+        background: rgba(13,110,253,0.05);
+        border: 1px solid rgba(13,110,253,0.18);
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 0.84rem;
+    }
+    .callout-success {
+        background: rgba(25,135,84,0.06);
+        border: 1px solid rgba(25,135,84,0.2);
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 0.84rem;
+    }
 
-        .api-topbar .links a:hover { color: #a5b4fc; }
+    .sec-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--bs-secondary-color); margin-bottom: 0.6rem; }
 
-        .btn-schema {
-            background: rgba(99,102,241,0.15);
-            border: 1px solid rgba(99,102,241,0.4);
-            color: #a5b4fc;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
+    .status-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; padding: 2px 9px; border-radius: 999px; font-weight: 700; margin-right: 4px; }
+    .s200 { background: rgba(25,135,84,0.1); color: #198754; }
+    .s201 { background: rgba(13,110,253,0.1); color: #0d6efd; }
+    .s207 { background: rgba(111,66,193,0.1); color: #6f42c1; }
+    .s400 { background: rgba(253,126,20,0.1); color: #fd7e14; }
+    .s401 { background: rgba(220,53,69,0.1); color: #dc3545; }
+    .s404 { background: rgba(108,117,125,0.1); color: #6c757d; }
+</style>
 
-        .btn-schema:hover {
-            background: rgba(99,102,241,0.3);
-            color: #c7d2fe;
-        }
+<div class="container-fluid pb-5">
+<div class="row g-0">
 
-        /* ── Auth Banner ─────────────────────────────────────────────────── */
-        .auth-banner {
-            background: rgba(245, 158, 11, 0.08);
-            border: 1px solid rgba(245, 158, 11, 0.25);
-            border-radius: 10px;
-            margin: 24px 32px 0;
-            padding: 16px 20px;
-            display: flex;
-            align-items: flex-start;
-            gap: 14px;
-        }
+    <!-- ── SIDEBAR ────────────────────────────────── -->
+    <div class="col-xl-2 col-lg-3 d-none d-lg-block pe-3">
+        <nav class="doc-sidebar">
+            <div class="nav-section">Introdução</div>
+            <a class="nav-link active" href="#autenticacao">Autenticação</a>
+            <a class="nav-link" href="#formato">Formato de Resposta</a>
+            <a class="nav-link" href="#multitenant">Multi-Loja</a>
+            <a class="nav-link" href="#erros">Códigos de Status</a>
 
-        .auth-banner .icon {
-            font-size: 20px;
-            line-height: 1;
-            flex-shrink: 0;
-            margin-top: 1px;
-        }
+            <div class="nav-section mt-2">Ingestão (ERP → Axiom)</div>
+            <a class="nav-link" href="#ep-lojas"><span class="method-badge method-gp">G/P</span>Lojas</a>
+            <a class="nav-link" href="#ep-projetos"><span class="method-badge method-gp">G/P</span>Projetos</a>
+            <a class="nav-link" href="#ep-vendas"><span class="method-badge method-post">POST</span>Vendas</a>
+            <a class="nav-link" href="#ep-faturamento"><span class="method-badge method-post">POST</span>Faturamento</a>
 
-        .auth-banner .content h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #fbbf24;
-            margin-bottom: 4px;
-        }
+            <div class="nav-section mt-2">Consulta (Axiom → ERP)</div>
+            <a class="nav-link" href="#ep-elasticidade"><span class="method-badge method-get">GET</span>Elasticidade</a>
+            <a class="nav-link" href="#ep-simular"><span class="method-badge method-post">POST</span>Simular Preço</a>
+            <a class="nav-link" href="#ep-otimizar"><span class="method-badge method-post">POST</span>Margin Command</a>
 
-        .auth-banner .content p {
-            font-size: 13px;
-            color: #d1d5db;
-            line-height: 1.5;
-        }
-
-        .auth-banner code {
-            background: rgba(0,0,0,0.4);
-            border: 1px solid rgba(255,255,255,0.1);
-            padding: 1px 6px;
-            border-radius: 4px;
-            font-family: 'Fira Code', monospace;
-            font-size: 12px;
-            color: #fcd34d;
-        }
-
-        /* ── Swagger UI Overrides ────────────────────────────────────────── */
-        #swagger-ui-container {
-            padding: 24px 32px 48px;
-        }
-
-        .swagger-ui { background: transparent; }
-
-        .swagger-ui .topbar { display: none; }
-
-        .swagger-ui .info {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid rgba(99,102,241,0.2);
-            border-radius: 12px;
-            padding: 24px 28px;
-            margin-bottom: 24px;
-        }
-
-        .swagger-ui .info .title {
-            color: #f1f5f9 !important;
-            font-size: 26px !important;
-            font-weight: 700 !important;
-        }
-
-        .swagger-ui .info .description p,
-        .swagger-ui .info .description li { color: #94a3b8 !important; }
-
-        .swagger-ui .info .version { display: none; }
-
-        .swagger-ui .scheme-container {
-            background: rgba(15,17,23,0.5) !important;
-            border: 1px solid rgba(255,255,255,0.06) !important;
-            border-radius: 8px;
-            padding: 12px 16px;
-        }
-
-        .swagger-ui .opblock-tag {
-            color: #e2e8f0 !important;
-            border-bottom: 1px solid rgba(255,255,255,0.07) !important;
-            font-size: 16px !important;
-            font-weight: 600 !important;
-        }
-
-        .swagger-ui .opblock {
-            background: rgba(30,41,59,0.5) !important;
-            border: 1px solid rgba(255,255,255,0.07) !important;
-            border-radius: 8px !important;
-            margin-bottom: 10px !important;
-            box-shadow: none !important;
-        }
-
-        .swagger-ui .opblock.opblock-get .opblock-summary-method { background: #0ea5e9 !important; }
-        .swagger-ui .opblock.opblock-post .opblock-summary-method { background: #10b981 !important; }
-
-        .swagger-ui .opblock .opblock-summary-description,
-        .swagger-ui .opblock-description-wrapper p { color: #94a3b8 !important; }
-
-        .swagger-ui .opblock-summary-path { color: #e2e8f0 !important; }
-
-        .swagger-ui .parameters-col_description p,
-        .swagger-ui table thead tr th,
-        .swagger-ui .response-col_status,
-        .swagger-ui .response-col_description p { color: #cbd5e1 !important; }
-
-        .swagger-ui .model-title, .swagger-ui .model { color: #a5b4fc !important; }
-
-        .swagger-ui input[type=text],
-        .swagger-ui textarea {
-            background: rgba(0,0,0,0.3) !important;
-            border: 1px solid rgba(255,255,255,0.15) !important;
-            color: #e2e8f0 !important;
-            border-radius: 6px;
-        }
-
-        .swagger-ui .btn.execute {
-            background: #6366f1 !important;
-            border-color: #6366f1 !important;
-            color: #fff !important;
-            font-weight: 600;
-            border-radius: 6px;
-        }
-
-        .swagger-ui .btn.authorize {
-            background: transparent !important;
-            border: 1px solid #6366f1 !important;
-            color: #a5b4fc !important;
-            border-radius: 6px;
-        }
-
-        .swagger-ui .microlight,
-        .swagger-ui pre.microlight {
-            background: rgba(0,0,0,0.4) !important;
-            color: #86efac !important;
-            border-radius: 6px;
-            border: 1px solid rgba(255,255,255,0.06) !important;
-        }
-
-        .swagger-ui section.models { display: none; }
-    </style>
-</head>
-<body>
-
-<!-- ── Top Bar ───────────────────────────────────────────────────────────── -->
-<div class="api-topbar">
-    <div class="brand">
-        <div class="logo">⚡</div>
-        <h1>Axiom Pricing Engine</h1>
-        <span class="version-badge">API v1</span>
+            <div class="nav-section mt-2">Exemplos</div>
+            <a class="nav-link" href="#ex-python">Python</a>
+            <a class="nav-link" href="#ex-node">Node.js</a>
+            <a class="nav-link" href="#ex-curl">cURL</a>
+        </nav>
     </div>
-    <div class="links">
-        <a href="{% url 'api_v1_schema' %}" target="_blank" class="btn-schema">
-            📄 OpenAPI JSON
-        </a>
-    </div>
-</div>
 
-<!-- ── Auth Banner ───────────────────────────────────────────────────────── -->
-<div class="auth-banner">
-    <div class="icon">🔑</div>
-    <div class="content">
-        <h3>Autenticação obrigatória em todos os endpoints</h3>
-        <p>
-            Envie sua chave no header:
-            <code>X-Axiom-API-Key: sua-chave-uuid-aqui</code>
-            &nbsp;·&nbsp;
-            Encontre sua chave em <strong>Painel → Configurações → Integração API</strong>.
-            &nbsp;·&nbsp;
-            Clique em <strong>Authorize</strong> abaixo para autenticar e testar os endpoints.
-        </p>
-    </div>
-</div>
+    <!-- ── CONTEÚDO ───────────────────────────────── -->
+    <div class="col-xl-10 col-lg-9">
 
-<!-- ── Swagger UI ─────────────────────────────────────────────────────────── -->
-<div id="swagger-ui-container">
-    <div id="swagger-ui"></div>
-</div>
+        <!-- Cabeçalho -->
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h3 class="fw-bold text-body mb-1"><i class="fas fa-plug text-primary me-2"></i>Axiom Platform — API Reference</h3>
+                <p class="text-muted mb-0">
+                    Versão <span class="badge bg-primary-subtle text-primary">v1.0</span>
+                    &nbsp;·&nbsp; Base URL: <code>/api/v1/</code>
+                    &nbsp;·&nbsp; Protocolo: <code>HTTPS</code>
+                </p>
+            </div>
+            <a href="{% url 'api_v1_schema' %}" target="_blank" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="fas fa-code me-1"></i> OpenAPI Schema
+            </a>
+        </div>
 
-<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+        <!-- ══ AUTENTICAÇÃO ═══════════════════════════ -->
+        <div class="endpoint-card" id="autenticacao">
+            <div class="endpoint-header">
+                <i class="fas fa-shield-alt text-warning"></i>
+                <div>
+                    <div class="fw-bold text-body">Autenticação</div>
+                    <div class="endpoint-desc">Header obrigatório em todas as requisições</div>
+                </div>
+            </div>
+            <div class="endpoint-body">
+                <div class="callout-warn mb-3">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    <strong>Segurança:</strong> Nunca exponha sua API Key em código front-end, repositórios públicos ou logs. Em caso de comprometimento, contate o suporte para rotação imediata.
+                </div>
+                <p class="sec-label">Header obrigatório</p>
+                <div class="code-block mb-3"><button class="copy-btn" onclick="cp(this)">Copiar</button><span class="k">X-Axiom-API-Key</span>: <span class="s">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span></div>
+                <p class="text-muted small mb-0">Obtenha sua chave em <strong>Minha Conta → Chave de API (B2B)</strong>. A chave é UUID v4, única por empresa e rotacionável mediante solicitação.</p>
+            </div>
+        </div>
+
+        <!-- ══ FORMATO DE RESPOSTA ════════════════════ -->
+        <div class="endpoint-card" id="formato">
+            <div class="endpoint-header">
+                <i class="fas fa-code text-info"></i>
+                <div class="fw-bold text-body">Formato de Resposta Padrão</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="code-block mb-3"><button class="copy-btn" onclick="cp(this)">Copiar</button>{
+  <span class="k">"status"</span>:   <span class="s">"sucesso"</span> | <span class="s">"erro"</span> | <span class="s">"aviso"</span>,
+  <span class="k">"mensagem"</span>: <span class="s">"Descrição legível"</span>,
+  <span class="k">"kpis"</span>:     { <span class="c">/* métricas calculadas */</span> },
+  <span class="k">"data"</span>:     [ <span class="c">/* registros detalhados */</span> ]
+}</div>
+                <div class="mt-2">
+                    <span class="status-pill s200">200 Sucesso</span>
+                    <span class="status-pill s201">201 Criado</span>
+                    <span class="status-pill s207">207 Parcial</span>
+                    <span class="status-pill s400">400 Dado inválido</span>
+                    <span class="status-pill s401">401 API Key inválida</span>
+                    <span class="status-pill s404">404 Não encontrado</span>
+                </div>
+                <p class="text-muted small mt-2 mb-0"><strong>207 Parcial</strong> — ocorre quando parte do batch foi rejeitada. O campo <code>data[]</code> lista os erros linha a linha (até 50 detalhes).</p>
+            </div>
+        </div>
+
+        <!-- ══ MULTI-LOJA ═════════════════════════════ -->
+        <div class="endpoint-card" id="multitenant">
+            <div class="endpoint-header">
+                <i class="fas fa-store text-success"></i>
+                <div class="fw-bold text-body">Modelo Multi-Loja (Filiais)</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="callout-info mb-3">
+                    <i class="fas fa-info-circle text-primary me-2"></i>
+                    <strong>Conceito:</strong> Um projeto pertence à empresa, mas dados são segregados por filial (<code>loja</code>). Elasticidade e forecast são calculados de forma independente por filial quando especificada.
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <p class="sec-label">Fluxo recomendado</p>
+                        <ol class="text-muted small" style="line-height:2.2;">
+                            <li>Registre as filiais: <code>POST /api/v1/lojas/</code></li>
+                            <li>Crie projeto por escopo: <code>POST /api/v1/projetos/</code></li>
+                            <li>Envie vendas com <code>loja_id</code>: <code>POST /api/v1/ingestao/vendas/</code></li>
+                            <li>Rode a IA no painel (Construtor de Hipóteses)</li>
+                            <li>Consulte elasticidade por filial: <code>GET /api/v1/elasticidade/{id}/?loja_id=X</code></li>
+                        </ol>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="sec-label">Garantias de segurança (anti-IDOR)</p>
+                        <ul class="text-muted small list-unstyled" style="line-height:2.2;">
+                            <li><i class="fas fa-lock text-success me-2"></i>Loja validada contra a empresa da API Key</li>
+                            <li><i class="fas fa-lock text-success me-2"></i>Projetos de outra empresa retornam 404</li>
+                            <li><i class="fas fa-lock text-success me-2"></i>Todos os queries filtram por <code>empresa=request.empresa</code></li>
+                            <li><i class="fas fa-lock text-success me-2"></i>IDs cross-tenant são impossíveis de adivinhar (UUID)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ INGESTÃO ═══════════════════════════════ -->
+        <h5 class="fw-bold text-body mt-4 mb-3">
+            <i class="fas fa-cloud-upload-alt text-primary me-2"></i> Endpoints de Ingestão (ERP → Axiom)
+        </h5>
+
+        <!-- LOJAS -->
+        <div class="endpoint-card" id="ep-lojas">
+            <div class="endpoint-header">
+                <span class="method-badge method-gp">G/P</span>
+                <div class="endpoint-path">/api/v1/lojas/</div>
+                <div class="endpoint-desc d-none d-md-block">Gerencia filiais da empresa autenticada</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <p class="sec-label">GET — Listar filiais</p>
+                        <div class="code-block mb-3"><button class="copy-btn" onclick="cp(this)">Copiar</button><span class="c"># Resposta 200</span>
+{
+  <span class="k">"status"</span>: <span class="s">"sucesso"</span>,
+  <span class="k">"data"</span>: [
+    { <span class="k">"id"</span>: <span class="n">1</span>, <span class="k">"nome"</span>: <span class="s">"Filial RJ-Centro"</span>, <span class="k">"ativo"</span>: <span class="kw">true</span> },
+    { <span class="k">"id"</span>: <span class="n">2</span>, <span class="k">"nome"</span>: <span class="s">"Filial SP-Paulista"</span>, <span class="k">"ativo"</span>: <span class="kw">true</span> }
+  ]
+}</div>
+                        <p class="sec-label">POST — Criar filial</p>
+                        <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button><span class="c"># Body</span>
+{ <span class="k">"nome"</span>: <span class="s">"Filial SP-Paulista"</span> }
+
+<span class="c"># Resposta 201 (ou 200 se já existe)</span>
+{
+  <span class="k">"data"</span>: [{ <span class="k">"id"</span>: <span class="n">3</span>, <span class="k">"nome"</span>: <span class="s">"Filial SP-Paulista"</span> }]
+}</div>
+                    </div>
+                    <div class="col-lg-6">
+                        <p class="sec-label">Parâmetros POST</p>
+                        <table class="table param-table table-sm">
+                            <thead><tr><th>Campo</th><th>Tipo</th><th></th><th>Descrição</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>nome</code></td><td>string</td><td><span class="req">Obrig.</span></td><td>Nome da filial. Idempotente — retorna existente se já cadastrada.</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="callout-info mt-3">
+                            <i class="fas fa-lightbulb text-primary me-1"></i>
+                            <small>Guarde o <code>id</code> retornado. Ele é o <code>loja_id</code> usado em todos os outros endpoints.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROJETOS -->
+        <div class="endpoint-card" id="ep-projetos">
+            <div class="endpoint-header">
+                <span class="method-badge method-gp">G/P</span>
+                <div class="endpoint-path">/api/v1/projetos/</div>
+                <div class="endpoint-desc d-none d-md-block">Cria e lista projetos de precificação</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <p class="sec-label">POST — Criar projeto</p>
+                        <div class="code-block mb-3"><button class="copy-btn" onclick="cp(this)">Copiar</button><span class="c"># Body</span>
+{
+  <span class="k">"nome"</span>:     <span class="s">"Pricing Filial RJ — Q1 2026"</span>,
+  <span class="k">"loja_id"</span>: <span class="n">1</span>
+}
+
+<span class="c"># Resposta 201</span>
+{
+  <span class="k">"data"</span>: [{
+    <span class="k">"projeto_id"</span>: <span class="n">12</span>,
+    <span class="k">"nome"</span>:       <span class="s">"Pricing Filial RJ — Q1 2026"</span>,
+    <span class="k">"loja"</span>:       <span class="s">"Filial RJ-Centro"</span>
+  }]
+}</div>
+                        <p class="sec-label">GET — Query string</p>
+                        <table class="table param-table table-sm">
+                            <thead><tr><th>Parâmetro</th><th>Descrição</th></tr></thead>
+                            <tbody><tr><td><code>?loja_id=3</code></td><td>Filtra projetos de uma filial.</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div class="col-lg-6">
+                        <p class="sec-label">Parâmetros POST</p>
+                        <table class="table param-table table-sm">
+                            <thead><tr><th>Campo</th><th>Tipo</th><th></th><th>Descrição</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>nome</code></td><td>string</td><td><span class="req">Obrig.</span></td><td>Nome do projeto.</td></tr>
+                                <tr><td><code>loja_id</code></td><td>int</td><td><span class="opt">Opcional</span></td><td>ID da filial. Omita para projeto global da empresa.</td></tr>
+                                <tr><td><code>loja_nome</code></td><td>string</td><td><span class="opt">Opcional</span></td><td>Alternativa ao <code>loja_id</code> — busca por nome.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VENDAS -->
+        <div class="endpoint-card" id="ep-vendas">
+            <div class="endpoint-header">
+                <span class="method-badge method-post">POST</span>
+                <div class="endpoint-path">/api/v1/ingestao/vendas/</div>
+                <div class="endpoint-desc d-none d-md-block">Batch de vendas por SKU → alimenta elasticidade e Axiom Forecast Micro</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="callout-warn mb-3">
+                    <i class="fas fa-database text-warning me-2"></i>
+                    <strong>Limite de volume:</strong> Máx. <strong>5.000 registros por requisição</strong>. Para volumes maiores, fragmente em múltiplos POSTs. Registros duplicados (empresa + loja + SKU + data) são <strong>atualizados automaticamente</strong> (upsert).
+                </div>
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <p class="sec-label">Body (JSON)</p>
+                        <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button>{
+  <span class="k">"projeto_id"</span>: <span class="n">12</span>,
+  <span class="k">"loja_id"</span>:    <span class="n">1</span>,
+  <span class="k">"registros"</span>: [
+    {
+      <span class="k">"codigo_produto"</span>:  <span class="s">"SKU001"</span>,
+      <span class="k">"nome_produto"</span>:    <span class="s">"Arroz Tipo 1 5kg"</span>,
+      <span class="k">"data_venda"</span>:      <span class="s">"2025-12-31"</span>,
+      <span class="k">"quantidade"</span>:      <span class="n">120</span>,
+      <span class="k">"preco_praticado"</span>: <span class="n">12.90</span>,
+      <span class="k">"custo_unitario"</span>:  <span class="n">8.20</span>,
+      <span class="k">"variaveis_extras"</span>: {
+        <span class="k">"feriado"</span>: <span class="kw">true</span>,
+        <span class="k">"temperatura"</span>: <span class="n">28.5</span>
+      }
+    }
+  ]
+}</div>
+                    </div>
+                    <div class="col-lg-6">
+                        <p class="sec-label">Campos de cada registro</p>
+                        <table class="table param-table table-sm">
+                            <thead><tr><th>Campo</th><th>Tipo</th><th></th><th>Descrição</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>codigo_produto</code></td><td>string</td><td><span class="req">Obrig.</span></td><td>Código SKU.</td></tr>
+                                <tr><td><code>data_venda</code></td><td>string</td><td><span class="req">Obrig.</span></td><td>Formato <code>YYYY-MM-DD</code>.</td></tr>
+                                <tr><td><code>quantidade</code></td><td>number</td><td><span class="req">Obrig.</span></td><td>Unidades vendidas. Deve ser &gt; 0.</td></tr>
+                                <tr><td><code>preco_praticado</code></td><td>number</td><td><span class="req">Obrig.</span></td><td>Preço de venda em R$. Deve ser &gt; 0.</td></tr>
+                                <tr><td><code>nome_produto</code></td><td>string</td><td><span class="opt">Opcional</span></td><td>Nome legível do produto.</td></tr>
+                                <tr><td><code>custo_unitario</code></td><td>number</td><td><span class="opt">Opcional</span></td><td>Custo unitário em R$. Necessário para margem.</td></tr>
+                                <tr><td><code>variaveis_extras</code></td><td>object</td><td><span class="opt">Opcional</span></td><td>Covariáveis livres: feriado, clima, estoque, etc.</td></tr>
+                            </tbody>
+                        </table>
+                        <p class="sec-label mt-2">Resposta</p>
+                        <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button>{
+  <span class="k">"kpis"</span>: {
+    <span class="k">"recebidos"</span>:   <span class="n">150</span>,
+    <span class="k">"inseridos"</span>:   <span class="n">140</span>,
+    <span class="k">"atualizados"</span>: <span class="n">10</span>,
+    <span class="k">"rejeitados"</span>:  <span class="n">0</span>
+  },
+  <span class="k">"data"</span>: [] <span class="c">// erros linha a linha se rejeitados > 0</span>
+}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FATURAMENTO -->
+        <div class="endpoint-card" id="ep-faturamento">
+            <div class="endpoint-header">
+                <span class="method-badge method-post">POST</span>
+                <div class="endpoint-path">/api/v1/ingestao/faturamento/</div>
+                <div class="endpoint-desc d-none d-md-block">Faturamento diário consolidado → Axiom Macro Forecast (Prophet)</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="callout-info mb-3">
+                    <i class="fas fa-info-circle text-primary me-2"></i>
+                    <strong>Diferença de /vendas/:</strong> Recebe apenas a <strong>receita total do dia</strong> sem detalhamento por SKU. Use para o motor Prophet (previsão macro de faturamento). Para previsão por produto, use <code>/ingestao/vendas/</code>.
+                </div>
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <p class="sec-label">Body (JSON)</p>
+                        <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button>{
+  <span class="k">"loja_id"</span>: <span class="n">1</span>,  <span class="c">// null = empresa consolidada</span>
+  <span class="k">"registros"</span>: [
+    { <span class="k">"data"</span>: <span class="s">"2025-12-29"</span>, <span class="k">"faturamento"</span>: <span class="n">58420.50</span> },
+    { <span class="k">"data"</span>: <span class="s">"2025-12-30"</span>, <span class="k">"faturamento"</span>: <span class="n">62100.00</span> },
+    { <span class="k">"data"</span>: <span class="s">"2025-12-31"</span>, <span class="k">"faturamento"</span>: <span class="n">71380.75</span> }
+  ]
+}</div>
+                    </div>
+                    <div class="col-lg-6">
+                        <p class="sec-label">Campos de cada registro</p>
+                        <table class="table param-table table-sm">
+                            <thead><tr><th>Campo</th><th>Tipo</th><th></th><th>Descrição</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>data</code></td><td>string</td><td><span class="req">Obrig.</span></td><td>Formato <code>YYYY-MM-DD</code>.</td></tr>
+                                <tr><td><code>faturamento</code></td><td>number</td><td><span class="req">Obrig.</span></td><td>Receita total do dia em R$. Deve ser ≥ 0.</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="callout-success mt-3">
+                            <i class="fas fa-sync text-success me-2"></i>
+                            <strong>Upsert:</strong> Enviar o mesmo dia novamente <strong>atualiza</strong> o valor. Ideal para corrigir fechamentos sem precisar de DELETE.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ CONSULTA ═══════════════════════════════ -->
+        <h5 class="fw-bold text-body mt-4 mb-3">
+            <i class="fas fa-chart-line text-success me-2"></i> Endpoints de Consulta (Axiom → ERP)
+        </h5>
+
+        <!-- ELASTICIDADE -->
+        <div class="endpoint-card" id="ep-elasticidade">
+            <div class="endpoint-header">
+                <span class="method-badge method-get">GET</span>
+                <div class="endpoint-path">/api/v1/elasticidade/{projeto_id}/</div>
+                <div class="endpoint-desc d-none d-md-block">Retorna elasticidades calculadas pelo AutoML para cada SKU do projeto</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <p class="sec-label">Query string (todos opcionais)</p>
+                        <table class="table param-table table-sm">
+                            <thead><tr><th>Parâmetro</th><th>Descrição</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>?loja_id=3</code></td><td>Filtra por filial.</td></tr>
+                                <tr><td><code>?sku=SKU001</code></td><td>Filtra por código exato.</td></tr>
+                                <tr><td><code>?confianca=alta</code></td><td><code>alta</code> | <code>media</code> | <code>baixa</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-lg-7">
+                        <p class="sec-label">Resposta — cada item em data[]</p>
+                        <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button>{
+  <span class="k">"codigo_produto"</span>:  <span class="s">"SKU001"</span>,
+  <span class="k">"nome_produto"</span>:    <span class="s">"Arroz Tipo 1 5kg"</span>,
+  <span class="k">"loja"</span>:            <span class="s">"Filial RJ-Centro"</span>,
+  <span class="k">"elasticidade"</span>:    <span class="n">-1.42</span>,
+  <span class="k">"ic_lower"</span>:         <span class="n">-1.80</span>,
+  <span class="k">"ic_upper"</span>:         <span class="n">-1.05</span>,
+  <span class="k">"p_value"</span>:          <span class="n">0.002</span>,
+  <span class="k">"r_squared"</span>:        <span class="n">0.67</span>,
+  <span class="k">"confianca"</span>:        <span class="s">"Alta"</span>,
+  <span class="k">"comportamento"</span>:   <span class="s">"Sensível"</span>,
+  <span class="k">"preco_sugerido"</span>:  <span class="n">13.50</span>,
+  <span class="k">"margem_projetada"</span>: <span class="n">39.3</span>
+}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIMULAR -->
+        <div class="endpoint-card" id="ep-simular">
+            <div class="endpoint-header">
+                <span class="method-badge method-post">POST</span>
+                <div class="endpoint-path">/api/v1/simular-preco/</div>
+                <div class="endpoint-desc d-none d-md-block">Simula impacto de mudança de preço em um SKU (volume, lucro, margem)</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <p class="sec-label">Body</p>
+                        <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button>{
+  <span class="k">"resultado_id"</span>:          <span class="n">42</span>,
+  <span class="k">"novo_preco"</span>:             <span class="n">15.90</span>,
+  <span class="k">"custo"</span>:                   <span class="n">8.20</span>,
+  <span class="k">"elasticidade_customizada"</span>: <span class="n">-1.8</span>  <span class="c">// opcional</span>
+}</div>
+                    </div>
+                    <div class="col-lg-6">
+                        <p class="sec-label">Resposta kpis</p>
+                        <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button>{
+  <span class="k">"quantidade_prevista"</span>:    <span class="n">8.5</span>,
+  <span class="k">"faturamento_projetado"</span>: <span class="n">134.55</span>,
+  <span class="k">"lucro_projetado"</span>:       <span class="n">62.90</span>,
+  <span class="k">"margem_projetada"</span>:       <span class="n">46.8</span>,
+  <span class="k">"elasticidade_usada"</span>:     <span class="n">-1.42</span>
+}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MARGIN COMMAND -->
+        <div class="endpoint-card" id="ep-otimizar">
+            <div class="endpoint-header">
+                <span class="method-badge method-post">POST</span>
+                <div class="endpoint-path">/api/v1/otimizar-margem/</div>
+                <div class="endpoint-desc d-none d-md-block">Axiom Margin Command — plano de ajuste para atingir meta de margem global</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <p class="sec-label">Body</p>
+                        <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button>{
+  <span class="k">"projeto_id"</span>:  <span class="n">12</span>,
+  <span class="k">"meta_margem"</span>: <span class="n">30.0</span>,
+  <span class="k">"limite_teto"</span>: <span class="n">5.0</span>  <span class="c">// máx % aumento por SKU, padrão 5</span>
+}</div>
+                    </div>
+                    <div class="col-lg-6">
+                        <p class="sec-label">Resposta data[] — plano por SKU</p>
+                        <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button>{
+  <span class="k">"sku"</span>:          <span class="s">"SKU001"</span>,
+  <span class="k">"produto"</span>:      <span class="s">"Café 500g"</span>,
+  <span class="k">"preco_atual"</span>:  <span class="n">8.90</span>,
+  <span class="k">"preco_novo"</span>:   <span class="n">9.30</span>,
+  <span class="k">"aumento_pct"</span>:  <span class="n">4.5</span>,
+  <span class="k">"estrategia"</span>:   <span class="s">"Ouro Oculto"</span>
+}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ══ EXEMPLOS DE INTEGRAÇÃO ═════════════════ -->
+        <h5 class="fw-bold text-body mt-4 mb-3">
+            <i class="fas fa-code me-2" style="color:#6f42c1;"></i> Exemplos de Integração
+        </h5>
+
+        <!-- Python -->
+        <div class="endpoint-card" id="ex-python">
+            <div class="endpoint-header">
+                <i class="fab fa-python" style="color:#3776ab; font-size:1.2rem;"></i>
+                <div class="fw-bold text-body">Python — Fechamento Diário Automatizado</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button><span class="kw">import</span> requests
+<span class="kw">from</span> datetime <span class="kw">import</span> date
+
+AXIOM_KEY  = <span class="s">"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"</span>
+BASE       = <span class="s">"https://seudominio.com/api/v1"</span>
+HDR        = {<span class="s">"X-Axiom-API-Key"</span>: AXIOM_KEY, <span class="s">"Content-Type"</span>: <span class="s">"application/json"</span>}
+
+<span class="c"># 1. Garantir que as filiais existam</span>
+r = requests.post(f<span class="s">"{BASE}/lojas/"</span>, json={<span class="s">"nome"</span>: <span class="s">"Filial RJ-Centro"</span>}, headers=HDR)
+loja_id = r.json()[<span class="s">"data"</span>][<span class="n">0</span>][<span class="s">"id"</span>]
+
+<span class="c"># 2. Criar (ou reusar) projeto</span>
+r = requests.get(f<span class="s">"{BASE}/projetos/?loja_id={loja_id}"</span>, headers=HDR)
+projetos = r.json()[<span class="s">"data"</span>]
+<span class="kw">if</span> projetos:
+    projeto_id = projetos[<span class="n">0</span>][<span class="s">"projeto_id"</span>]
+<span class="kw">else</span>:
+    r = requests.post(f<span class="s">"{BASE}/projetos/"</span>, json={<span class="s">"nome"</span>: <span class="s">"Pricing 2026"</span>, <span class="s">"loja_id"</span>: loja_id}, headers=HDR)
+    projeto_id = r.json()[<span class="s">"data"</span>][<span class="n">0</span>][<span class="s">"projeto_id"</span>]
+
+<span class="c"># 3. Enviar batch de vendas (fragmentado se > 5000)</span>
+vendas_do_dia = [  <span class="c"># ← sua query no ERP</span>
+    {<span class="s">"codigo_produto"</span>: <span class="s">"SKU001"</span>, <span class="s">"data_venda"</span>: str(date.today()),
+     <span class="s">"quantidade"</span>: <span class="n">120</span>, <span class="s">"preco_praticado"</span>: <span class="n">12.90</span>, <span class="s">"custo_unitario"</span>: <span class="n">8.20</span>},
+]
+
+LOTE = <span class="n">5000</span>
+<span class="kw">for</span> i <span class="kw">in</span> range(<span class="n">0</span>, len(vendas_do_dia), LOTE):
+    r = requests.post(f<span class="s">"{BASE}/ingestao/vendas/"</span>, headers=HDR, json={
+        <span class="s">"projeto_id"</span>: projeto_id, <span class="s">"loja_id"</span>: loja_id,
+        <span class="s">"registros"</span>: vendas_do_dia[i:i+LOTE]
+    })
+    k = r.json()[<span class="s">"kpis"</span>]
+    print(f<span class="s">"Lote {i//LOTE+1}: +{k['inseridos']} / ~{k['atualizados']} / ✗{k['rejeitados']}"</span>)
+
+<span class="c"># 4. Enviar faturamento macro</span>
+requests.post(f<span class="s">"{BASE}/ingestao/faturamento/"</span>, headers=HDR, json={
+    <span class="s">"loja_id"</span>: loja_id,
+    <span class="s">"registros"</span>: [{<span class="s">"data"</span>: str(date.today()), <span class="s">"faturamento"</span>: <span class="n">58420.50</span>}]
+})</div>
+            </div>
+        </div>
+
+        <!-- Node.js -->
+        <div class="endpoint-card" id="ex-node">
+            <div class="endpoint-header">
+                <i class="fab fa-node-js" style="color:#339933; font-size:1.2rem;"></i>
+                <div class="fw-bold text-body">Node.js — Integração com paginação automática</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button><span class="kw">const</span> AXIOM_KEY = <span class="s">'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'</span>;
+<span class="kw">const</span> BASE      = <span class="s">'https://seudominio.com/api/v1'</span>;
+<span class="kw">const</span> HDR       = { <span class="s">'X-Axiom-API-Key'</span>: AXIOM_KEY, <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span> };
+
+<span class="kw">async function</span> <span class="k">enviarVendasPaginado</span>(projetoId, lojaId, todosRegistros) {
+  <span class="kw">const</span> LOTE = <span class="n">5000</span>;
+  <span class="kw">let</span> totalInseridos = <span class="n">0</span>, totalRejeitados = <span class="n">0</span>;
+
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="n">0</span>; i &lt; todosRegistros.length; i += LOTE) {
+    <span class="kw">const</span> lote = todosRegistros.slice(i, i + LOTE);
+    <span class="kw">const</span> res  = <span class="kw">await</span> fetch(`${BASE}/ingestao/vendas/`, {
+      method:  <span class="s">'POST'</span>,
+      headers: HDR,
+      body:    JSON.stringify({ projeto_id: projetoId, loja_id: lojaId, registros: lote })
+    });
+    <span class="kw">const</span> { kpis, data: erros } = <span class="kw">await</span> res.json();
+    totalInseridos  += kpis.inseridos;
+    totalRejeitados += kpis.rejeitados;
+    <span class="kw">if</span> (erros.length) console.warn(<span class="s">'Erros:'</span>, erros);
+  }
+  console.log(`✓ Total: +${totalInseridos} inseridos, ✗${totalRejeitados} rejeitados`);
+}</div>
+            </div>
+        </div>
+
+        <!-- cURL -->
+        <div class="endpoint-card" id="ex-curl">
+            <div class="endpoint-header">
+                <i class="fas fa-terminal" style="font-size:1.1rem;"></i>
+                <div class="fw-bold text-body">cURL — Teste rápido</div>
+            </div>
+            <div class="endpoint-body">
+                <div class="code-block"><button class="copy-btn" onclick="cp(this)">Copiar</button><span class="c"># Listar filiais</span>
+curl -H <span class="s">"X-Axiom-API-Key: SUA_CHAVE"</span> \
+  https://seudominio.com/api/v1/lojas/
+
+<span class="c"># Criar projeto</span>
+curl -X POST https://seudominio.com/api/v1/projetos/ \
+  -H <span class="s">"X-Axiom-API-Key: SUA_CHAVE"</span> -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"nome":"Pricing Q1 2026","loja_id":1}'</span>
+
+<span class="c"># Enviar batch de vendas</span>
+curl -X POST https://seudominio.com/api/v1/ingestao/vendas/ \
+  -H <span class="s">"X-Axiom-API-Key: SUA_CHAVE"</span> -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"projeto_id":12,"loja_id":1,"registros":[
+    {"codigo_produto":"SKU001","data_venda":"2025-12-31",
+     "quantidade":120,"preco_praticado":12.90,"custo_unitario":8.20}
+  ]}'</span>
+
+<span class="c"># Consultar elasticidades (filtro por filial + confiança)</span>
+curl -H <span class="s">"X-Axiom-API-Key: SUA_CHAVE"</span> \
+  <span class="s">"https://seudominio.com/api/v1/elasticidade/12/?loja_id=1&amp;confianca=alta"</span>
+
+<span class="c"># Rodar Margin Command</span>
+curl -X POST https://seudominio.com/api/v1/otimizar-margem/ \
+  -H <span class="s">"X-Axiom-API-Key: SUA_CHAVE"</span> -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"projeto_id":12,"meta_margem":30.0,"limite_teto":5.0}'</span></div>
+            </div>
+        </div>
+
+    </div><!-- /col -->
+</div><!-- /row -->
+</div><!-- /container -->
+
 <script>
-    const schemaUrl = "{% url 'api_v1_schema' %}";
+function cp(btn) {
+    const bloco = btn.parentElement;
+    const clone = bloco.cloneNode(true);
+    clone.querySelectorAll('button').forEach(b => b.remove());
+    const texto = clone.innerText.trim();
+    navigator.clipboard.writeText(texto).then(() => {
+        btn.textContent = '✓ Copiado';
+        setTimeout(() => { btn.textContent = 'Copiar'; }, 2000);
+    });
+}
 
-    SwaggerUIBundle({
-        url: schemaUrl,
-        dom_id: '#swagger-ui',
-        presets: [
-            SwaggerUIBundle.presets.apis,
-            SwaggerUIBundle.SwaggerUIStandalonePreset
-        ],
-        layout: 'BaseLayout',
-        deepLinking: true,
-        displayRequestDuration: true,
-        tryItOutEnabled: true,
-        defaultModelsExpandDepth: -1,
-        defaultModelExpandDepth: 3,
-        docExpansion: 'list',
-        filter: true,
-        requestInterceptor: (request) => {
-            // Injeta automaticamente a API Key se o usuário autorizou via modal
-            return request;
+// Scrollspy para sidebar
+const sideLinks = document.querySelectorAll('.doc-sidebar .nav-link[href^="#"]');
+const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+        if (e.isIntersecting) {
+            sideLinks.forEach(l => l.classList.remove('active'));
+            const a = document.querySelector(`.doc-sidebar a[href="#${e.target.id}"]`);
+            if (a) a.classList.add('active');
         }
     });
+}, { rootMargin: '-10% 0px -75% 0px' });
+
+document.querySelectorAll('[id]').forEach(el => observer.observe(el));
 </script>
-</body>
-</html>
+{% endblock page_content %}

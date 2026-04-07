@@ -6,219 +6,903 @@
     <title>Axiom Platform | O Fim do Achismo no Varejo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="{% static 'css/app.min.css' %}" rel="stylesheet" />
-    <link href="{% static 'css/icons.min.css' %}" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
-        /* ==========================================
-           O CÉREBRO DAS CORES
-           ========================================== */
+        /* ============================================
+           AXIOM PLATFORM — LANDING PAGE PREMIUM
+           ============================================ */
         :root {
-            --cor-principal: #0d6efd; 
-            --cor-secundaria: #ffc107; 
-            --cor-fundo-escuro: #0f172a;
-            --cor-texto-escuro: #1e293b;
+            --axiom-blue:     #0d6efd;
+            --axiom-blue-glow:#3b82f6;
+            --axiom-gold:     #f59e0b;
+            --axiom-dark:     #020617;
+            --axiom-dark2:    #0f172a;
+            --axiom-dark3:    #1e293b;
+            --axiom-slate:    #334155;
+            --axiom-text:     #e2e8f0;
+            --axiom-muted:    #94a3b8;
         }
 
-        /* FUNDOS MÁGICOS */
-        .hero-section { 
-            background: linear-gradient(135deg, var(--cor-fundo-escuro) 0%, #1e293b 100%); 
-            color: white; 
-            padding: 120px 0 80px 0; 
-        }
-        
-        .feature-icon { 
-            font-size: 2.5rem; 
-            color: var(--cor-principal); 
-            margin-bottom: 1rem; 
+        * { box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--axiom-dark);
+            color: var(--axiom-text);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
         }
 
-        /* BOTÕES BLINDADOS */
-        .btn-axiom-principal {
-            background-color: var(--cor-principal);
-            color: #ffffff;
-            border: 2px solid var(--cor-principal);
-            font-weight: 600;
+        /* ─── NAVBAR ─────────────────────────────── */
+        .navbar-axiom {
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 0.75rem 0;
             transition: all 0.3s ease;
         }
-        .btn-axiom-principal:hover {
-            background-color: transparent;
-            color: var(--cor-principal);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        .navbar-axiom.scrolled {
+            background: rgba(2, 6, 23, 0.98);
+            box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+        }
+        .navbar-brand img { height: 52px; }
+
+        /* ─── HERO ────────────────────────────────── */
+        .hero {
+            min-height: 100vh;
+            background: var(--axiom-dark);
+            position: relative;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+        .hero-grid-bg {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(13,110,253,0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(13,110,253,0.06) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 40%, transparent 100%);
+        }
+        .hero-orb-1 {
+            position: absolute;
+            width: 700px; height: 700px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(13,110,253,0.18) 0%, transparent 70%);
+            top: -200px; left: -200px;
+            pointer-events: none;
+        }
+        .hero-orb-2 {
+            position: absolute;
+            width: 500px; height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(245,158,11,0.10) 0%, transparent 70%);
+            bottom: -100px; right: -100px;
+            pointer-events: none;
+        }
+        .hero-content { position: relative; z-index: 2; }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(13,110,253,0.15);
+            border: 1px solid rgba(13,110,253,0.35);
+            color: #93c5fd;
+            padding: 6px 18px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+        }
+        .hero-badge .dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: #3b82f6;
+            box-shadow: 0 0 8px #3b82f6;
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.7); }
         }
 
-        .btn-axiom-contorno {
-            background-color: transparent;
-            color: #ffffff;
-            border: 2px solid #ffffff;
+        .hero h1 {
+            font-size: clamp(2.4rem, 6vw, 4.2rem);
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -1px;
+            color: #f1f5f9;
+        }
+        .hero h1 .highlight {
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero h1 .highlight-gold {
+            background: linear-gradient(90deg, #f59e0b, #fbbf24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-lead {
+            font-size: 1.15rem;
+            color: var(--axiom-muted);
+            max-width: 620px;
+            line-height: 1.75;
+        }
+
+        .btn-hero-primary {
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            color: #fff;
+            border: none;
+            padding: 14px 36px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 0.3px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(37,99,235,0.45);
+        }
+        .btn-hero-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(37,99,235,0.6);
+            color: #fff;
+        }
+        .btn-hero-outline {
+            background: transparent;
+            color: var(--axiom-text);
+            border: 1.5px solid rgba(255,255,255,0.2);
+            padding: 13px 36px;
+            border-radius: 999px;
             font-weight: 600;
+            font-size: 1rem;
             transition: all 0.3s ease;
         }
-        .btn-axiom-contorno:hover {
-            background-color: #ffffff;
-            color: var(--cor-texto-escuro);
-            border-color: #ffffff;
+        .btn-hero-outline:hover {
+            background: rgba(255,255,255,0.07);
+            border-color: rgba(255,255,255,0.35);
+            color: #fff;
+            transform: translateY(-2px);
         }
 
-        /* CARDS COM EFEITO SUAVE */
-        .module-card { transition: transform 0.3s ease, box-shadow 0.3s ease; border: 1px solid #e2e8f0 !important; }
-        .module-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important; border-color: var(--cor-principal) !important; }
-        
-        .use-case-card { border-left: 4px solid var(--cor-principal); background-color: #f8f9fa; }
+        /* Hero logo visual */
+        .hero-logo-display {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hero-logo-display img {
+            width: 100%;
+            max-width: 420px;
+            filter: drop-shadow(0 0 40px rgba(13,110,253,0.3));
+            animation: float-logo 4s ease-in-out infinite;
+        }
+        @keyframes float-logo {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+        .hero-logo-ring {
+            position: absolute;
+            width: 480px; height: 480px;
+            border: 1px solid rgba(13,110,253,0.15);
+            border-radius: 50%;
+            animation: spin-slow 20s linear infinite;
+        }
+        .hero-logo-ring-2 {
+            position: absolute;
+            width: 380px; height: 380px;
+            border: 1px solid rgba(245,158,11,0.1);
+            border-radius: 50%;
+            animation: spin-slow 15s linear infinite reverse;
+        }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .hero-logo-glow {
+            position: absolute;
+            width: 300px; height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(13,110,253,0.12) 0%, transparent 70%);
+        }
+
+        /* ─── SOCIAL PROOF BAR ────────────────────── */
+        .proof-bar {
+            background: rgba(15, 23, 42, 0.8);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 24px 0;
+        }
+        .proof-stat h3 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #3b82f6, #93c5fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+        }
+        .proof-stat p { font-size: 0.82rem; color: var(--axiom-muted); margin: 0; }
+        .proof-divider { width: 1px; background: rgba(255,255,255,0.1); height: 48px; }
+
+        /* ─── PROBLEM STATEMENT ───────────────────── */
+        .section-problem {
+            padding: 100px 0;
+            background: var(--axiom-dark2);
+            position: relative;
+        }
+        .section-eyebrow {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #3b82f6;
+            margin-bottom: 1rem;
+        }
+        .section-title {
+            font-size: clamp(1.8rem, 4vw, 2.8rem);
+            font-weight: 800;
+            color: #f1f5f9;
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+        }
+        .section-title .accent { color: #3b82f6; }
+        .section-title .accent-gold { color: #f59e0b; }
+
+        .problem-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s ease;
+        }
+        .problem-card:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(239,68,68,0.3);
+            transform: translateY(-4px);
+        }
+        .problem-card .icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            background: rgba(239,68,68,0.12);
+            border: 1px solid rgba(239,68,68,0.2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: #f87171;
+        }
+
+        /* ─── SOLUÇÃO / MÓDULOS ───────────────────── */
+        .section-solutions {
+            padding: 100px 0;
+            background: var(--axiom-dark);
+        }
+
+        .module-card-premium {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 36px 28px;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+        .module-card-premium::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .module-card-premium.featured::before { opacity: 1; }
+        .module-card-premium:hover::before { opacity: 1; }
+        .module-card-premium:hover {
+            background: rgba(13,110,253,0.06);
+            border-color: rgba(13,110,253,0.25);
+            transform: translateY(-6px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+        }
+        .module-card-premium.featured {
+            background: rgba(13,110,253,0.07);
+            border-color: rgba(13,110,253,0.25);
+        }
+        .card-module-icon {
+            width: 60px; height: 60px;
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.6rem;
+            margin-bottom: 1.25rem;
+        }
+        .card-module-icon.blue { background: rgba(13,110,253,0.15); color: #60a5fa; border: 1px solid rgba(13,110,253,0.25); }
+        .card-module-icon.green { background: rgba(34,197,94,0.1); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+        .card-module-icon.gold { background: rgba(245,158,11,0.1); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+
+        .module-card-premium h4 { font-size: 1.2rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.6rem; }
+        .module-card-premium p { font-size: 0.9rem; color: var(--axiom-muted); line-height: 1.7; margin-bottom: 1.25rem; }
+
+        .feature-list { list-style: none; padding: 0; margin: 0; }
+        .feature-list li {
+            font-size: 0.85rem;
+            color: var(--axiom-muted);
+            padding: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .feature-list li i { color: #4ade80; font-size: 0.75rem; }
+
+        /* ─── CASOS DE USO ────────────────────────── */
+        .section-usecase {
+            padding: 100px 0;
+            background: var(--axiom-dark2);
+        }
+        .usecase-row {
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 16px;
+            padding: 32px;
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        .usecase-row:hover {
+            border-color: rgba(13,110,253,0.3);
+            background: rgba(13,110,253,0.04);
+        }
+        .usecase-icon-wrap {
+            flex-shrink: 0;
+            width: 64px; height: 64px;
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.7rem;
+        }
+        .usecase-icon-wrap.blue { background: rgba(13,110,253,0.12); color: #60a5fa; border: 1px solid rgba(13,110,253,0.2); }
+        .usecase-icon-wrap.green { background: rgba(34,197,94,0.1); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
+        .usecase-icon-wrap.red { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+        .usecase-row h5 { font-size: 1.05rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.4rem; }
+        .usecase-row p { font-size: 0.9rem; color: var(--axiom-muted); margin: 0; line-height: 1.7; }
+
+        /* ─── POR QUE AXIOM ───────────────────────── */
+        .section-why {
+            padding: 100px 0;
+            background: var(--axiom-dark);
+            position: relative;
+            overflow: hidden;
+        }
+        .section-why::before {
+            content: '';
+            position: absolute;
+            width: 800px; height: 800px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(13,110,253,0.07) 0%, transparent 70%);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .pillar-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 16px;
+            padding: 32px 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        .pillar-card:hover {
+            background: rgba(13,110,253,0.06);
+            border-color: rgba(13,110,253,0.3);
+            transform: translateY(-5px);
+        }
+        .pillar-icon {
+            font-size: 2.2rem;
+            margin-bottom: 1.2rem;
+            display: block;
+        }
+        .pillar-card h5 { font-size: 1rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.5rem; }
+        .pillar-card p { font-size: 0.87rem; color: var(--axiom-muted); margin: 0; line-height: 1.7; }
+
+        .quote-block {
+            background: rgba(13,110,253,0.08);
+            border: 1px solid rgba(13,110,253,0.2);
+            border-radius: 16px;
+            padding: 40px 48px;
+            position: relative;
+        }
+        .quote-block::before {
+            content: '\201C';
+            font-size: 6rem;
+            color: rgba(13,110,253,0.2);
+            position: absolute;
+            top: -20px; left: 24px;
+            line-height: 1;
+            font-family: Georgia, serif;
+        }
+        .quote-block p {
+            font-size: 1.2rem;
+            font-style: italic;
+            color: #cbd5e1;
+            line-height: 1.8;
+            margin: 0;
+        }
+
+        /* ─── CTA FINAL ───────────────────────────── */
+        .section-cta {
+            padding: 100px 0;
+            background: linear-gradient(135deg, var(--axiom-dark2) 0%, var(--axiom-dark) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .section-cta::before {
+            content: '';
+            position: absolute;
+            width: 600px; height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .cta-box {
+            position: relative;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 64px 48px;
+            text-align: center;
+        }
+        .cta-box h2 {
+            font-size: clamp(1.8rem, 4vw, 2.6rem);
+            font-weight: 800;
+            color: #f1f5f9;
+            margin-bottom: 1rem;
+        }
+        .cta-box p {
+            font-size: 1.05rem;
+            color: var(--axiom-muted);
+            max-width: 560px;
+            margin: 0 auto 2.5rem;
+            line-height: 1.8;
+        }
+
+        /* ─── FOOTER ──────────────────────────────── */
+        footer.axiom-footer {
+            background: var(--axiom-dark);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding: 32px 0;
+        }
+        footer.axiom-footer img { height: 28px; opacity: 0.8; }
+        footer.axiom-footer p { color: var(--axiom-muted); font-size: 0.82rem; margin: 0; }
+
+        /* ─── UTILITIES ───────────────────────────── */
+        .separator {
+            width: 48px; height: 3px;
+            background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+            border-radius: 2px;
+            margin: 0 auto 1.5rem;
+        }
+        .separator.left { margin: 0 0 1.5rem; }
+
+        /* Fade-in animation on scroll */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ─── RESPONSIVE ──────────────────────────── */
+        @media (max-width: 768px) {
+            .hero-logo-display { display: none; }
+            .proof-divider { display: none; }
+            .proof-bar .row { gap: 20px; }
+            .cta-box { padding: 40px 24px; }
+            .usecase-row { flex-direction: column; }
+        }
     </style>
 </head>
-<body data-bs-spy="scroll" data-bs-target="#navbar-landing">
+<body>
 
-    <nav id="navbar-landing" class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="#">
-                <i class="fas fa-chart-pie text-primary fs-4 align-middle me-2"></i>AXIOM PLATFORM
+<!-- ═══════════════════════════════════════════
+     NAVBAR
+═══════════════════════════════════════════ -->
+<nav id="main-navbar" class="navbar navbar-axiom fixed-top">
+    <div class="container d-flex align-items-center justify-content-between">
+        <a class="navbar-brand p-0" href="#">
+            <img src="{% static 'images/logo-axiom-dark-4k.png' %}" alt="Axiom Platform">
+        </a>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'login' %}" class="btn btn-hero-outline btn-sm px-4">Entrar</a>
+            <a href="{% url 'accounts:signup' %}" class="btn btn-hero-primary btn-sm px-4">
+                <i class="fas fa-rocket me-1"></i>Criar Conta
             </a>
-            <div class="ms-auto">
-                <a href="{% url 'login' %}" class="btn btn-axiom-contorno btn-sm me-2 px-4 rounded-pill">Entrar</a>
-                <a href="#contato" class="btn btn-axiom-principal btn-sm px-4 rounded-pill">Agendar Demo</a>
+        </div>
+    </div>
+</nav>
+
+
+<!-- ═══════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════ -->
+<section class="hero" id="inicio">
+    <div class="hero-grid-bg"></div>
+    <div class="hero-orb-1"></div>
+    <div class="hero-orb-2"></div>
+
+    <div class="container hero-content pt-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <div class="hero-badge">
+                    <span class="dot"></span>
+                    IA Preditiva para Varejo & Indústria
+                </div>
+
+                <h1>
+                    O Fim do<br>
+                    <span class="highlight">Achismo.</span><br>
+                    A Ciência da<br>
+                    <span class="highlight-gold">Rentabilidade.</span>
+                </h1>
+
+                <p class="hero-lead mt-4 mb-5">
+                    Transforme os dados do seu ERP em decisões executivas claras.
+                    Aumente margens, descubra lucros ocultos e audite o risco do
+                    seu portfólio em tempo real com IA preditiva explicável.
+                </p>
+
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{% url 'accounts:signup' %}" class="btn btn-hero-primary">
+                        <i class="fas fa-rocket me-2"></i>Criar Conta Grátis
+                    </a>
+                    <a href="#solucoes" class="btn btn-hero-outline">
+                        Conhecer a Plataforma <i class="fas fa-arrow-right ms-2"></i>
+                    </a>
+                </div>
+                <p class="mt-3" style="color: var(--axiom-muted); font-size: 0.82rem;">
+                    <i class="fas fa-lock me-1"></i>Sem cartão de crédito · Dados isolados por empresa · Setup em minutos
+                </p>
+            </div>
+
+            <div class="col-lg-6 d-none d-lg-flex">
+                <div class="hero-logo-display w-100">
+                    <div class="hero-logo-ring"></div>
+                    <div class="hero-logo-ring-2"></div>
+                    <div class="hero-logo-glow"></div>
+                    <img src="{% static 'images/logo-axiom-dark-4k.png' %}" alt="Axiom Platform">
+                </div>
             </div>
         </div>
-    </nav>
+    </div>
+</section>
 
-    <section class="hero-section text-center mt-5">
-        <div class="container py-5">
-            <span class="badge bg-primary text-white mb-3 px-3 py-2 rounded-pill shadow-sm">Inteligência Artificial para Varejo e Indústria</span>
-            <h1 class="display-4 fw-bold mb-3">O Fim do Achismo.<br>A Ciência da Rentabilidade.</h1>
-            <p class="lead mb-5 text-white-50 mx-auto" style="max-width: 750px;">
-                Transforme os dados do seu ERP em decisões executivas claras. Aumente margens, descubra lucros ocultos e audite o risco do seu portfólio de produtos em tempo real com Inteligência Artificial preditiva.
+
+<!-- ═══════════════════════════════════════════
+     PROVA SOCIAL / NÚMEROS
+═══════════════════════════════════════════ -->
+<div class="proof-bar">
+    <div class="container">
+        <div class="row justify-content-center align-items-center text-center g-4">
+            <div class="col-6 col-md-3 proof-stat">
+                <h3 class="counter" data-target="40">0%</h3>
+                <p>Redução média de<br>produtos "abacaxi"</p>
+            </div>
+            <div class="col-auto d-none d-md-block proof-divider"></div>
+            <div class="col-6 col-md-3 proof-stat">
+                <h3 class="counter" data-target="3">0x</h3>
+                <p>Mais rápido para<br>decisões de pricing</p>
+            </div>
+            <div class="col-auto d-none d-md-block proof-divider"></div>
+            <div class="col-6 col-md-3 proof-stat">
+                <h3>100%</h3>
+                <p>IA explicável — sem<br>caixas pretas</p>
+            </div>
+            <div class="col-auto d-none d-md-block proof-divider"></div>
+            <div class="col-6 col-md-3 proof-stat">
+                <h3>Real-time</h3>
+                <p>Dados do ERP<br>em tempo real</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     O PROBLEMA
+═══════════════════════════════════════════ -->
+<section class="section-problem">
+    <div class="container">
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-7 text-center fade-up">
+                <p class="section-eyebrow">O diagnóstico</p>
+                <div class="separator"></div>
+                <h2 class="section-title">
+                    Decisões exigem velocidade.<br>
+                    <span class="accent">Lucro exige precisão matemática.</span>
+                </h2>
+                <p style="color: var(--axiom-muted); font-size: 1rem; line-height: 1.8;">
+                    A maioria dos executivos ainda depende de dashboards estáticos que mostram o que
+                    <em>aconteceu no passado</em>. O Axiom não olha para trás. Nossa plataforma
+                    audita a saúde da sua empresa <strong style="color:#f1f5f9;">hoje</strong> e
+                    prescreve exatamente o que você deve fazer <strong style="color:#f1f5f9;">amanhã</strong> para gerar caixa.
+                </p>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4 fade-up">
+                <div class="problem-card">
+                    <div class="icon"><i class="fas fa-eye-slash"></i></div>
+                    <h5 style="color:#f1f5f9; font-weight:700; margin-bottom:0.5rem;">Cegueira Financeira</h5>
+                    <p style="color:var(--axiom-muted); font-size:0.9rem; line-height:1.7; margin:0;">
+                        Relatórios gerados dias depois dos fatos. Você só descobre o problema quando já causou prejuízo.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4 fade-up">
+                <div class="problem-card">
+                    <div class="icon"><i class="fas fa-random"></i></div>
+                    <h5 style="color:#f1f5f9; font-weight:700; margin-bottom:0.5rem;">Pricing no Feeling</h5>
+                    <p style="color:var(--axiom-muted); font-size:0.9rem; line-height:1.7; margin:0;">
+                        Preços definidos pela intuição ou pela concorrência. Margem de lucro sacrificada sem necessidade.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4 fade-up">
+                <div class="problem-card">
+                    <div class="icon"><i class="fas fa-water"></i></div>
+                    <h5 style="color:#f1f5f9; font-weight:700; margin-bottom:0.5rem;">Produtos que Sangram</h5>
+                    <p style="color:var(--axiom-muted); font-size:0.9rem; line-height:1.7; margin:0;">
+                        "Vacas Leiteiras" com margens em queda livre detectadas tarde demais. O varejo perde dinheiro em silêncio.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════
+     SOLUÇÕES / MÓDULOS
+═══════════════════════════════════════════ -->
+<section class="section-solutions" id="solucoes">
+    <div class="container">
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-7 text-center fade-up">
+                <p class="section-eyebrow">A solução</p>
+                <div class="separator"></div>
+                <h2 class="section-title">Do Dado à Decisão<br>— em <span class="accent">Segundos.</span></h2>
+                <p style="color:var(--axiom-muted); font-size:1rem; line-height:1.8;">
+                    Conheça o motor analítico avançado que transforma dados brutos em
+                    <span style="color:#f1f5f9;">missões de lucro acionáveis.</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4 d-flex fade-up">
+                <div class="module-card-premium w-100">
+                    <div class="card-module-icon blue"><i class="fas fa-heartbeat"></i></div>
+                    <h4>Axiom Health Score</h4>
+                    <p>O termômetro do CEO. Avalie a saúde financeira do seu portfólio de 0 a 100 em tempo real, com diagnóstico completo do mix de produtos.</p>
+                    <ul class="feature-list mt-auto">
+                        <li><i class="fas fa-check-circle"></i> Qualidade do Mix de Produtos</li>
+                        <li><i class="fas fa-check-circle"></i> Análise de Margem Média</li>
+                        <li><i class="fas fa-check-circle"></i> Risco de Concentração (Curva ABC)</li>
+                        <li><i class="fas fa-check-circle"></i> Matriz BCG Automatizada</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="col-md-4 d-flex fade-up">
+                <div class="module-card-premium featured w-100">
+                    <div class="card-module-icon gold"><i class="fas fa-chart-line"></i></div>
+                    <span style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#fbbf24; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.2); padding:3px 10px; border-radius:999px; display:inline-block; margin-bottom:0.75rem;">Mais Usado</span>
+                    <h4>Elasticidade & Precificação</h4>
+                    <p>Simulador Preditivo. Descubra exatamente até onde você pode subir o preço sem perder a venda — com matemática, não intuição.</p>
+                    <ul class="feature-list mt-auto">
+                        <li><i class="fas fa-check-circle"></i> Cálculo de Sensibilidade de Preço</li>
+                        <li><i class="fas fa-check-circle"></i> Simulação de Faturamento Futuro</li>
+                        <li><i class="fas fa-check-circle"></i> Geração de "Ouro Oculto" no caixa</li>
+                        <li><i class="fas fa-check-circle"></i> Tabelas prontas para execução</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="col-md-4 d-flex fade-up">
+                <div class="module-card-premium w-100">
+                    <div class="card-module-icon green"><i class="fas fa-crosshairs"></i></div>
+                    <h4>Action Radar (Missões)</h4>
+                    <p>Deixe de procurar problemas. A IA vasculha seus dados e gera "Missões de Lucro" diárias com prioridade e impacto calculados.</p>
+                    <ul class="feature-list mt-auto">
+                        <li><i class="fas fa-check-circle"></i> Alerta de Sangria (Produtos Tóxicos)</li>
+                        <li><i class="fas fa-check-circle"></i> Blindagem de Margem (Vacas Leiteiras)</li>
+                        <li><i class="fas fa-check-circle"></i> KVIs — Proteção de Market Share</li>
+                        <li><i class="fas fa-check-circle"></i> Ranking de impacto financeiro</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════
+     CASOS DE USO
+═══════════════════════════════════════════ -->
+<section class="section-usecase" id="casos">
+    <div class="container">
+        <div class="row mb-5">
+            <div class="col-lg-6 fade-up">
+                <p class="section-eyebrow">Aplicações práticas</p>
+                <div class="separator left"></div>
+                <h2 class="section-title">
+                    Para quem é o<br>
+                    <span class="accent">Axiom?</span>
+                </h2>
+                <p style="color:var(--axiom-muted); font-size:1rem; line-height:1.8;">
+                    Uma plataforma pensada para cada camada da operação executiva,
+                    com linguagem e foco adaptados para cada função.
+                </p>
+            </div>
+        </div>
+
+        <div class="fade-up">
+            <div class="usecase-row">
+                <div class="usecase-icon-wrap blue"><i class="fas fa-user-tie"></i></div>
+                <div>
+                    <h5>Diretoria / CEO — Mitigação de Risco</h5>
+                    <p>Use o <strong style="color:#93c5fd;">Health Score</strong> e a <strong style="color:#93c5fd;">Matriz BCG</strong> para auditorias executivas. Descubra se a empresa depende de produtos que dão prejuízo e acompanhe a saúde financeira da operação em uma única tela, garantindo segurança para os acionistas.</p>
+                </div>
+            </div>
+
+            <div class="usecase-row">
+                <div class="usecase-icon-wrap green"><i class="fas fa-tags"></i></div>
+                <div>
+                    <h5>Time de Pricing — Aumento Imediato de Lucro</h5>
+                    <p>Através do <strong style="color:#4ade80;">Action Radar</strong>, analistas recebem a missão de "Ouro Oculto". Eles acessam a lista de produtos inelásticos de alto giro, utilizam o <strong style="color:#4ade80;">Simulador de Elasticidade</strong> para aplicar micro-aumentos justificados pela matemática — gerando lucro limpo imediato.</p>
+                </div>
+            </div>
+
+            <div class="usecase-row">
+                <div class="usecase-icon-wrap red"><i class="fas fa-shopping-cart"></i></div>
+                <div>
+                    <h5>Compras / Comercial — Estancar Sangrias</h5>
+                    <p>A IA alerta sobre "Vacas Leiteiras" com margens caindo a níveis críticos. O comercial atua antecipadamente renegociando custos com fornecedores ou reestruturando estoques <strong style="color:#f87171;">antes que o produto feche o mês no vermelho.</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════
+     POR QUE AXIOM
+═══════════════════════════════════════════ -->
+<section class="section-why">
+    <div class="container">
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-6 text-center fade-up">
+                <p class="section-eyebrow">Nossa diferença</p>
+                <div class="separator"></div>
+                <h2 class="section-title">Por que escolher o <span class="accent">Axiom?</span></h2>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-4 d-flex fade-up">
+                <div class="pillar-card">
+                    <span class="pillar-icon" style="color:#60a5fa;">🧠</span>
+                    <h5>IA Preditiva Explicável</h5>
+                    <p>Sem caixas pretas. Cada recomendação é acompanhada da matemática por trás dela, traduzida em linguagem executiva.</p>
+                </div>
+            </div>
+            <div class="col-md-4 d-flex fade-up">
+                <div class="pillar-card">
+                    <span class="pillar-icon" style="color:#fbbf24;">📐</span>
+                    <h5>Rigor Matemático</h5>
+                    <p>XGBoost, elasticidade de preço, Curva ABC e Matriz BCG aplicados com precisão estatística ao seu portfólio real.</p>
+                </div>
+            </div>
+            <div class="col-md-4 d-flex fade-up">
+                <div class="pillar-card">
+                    <span class="pillar-icon" style="color:#4ade80;">⚡</span>
+                    <h5>Software Prescritivo</h5>
+                    <p>Não apenas análise — ação. O Axiom diz exatamente o que fazer, com qual produto, com qual magnitude e com que urgência.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row justify-content-center fade-up">
+            <div class="col-lg-9">
+                <div class="quote-block">
+                    <p>
+                        "Modelos complexos não devem gerar decisões complexas. O Axiom transforma a ciência estatística em clareza executiva — para que o CEO saiba exatamente onde está o dinheiro que está perdendo hoje."
+                    </p>
+                    <div class="mt-3 d-flex align-items-center gap-3">
+                        <img src="{% static 'images/logo-axiom-dark-4k.png' %}" alt="Axiom" style="height:24px; opacity:0.6;">
+                        <span style="color:var(--axiom-muted); font-size:0.85rem;">Axiom Platform — Inteligência Científica para Decisões Executivas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════
+     CTA FINAL
+═══════════════════════════════════════════ -->
+<section class="section-cta" id="contato">
+    <div class="container">
+        <div class="cta-box fade-up">
+            <p class="section-eyebrow" style="margin-bottom:1rem;">Próximo passo</p>
+            <h2>Pronto para decidir<br>com <span style="background:linear-gradient(90deg,#3b82f6,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">confiança matemática?</span></h2>
+            <p>Agende uma demonstração personalizada e veja o Axiom aplicado ao portfólio real da sua empresa. Sem promessas genéricas — apenas dados e resultados.</p>
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                <a href="{% url 'accounts:signup' %}" class="btn btn-hero-primary btn-lg px-5">
+                    <i class="fas fa-rocket me-2"></i>Criar Conta Grátis
+                </a>
+                <a href="mailto:contato@axiomplatform.com.br" class="btn btn-hero-outline btn-lg px-5">
+                    <i class="fas fa-calendar-check me-2"></i>Agendar Demo
+                </a>
+            </div>
+            <p class="mt-3" style="color: var(--axiom-muted); font-size: 0.85rem;">
+                Ou <a href="{% url 'login' %}" style="color: #60a5fa; text-decoration: none;">faça login</a> se já possui uma conta.
             </p>
-            <div>
-                <a href="#contato" class="btn btn-axiom-principal btn-lg rounded-pill px-5 me-3 shadow">Falar com um Especialista</a>
-                <a href="#solucoes" class="btn btn-axiom-contorno btn-lg rounded-pill px-5">Conhecer a Plataforma</a>
-            </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <section class="py-5 bg-light">
-        <div class="container py-4 text-center">
-            <h2 class="fw-bold mb-4">Decisões exigem velocidade.<br><span class="text-primary">Lucro exige precisão matemática.</span></h2>
-            <p class="text-muted fs-5 mb-4 mx-auto" style="max-width: 800px;">
-                A maioria dos executivos ainda depende de dashboards estáticos que apenas mostram o que aconteceu no passado. O Axiom não olha para trás. Nossa plataforma audita a saúde da sua empresa hoje e prescreve exatamente <strong>o que você deve fazer amanhã para gerar caixa.</strong>
-            </p>
+
+<!-- ═══════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════ -->
+<footer class="axiom-footer">
+    <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+        <img src="{% static 'images/logo-axiom-dark-4k.png' %}" alt="Axiom Platform">
+        <p>Inteligência Científica para Decisões Executivas &copy; {% now "Y" %}</p>
+        <div class="d-flex gap-3">
+            <a href="#inicio" style="color:var(--axiom-muted); font-size:0.82rem; text-decoration:none;">Início</a>
+            <a href="#solucoes" style="color:var(--axiom-muted); font-size:0.82rem; text-decoration:none;">Soluções</a>
+            <a href="#contato" style="color:var(--axiom-muted); font-size:0.82rem; text-decoration:none;">Contato</a>
         </div>
-    </section>
+    </div>
+</footer>
 
-    <section class="py-5" id="solucoes">
-        <div class="container py-4">
-            <div class="text-center mb-5">
-                <h2 class="fw-bold">Do Dado à Decisão — em Segundos.</h2>
-                <p class="text-muted">Conheça o motor analítico avançado do Axiom.</p>
-            </div>
-            
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm module-card p-4">
-                        <i class="fas fa-heartbeat feature-icon text-danger"></i>
-                        <h4 class="fw-bold">Axiom Health Score</h4>
-                        <p class="text-muted">O termômetro do CEO. Avalie a saúde financeira do seu portfólio de 0 a 100 em tempo real.</p>
-                        <ul class="list-unstyled text-muted small mt-auto">
-                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Qualidade do Mix de Produtos</li>
-                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Análise de Margem Média</li>
-                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Risco de Concentração (Curva ABC)</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm module-card p-4 border-bottom border-primary border-4">
-                        <i class="fas fa-chart-line feature-icon text-primary"></i>
-                        <h4 class="fw-bold">Elasticidade & Precificação</h4>
-                        <p class="text-muted">Simulador Preditivo. Descubra exatamente até onde você pode subir o preço sem perder a venda.</p>
-                        <ul class="list-unstyled text-muted small mt-auto">
-                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Cálculo Matemático de Sensibilidade</li>
-                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Simulação de Faturamento Futuro</li>
-                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Geração de "Ouro Oculto" no caixa</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm module-card p-4">
-                        <i class="fas fa-crosshairs feature-icon text-success"></i>
-                        <h4 class="fw-bold">Action Radar (Missões)</h4>
-                        <p class="text-muted">Deixe de procurar problemas. A IA do Axiom vasculha seus dados e gera "Missões de Lucro" diárias.</p>
-                        <ul class="list-unstyled text-muted small mt-auto">
-                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Alerta de Sangria (Produtos Tóxicos)</li>
-                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Blindagem de Margem (Vacas Leiteiras)</li>
-                            <li class="mb-1"><i class="fas fa-check text-success me-2"></i> Tabelas prontas para execução</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <section class="py-5 bg-light">
-        <div class="container py-4">
-            <h2 class="fw-bold text-center mb-5">Oportunidades de Uso na Operação</h2>
-            
-            <div class="row align-items-center mb-4 p-4 use-case-card rounded shadow-sm">
-                <div class="col-md-2 text-center mb-3 mb-md-0">
-                    <i class="fas fa-user-tie fa-4x text-primary"></i>
-                </div>
-                <div class="col-md-10">
-                    <h5 class="fw-bold mb-2">Para a Diretoria / CEO: Mitigação de Risco</h5>
-                    <p class="text-muted mb-0">Use o <strong>Health Score</strong> e a <strong>Matriz BCG</strong> para auditorias executivas. Descubra se a empresa está dependente de produtos que dão prejuízo ("Abacaxis" da Classe A) e acompanhe a saúde financeira da operação em uma única tela, garantindo segurança para os acionistas.</p>
-                </div>
-            </div>
+<script>
+    // Navbar scroll effect
+    window.addEventListener('scroll', () => {
+        document.getElementById('main-navbar').classList.toggle('scrolled', window.scrollY > 50);
+    });
 
-            <div class="row align-items-center mb-4 p-4 use-case-card rounded shadow-sm" style="border-left-color: #2ecc71;">
-                <div class="col-md-2 text-center mb-3 mb-md-0">
-                    <i class="fas fa-tags fa-4x text-success"></i>
-                </div>
-                <div class="col-md-10">
-                    <h5 class="fw-bold mb-2">Para o Time de Pricing: Aumento Imediato de Lucro</h5>
-                    <p class="text-muted mb-0">Através do <strong>Action Radar</strong>, os analistas recebem a missão de "Ouro Oculto". Eles acessam instantaneamente a lista de produtos inelásticos de alto giro, utilizam o <strong>Simulador de Elasticidade</strong> para aplicar micro-aumentos de preço justificados pela matemática, gerando lucro limpo imediato.</p>
-                </div>
-            </div>
+    // Fade-up on scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, { threshold: 0.12 });
 
-            <div class="row align-items-center p-4 use-case-card rounded shadow-sm" style="border-left-color: #e74c3c;">
-                <div class="col-md-2 text-center mb-3 mb-md-0">
-                    <i class="fas fa-shopping-cart fa-4x text-danger"></i>
-                </div>
-                <div class="col-md-10">
-                    <h5 class="fw-bold mb-2">Para o Time de Compras / Comercial: Estancar Sangrias</h5>
-                    <p class="text-muted mb-0">A IA alerta sobre "Vacas Leiteiras" (campeões de vendas) com margens caindo a níveis críticos. O setor comercial atua antecipadamente renegociando custos com fornecedores ou reestruturando estoques antes que o produto feche o mês dando prejuízo ao negócio.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-5 bg-dark text-white text-center">
-        <div class="container py-5">
-            <h2 class="fw-bold mb-4">Por que escolher o Axiom?</h2>
-            <div class="row justify-content-center mb-5">
-                <div class="col-md-8 d-flex justify-content-center flex-wrap gap-3">
-                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill"><i class="fas fa-brain text-primary me-2"></i>IA Preditiva Explicável</span>
-                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill"><i class="fas fa-chart-bar text-primary me-2"></i>Rigor Matemático</span>
-                    <span class="badge bg-white text-dark p-2 px-3 fs-6 rounded-pill"><i class="fas fa-bolt text-primary me-2"></i>Software Prescritivo (Foco em Ação)</span>
-                </div>
-            </div>
-            
-            <h3 class="fst-italic text-white-50 mb-4 mx-auto" style="max-width: 800px;">
-                "Modelos complexos não devem gerar decisões complexas. O Axiom transforma a ciência estatística em clareza executiva."
-            </h3>
-            
-            <div class="mt-5" id="contato">
-                <h4 class="mb-4">Pronto para decidir com confiança?</h4>
-                <a href="mailto:contato@suaempresa.com" class="btn btn-axiom-principal btn-lg rounded-pill px-5 me-2 shadow-lg">Agendar uma Demonstração</a>
-                <a href="{% url 'login' %}" class="btn btn-axiom-contorno btn-lg rounded-pill px-5">Acessar a Plataforma</a>
-            </div>
-        </div>
-    </section>
-
-    <footer class="bg-black text-center text-white-50 py-4">
-        <div class="container">
-            <p class="mb-0 fw-bold text-white"><i class="fas fa-chart-pie text-primary me-2"></i> AXIOM PLATFORM</p>
-            <small>Inteligência Científica para Decisões Executivas &copy; 2026</small>
-        </div>
-    </footer>
-
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+</script>
 </body>
 </html>

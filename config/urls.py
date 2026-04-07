@@ -4,12 +4,13 @@ from django.urls import path,include
 from django.views.generic import TemplateView
 from django.contrib.auth import views as auth_views
 
-from config.view import gerar_url_upload
+from config.view import gerar_url_upload, upload_local
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
     path('api/gerar-url-upload/', gerar_url_upload, name='gerar_url_upload'),
+    path('api/upload-local/', upload_local, name='upload_local'),
     
    
     path('accounts/', include('accounts.urls')),
@@ -21,6 +22,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(next_page='landing_page'), name='logout'),
     
 
-    path('', include('projects.urls')), 
+    path('', include('projects.urls')),
+    path('', include('encartes.urls')),
 ]
 

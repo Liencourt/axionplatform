@@ -1,0 +1,87 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block title %}Concorrentes{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid">
+  <div class="row mb-4 align-items-center">
+    <div class="col">
+      <h3 class="page-title mb-1 fw-bold">
+        <i class="ti ti-building-store text-primary me-2"></i>Concorrentes Cadastrados
+      </h3>
+      <p class="text-muted mb-0">Redes mapeadas para extração de encartes.</p>
+    </div>
+    <div class="col-auto">
+      <a href="{% url 'lista_extracoes' %}" class="btn btn-outline-secondary btn-sm me-2">
+        <i class="ti ti-arrow-left me-1"></i>Extrações
+      </a>
+      <a href="{% url 'upload_encarte' %}" class="btn btn-primary btn-sm shadow-sm">
+        <i class="ti ti-upload me-1"></i>Novo Encarte
+      </a>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-borderless align-middle mb-0">
+              <thead class="bg-body-tertiary text-muted small text-uppercase">
+                <tr>
+                  <th class="ps-4 py-3">Nome</th>
+                  <th>Programa de Fidelidade</th>
+                  <th class="text-center">Extrações</th>
+                  <th class="text-center">Ativo</th>
+                  <th class="text-end pe-4">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in concorrentes %}
+                <tr class="border-bottom">
+                  <td class="ps-4 fw-semibold">{{ c.nome }}</td>
+                  <td class="text-muted small">{{ c.programa_fidelidade|default:"—" }}</td>
+                  <td class="text-center">
+                    <a href="{% url 'lista_extracoes' %}?concorrente={{ c.pk }}"
+                       class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 text-decoration-none">
+                      {{ c.extracoes.count }}
+                    </a>
+                  </td>
+                  <td class="text-center">
+                    {% if c.ativo %}
+                    <span class="badge bg-success rounded-pill">Sim</span>
+                    {% else %}
+                    <span class="badge bg-secondary rounded-pill">Não</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end pe-4">
+                    <form action="{% url 'excluir_concorrente' c.pk %}" method="POST" class="d-inline"
+                          onsubmit="return confirm('Excluir {{ c.nome }} e todas as suas extrações?')">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                        <i class="ti ti-trash me-1"></i>Excluir
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center py-5 text-muted">
+                    <i class="ti ti-building-store" style="font-size:2.5rem; opacity:.3;"></i>
+                    <p class="mt-2 mb-3">Nenhum concorrente cadastrado ainda.</p>
+                    <a href="{% url 'upload_encarte' %}" class="btn btn-primary rounded-pill px-4">
+                      <i class="ti ti-upload me-1"></i>Enviar primeiro encarte
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

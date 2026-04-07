@@ -1,0 +1,165 @@
+{% extends 'vertical.html' %}
+{% load static %}
+
+{% block title %}Novo Encarte{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid">
+  <div class="row mb-4 align-items-center">
+    <div class="col">
+      <h3 class="page-title mb-1 fw-bold">
+        <i class="ti ti-upload text-primary me-2"></i>Enviar Encarte de Concorrente
+      </h3>
+      <p class="text-muted mb-0">
+        O Axiom extrai automaticamente os produtos e preços usando Vision IA (Claude).
+      </p>
+    </div>
+    <div class="col-auto">
+      <a href="{% url 'lista_extracoes' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="ti ti-arrow-left me-1"></i>Voltar
+      </a>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+
+      <!-- Info card -->
+      <div class="alert border-0 rounded-3 mb-4"
+           style="background:rgba(var(--bs-primary-rgb),.07); border-left:4px solid var(--bs-primary) !important;">
+        <div class="d-flex gap-3 align-items-start">
+          <i class="ti ti-robot fs-4 text-primary mt-1 flex-shrink-0"></i>
+          <div>
+            <strong>Como funciona:</strong>
+            <ol class="mb-0 mt-1 ps-3 small text-body">
+              <li>Faça upload do PDF do encarte (até 50 MB).</li>
+              <li>O Axiom converte cada página em imagem e envia ao Claude Vision.</li>
+              <li>Os produtos, marcas, categorias e preços são extraídos automaticamente.</li>
+              <li>O resultado fica disponível para consulta e comparação de preços.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formulário -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-bottom py-3">
+          <h5 class="mb-0 fw-semibold"><i class="ti ti-file-description me-2 text-muted"></i>Dados do Encarte</h5>
+        </div>
+        <div class="card-body p-4">
+          <form method="POST" enctype="multipart/form-data" id="formUpload">
+            {% csrf_token %}
+
+            <!-- Concorrente -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Concorrente <span class="text-danger">*</span></label>
+              {% if concorrentes %}
+              <div id="selectConcorrente">
+                <select name="concorrente_id" id="selectConcorrenteId" class="form-select mb-2">
+                  <option value="">— Selecionar existente —</option>
+                  {% for c in concorrentes %}
+                  <option value="{{ c.pk }}">{{ c.nome }}{% if c.programa_fidelidade %} ({{ c.programa_fidelidade }}){% endif %}</option>
+                  {% endfor %}
+                </select>
+                <div class="text-center text-muted small my-1">ou</div>
+              </div>
+              {% endif %}
+
+              <div class="row g-2">
+                <div class="col-md-7">
+                  <input type="text" name="novo_concorrente" id="novoConcorrente"
+                         class="form-control" placeholder="Nome do novo concorrente…"
+                         {% if not concorrentes %}required{% endif %}>
+                  <div class="form-text">Deixe em branco se já selecionou acima.</div>
+                </div>
+                <div class="col-md-5">
+                  <input type="text" name="programa_fidelidade" class="form-control"
+                         placeholder="Programa de fidelidade (opcional)"
+                         title="Ex: Guana Clube, Clube Extra">
+                </div>
+              </div>
+            </div>
+
+            <!-- Vigência -->
+            <div class="row mb-4 g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Vigência — Início <span class="text-danger">*</span></label>
+                <input type="date" name="vigencia_inicio" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Vigência — Fim <span class="text-danger">*</span></label>
+                <input type="date" name="vigencia_fim" class="form-control" required>
+              </div>
+            </div>
+
+            <!-- Arquivo PDF -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Arquivo PDF do Encarte <span class="text-danger">*</span></label>
+              <div id="dropzone" class="border border-2 border-dashed rounded-3 p-4 text-center"
+                   style="cursor:pointer; transition:border-color .2s;"
+                   onclick="document.getElementById('filePdf').click()"
+                   ondragover="event.preventDefault(); this.style.borderColor='var(--bs-primary)'"
+                   ondragleave="this.style.borderColor=''"
+                   ondrop="handleDrop(event)">
+                <i class="ti ti-file-type-pdf text-danger" style="font-size:2.2rem;"></i>
+                <p class="mb-1 mt-2 fw-semibold" id="dropzoneLabel">Arraste o PDF aqui ou clique para selecionar</p>
+                <p class="text-muted small mb-0">Somente PDF · Até 50 MB</p>
+              </div>
+              <input type="file" id="filePdf" name="arquivo_pdf" accept=".pdf" class="d-none" required>
+            </div>
+
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow-sm" id="btnEnviar">
+                <i class="ti ti-brain me-2"></i>Enviar e Extrair com IA
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script>
+  // Atualiza label do dropzone ao selecionar arquivo
+  document.getElementById('filePdf').addEventListener('change', function () {
+    if (this.files[0]) {
+      document.getElementById('dropzoneLabel').textContent = this.files[0].name;
+      document.getElementById('dropzone').style.borderColor = 'var(--bs-primary)';
+    }
+  });
+
+  function handleDrop(e) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.toLowerCase().endsWith('.pdf')) {
+      const input = document.getElementById('filePdf');
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      document.getElementById('dropzoneLabel').textContent = file.name;
+      document.getElementById('dropzone').style.borderColor = 'var(--bs-primary)';
+    }
+  }
+
+  // Desabilita botão durante envio para evitar duplo submit
+  document.getElementById('formUpload').addEventListener('submit', function () {
+    const btn = document.getElementById('btnEnviar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando…';
+  });
+
+  // Validação: exige concorrente_id OU novo_concorrente
+  document.getElementById('formUpload').addEventListener('submit', function (e) {
+    const sel = document.getElementById('selectConcorrenteId');
+    const novo = document.getElementById('novoConcorrente');
+    if (sel && !sel.value && !novo.value.trim()) {
+      e.preventDefault();
+      alert('Selecione um concorrente existente ou informe o nome de um novo.');
+    }
+  });
+</script>
+{% endblock %}

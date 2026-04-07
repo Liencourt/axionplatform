@@ -1,0 +1,171 @@
+{% extends 'vertical.html' %}
+{% load static humanize %}
+
+{% block title %}Encartes de Concorrentes{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid">
+
+  <!-- Cabeçalho -->
+  <div class="row mb-4 align-items-center">
+    <div class="col-md-7">
+      <h3 class="page-title mb-1 fw-bold">
+        <i class="ti ti-tag text-primary me-2"></i>Inteligência de Concorrentes
+      </h3>
+      <p class="text-muted mb-0">Extrações de preços de encartes via Vision IA.</p>
+    </div>
+    <div class="col-md-5 text-end d-flex gap-2 justify-content-end">
+      <a href="{% url 'lista_concorrentes' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="ti ti-building-store me-1"></i>Concorrentes
+      </a>
+      <a href="{% url 'upload_encarte' %}" class="btn btn-primary shadow-sm">
+        <i class="ti ti-upload me-1"></i>Novo Encarte
+      </a>
+    </div>
+  </div>
+
+  <!-- Filtro por concorrente -->
+  {% if concorrentes %}
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="text-muted small fw-semibold me-1">Filtrar:</span>
+        <a href="{% url 'lista_extracoes' %}"
+           class="btn btn-sm {% if not concorrente_selecionado %}btn-primary{% else %}btn-outline-secondary{% endif %} rounded-pill">
+          Todos
+        </a>
+        {% for c in concorrentes %}
+        <a href="?concorrente={{ c.pk }}"
+           class="btn btn-sm {% if concorrente_selecionado == c.pk|stringformat:'s' %}btn-primary{% else %}btn-outline-secondary{% endif %} rounded-pill">
+          {{ c.nome }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Tabela de extrações -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-borderless align-middle mb-0">
+              <thead class="bg-body-tertiary text-muted small text-uppercase">
+                <tr>
+                  <th class="ps-4 py-3">Concorrente</th>
+                  <th>Vigência das Ofertas</th>
+                  <th class="text-center">Produtos</th>
+                  <th class="text-center">Preços</th>
+                  <th class="text-center">Status</th>
+                  <th class="text-muted">Extraído em</th>
+                  <th class="text-end pe-4">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ex in page_obj %}
+                <tr class="border-bottom">
+                  <td class="ps-4">
+                    <span class="fw-semibold">{{ ex.concorrente.nome }}</span>
+                    {% if ex.concorrente.programa_fidelidade %}
+                    <br><small class="text-muted">{{ ex.concorrente.programa_fidelidade }}</small>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <i class="ti ti-calendar-event text-muted me-1"></i>
+                    {{ ex.vigencia_str }}
+                  </td>
+                  <td class="text-center">
+                    {% if ex.status == 'concluido' %}
+                    <span class="badge bg-primary rounded-pill px-3">{{ ex.total_produtos }}</span>
+                    {% else %}—{% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if ex.status == 'concluido' %}
+                    <span class="badge bg-body-tertiary text-body rounded-pill px-3">{{ ex.total_precos }}</span>
+                    {% else %}—{% endif %}
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-{{ ex.status_badge_class }} rounded-pill px-3">
+                      {{ ex.get_status_display }}
+                    </span>
+                  </td>
+                  <td class="text-muted small">
+                    {{ ex.data_extracao|date:"d/m/Y H:i" }}
+                  </td>
+                  <td class="text-end pe-4">
+                    {% if ex.status == 'concluido' %}
+                    <a href="{% url 'detalhe_extracao' ex.pk %}"
+                       class="btn btn-outline-primary btn-sm rounded-pill px-3 me-1">
+                      <i class="ti ti-eye me-1"></i>Ver
+                    </a>
+                    {% elif ex.status == 'processando' %}
+                    <span class="text-muted small"><i class="ti ti-loader-2 ti-spin me-1"></i>Processando…</span>
+                    {% elif ex.status == 'erro' %}
+                    <a href="{% url 'detalhe_extracao' ex.pk %}"
+                       class="btn btn-outline-danger btn-sm rounded-pill px-3 me-1">
+                      <i class="ti ti-alert-triangle me-1"></i>Ver erro
+                    </a>
+                    {% else %}
+                    <a href="{% url 'detalhe_extracao' ex.pk %}"
+                       class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-1">
+                      <i class="ti ti-eye me-1"></i>Ver
+                    </a>
+                    {% endif %}
+                    <form action="{% url 'excluir_extracao' ex.pk %}" method="POST" class="d-inline"
+                          onsubmit="return confirm('Excluir esta extração e todos os produtos? Esta ação não pode ser desfeita.')">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2">
+                        <i class="ti ti-trash"></i>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center py-5">
+                    <div class="text-muted">
+                      <i class="ti ti-tag" style="font-size:2.5rem; opacity:.3;"></i>
+                      <p class="mt-2 mb-3">Nenhuma extração encontrada.</p>
+                      <a href="{% url 'upload_encarte' %}" class="btn btn-primary rounded-pill px-4">
+                        <i class="ti ti-upload me-1"></i>Enviar primeiro encarte
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Paginação -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-transparent border-top-0 py-3">
+          <nav>
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+              {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if concorrente_selecionado %}&concorrente={{ concorrente_selecionado }}{% endif %}">&laquo;</a>
+              </li>
+              {% endif %}
+              {% for num in page_obj.paginator.page_range %}
+              <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}{% if concorrente_selecionado %}&concorrente={{ concorrente_selecionado }}{% endif %}">{{ num }}</a>
+              </li>
+              {% endfor %}
+              {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if concorrente_selecionado %}&concorrente={{ concorrente_selecionado }}{% endif %}">&raquo;</a>
+              </li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

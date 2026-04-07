@@ -3,125 +3,269 @@
 {% load humanize %}
 
 {% block page_content %}
-<div class="container-fluid">
-    <div class="row mb-4 align-items-center">
-        <div class="col-md-12">
-            <h3 class="page-title mb-1 fw-bold text-dark"><i class="ti ti-settings text-primary"></i> Configurações da Conta</h3>
-            <p class="text-muted mb-0">Gerencie seu perfil e as regras financeiras da plataforma.</p>
+<style>
+    .api-key-mask { letter-spacing: 3px; font-family: 'Courier New', monospace; }
+    .stat-card { border: 1px solid var(--bs-border-color); border-radius: 14px; padding: 20px 24px; transition: all 0.2s ease; }
+    .stat-card:hover { border-color: var(--bs-primary); transform: translateY(-2px); }
+    .section-card { border: 1px solid var(--bs-border-color); border-radius: 16px; overflow: hidden; }
+    .section-card .section-header { padding: 20px 24px; border-bottom: 1px solid var(--bs-border-color); background: var(--bs-body-bg); }
+    .section-card .section-body { padding: 24px; }
+    .copy-btn { cursor: pointer; transition: all 0.2s; }
+    .copy-btn:hover { color: var(--bs-primary) !important; }
+    .avatar-circle { width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, #1d4ed8, #3b82f6); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; color: #fff; flex-shrink: 0; }
+    .plan-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
+    .plan-badge.active { background: rgba(34,197,94,0.1); color: #16a34a; border: 1px solid rgba(34,197,94,0.25); }
+    .plan-badge.trial { background: rgba(245,158,11,0.1); color: #d97706; border: 1px solid rgba(245,158,11,0.25); }
+</style>
+
+<div class="container-fluid pb-5">
+
+    <!-- ── PAGE HEADER ───────────────────────────────── -->
+    <div class="row mb-4 align-items-center mt-2">
+        <div class="col">
+            <h3 class="page-title mb-1 fw-bold text-body"><i class="ti ti-user-circle text-primary me-2"></i> Minha Conta</h3>
+            <p class="text-muted mb-0">Gerencie seu perfil, segurança e as configurações da plataforma.</p>
         </div>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm border border-warning border-opacity-50 rounded-4 overflow-hidden" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.05) 0%, rgba(255, 152, 0, 0.1) 100%);">
-                <div class="card-body p-4 p-md-5 d-flex align-items-center justify-content-between flex-wrap gap-4">
-                    <div>
-                        <h3 class="fw-bold text-body mb-2"><i class="ti ti-diamond text-warning me-2"></i> Axiom Premium</h3>
-                        <p class="text-muted mb-0 fs-5">Ative o Motor Preditivo de Machine Learning e a Projeção Financeira do CFO.</p>
-                        
-                        <ul class="list-unstyled mt-3 mb-0 text-muted">
-                            <li><i class="ti ti-check text-success me-2"></i> Axiom Forecast com XGBoost</li>
-                            <li><i class="ti ti-check text-success me-2"></i> Ingestão Macro para Facebook Prophet</li>
-                            <li><i class="ti ti-check text-success me-2"></i> Previsões de Demanda Ilimitadas</li>
-                        </ul>
+    <!-- ── PROFILE HERO ──────────────────────────────── -->
+    <div class="card border-0 shadow-sm mb-4 rounded-4" style="background: linear-gradient(135deg, rgba(13,110,253,0.06) 0%, rgba(13,110,253,0.02) 100%); border: 1px solid rgba(13,110,253,0.15) !important;">
+        <div class="card-body p-4">
+            <div class="d-flex align-items-center gap-4 flex-wrap">
+                <div class="avatar-circle">
+                    {{ usuario.first_name|first|upper }}{{ usuario.last_name|first|upper }}
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                        <h4 class="fw-bold text-body mb-0">{{ usuario.get_full_name|default:usuario.username }}</h4>
+                        {% if empresa.is_active_subscriber %}
+                        <span class="plan-badge active"><i class="ti ti-circle-filled" style="font-size:0.5rem;"></i> Premium Ativo</span>
+                        {% else %}
+                        <span class="plan-badge trial"><i class="ti ti-circle-filled" style="font-size:0.5rem;"></i> Plano Básico</span>
+                        {% endif %}
                     </div>
-                    
-                    <div class="text-center">
-                        <form action="{% url 'criar_checkout_stripe' %}" method="POST" class="m-0">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-warning btn-lg rounded-pill fw-bold shadow px-5 py-3 fs-5" style="background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%); border: none; color: #212529;">
-                                <i class="ti ti-credit-card me-2"></i> Assinar por R$ 497/mês
-                            </button>
-                        </form>
-                        <small class="text-muted d-block mt-2"><i class="ti ti-lock"></i> Pagamento seguro via Stripe</small>
+                    <p class="text-muted mb-2 small">{{ usuario.email }} &nbsp;·&nbsp; {{ empresa.nome }}</p>
+                    <p class="text-muted mb-0" style="font-size:0.78rem;"><i class="ti ti-calendar me-1"></i> Membro desde {{ empresa.criado_em|date:"d/m/Y" }}</p>
+                </div>
+
+                <!-- Stats row -->
+                <div class="d-flex gap-3 flex-wrap">
+                    <div class="stat-card text-center bg-body-tertiary" style="min-width:110px;">
+                        <h3 class="fw-bold text-primary mb-0">{{ num_projetos }}</h3>
+                        <small class="text-muted">Projetos</small>
+                    </div>
+                    <div class="stat-card text-center bg-body-tertiary" style="min-width:110px;">
+                        <h3 class="fw-bold text-body mb-0">
+                            {% if empresa.is_active_subscriber %}
+                                <i class="ti ti-infinity text-success"></i>
+                            {% else %}
+                                <span class="text-warning">3</span>
+                            {% endif %}
+                        </h3>
+                        <small class="text-muted">Limite</small>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="row g-4">
-        <div class="col-xl-5 col-lg-6">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-light border-bottom p-3">
-                    <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-user me-2"></i> Perfil Pessoal</h5>
+
+    <!-- ── PREMIUM BANNER ───────────────────────────── -->
+    {% if not empresa.is_active_subscriber %}
+    <div class="card border-0 rounded-4 mb-4 overflow-hidden" style="background: linear-gradient(135deg, rgba(255,193,7,0.05) 0%, rgba(255,152,0,0.08) 100%); border: 1px solid rgba(245,158,11,0.25) !important;">
+        <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-4">
+            <div>
+                <h5 class="fw-bold text-body mb-1"><i class="ti ti-diamond text-warning me-2"></i> Axiom Premium</h5>
+                <p class="text-muted mb-2 small">Ative o Motor Preditivo de ML, Axiom Forecast e Projeções Financeiras ilimitadas.</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <span class="text-muted small"><i class="ti ti-check text-success me-1"></i> Forecast XGBoost</span>
+                    <span class="text-muted small"><i class="ti ti-check text-success me-1"></i> Prophet Macro</span>
+                    <span class="text-muted small"><i class="ti ti-check text-success me-1"></i> Projetos Ilimitados</span>
                 </div>
-                <div class="card-body p-4">
+            </div>
+            <form action="{% url 'criar_checkout_stripe' %}" method="POST" class="m-0">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-warning btn-lg rounded-pill fw-bold shadow-sm px-5" style="background: linear-gradient(90deg,#ffc107,#ff9800); border:none; color:#212529;">
+                    <i class="ti ti-credit-card me-2"></i> Assinar — R$ 497/mês
+                </button>
+                <div class="text-center mt-2"><small class="text-muted"><i class="ti ti-lock me-1"></i>Stripe — Pagamento seguro</small></div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── API KEY ───────────────────────────────────── -->
+    <div class="section-card shadow-sm mb-4">
+        <div class="section-header d-flex align-items-center justify-content-between">
+            <div>
+                <h5 class="fw-bold text-body mb-0"><i class="ti ti-key text-primary me-2"></i> Chave de API (B2B)</h5>
+                <small class="text-muted">Use no header <code>X-Axiom-API-Key</code> para integrar com seus sistemas.</small>
+            </div>
+            <a href="{% url 'api_v1_docs' %}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                <i class="ti ti-book me-1"></i> Ver Documentação
+            </a>
+        </div>
+        <div class="section-body">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="flex-grow-1 bg-body-tertiary rounded-3 border px-4 py-3 d-flex align-items-center justify-content-between gap-3">
+                    <code id="apiKeyValue" class="api-key-mask text-body" style="word-break:break-all;">
+                        ••••••••-••••-••••-••••-••••••••••••
+                    </code>
+                    <input type="hidden" id="apiKeyReal" value="{{ empresa.api_key }}">
+                    <div class="d-flex gap-2 flex-shrink-0">
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill copy-btn" onclick="toggleApiKey()" id="btnReveal" title="Revelar">
+                            <i class="ti ti-eye" id="eyeIcon"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary rounded-pill copy-btn" onclick="copiarApiKey()" title="Copiar">
+                            <i class="ti ti-copy" id="copyIcon"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <small class="text-muted mt-2 d-block"><i class="ti ti-shield-lock me-1"></i> Mantenha sua chave em sigilo. Em caso de comprometimento, entre em contato com o suporte.</small>
+        </div>
+    </div>
+
+    <!-- ── MAIN GRID ─────────────────────────────────── -->
+    <div class="row g-4">
+
+        <!-- Perfil Pessoal -->
+        <div class="col-xl-4 col-lg-6">
+            <div class="section-card shadow-sm h-100">
+                <div class="section-header">
+                    <h5 class="fw-bold text-body mb-0"><i class="ti ti-user me-2 text-primary"></i> Perfil Pessoal</h5>
+                </div>
+                <div class="section-body">
                     <form action="{% url 'configuracoes_conta' %}" method="POST">
                         {% csrf_token %}
-                        <div class="row g-3">
-                            <div class="col-md-6">
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
                                 <label class="form-label text-muted fw-bold small">Nome</label>
                                 <input type="text" name="first_name" class="form-control" value="{{ usuario.first_name }}">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-6">
                                 <label class="form-label text-muted fw-bold small">Sobrenome</label>
                                 <input type="text" name="last_name" class="form-control" value="{{ usuario.last_name }}">
                             </div>
-                            <div class="col-12 mt-3">
+                            <div class="col-12">
                                 <label class="form-label text-muted fw-bold small">E-mail de Acesso</label>
                                 <input type="email" name="email" class="form-control" value="{{ usuario.email }}">
-                                <small class="text-muted">Usado para login e notificações da Axiom.</small>
+                                <small class="text-muted">Usado para login e notificações.</small>
                             </div>
                         </div>
-                        <div class="mt-4 text-end">
+                        <div class="text-end pt-2 border-top">
                             <button type="submit" name="btn_salvar_perfil" class="btn btn-primary rounded-pill px-4 shadow-sm">
-                                Atualizar Perfil
+                                <i class="ti ti-check me-1"></i> Salvar Perfil
                             </button>
                         </div>
-                    </form>                    
+                    </form>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-7 col-lg-6">
-            <div class="card shadow-sm border-0 h-100 border-start border-primary border-4">
-                <div class="card-header bg-light border-bottom p-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold text-dark"><i class="ti ti-building-store me-2"></i> Dados da Empresa</h5>
-                    <span class="badge bg-success-subtle text-success rounded-pill px-3">Plano Active</span>
+        <!-- Alterar Senha -->
+        <div class="col-xl-4 col-lg-6">
+            <div class="section-card shadow-sm h-100">
+                <div class="section-header">
+                    <h5 class="fw-bold text-body mb-0"><i class="ti ti-lock me-2 text-warning"></i> Alterar Senha</h5>
                 </div>
-                <div class="card-body p-4">
+                <div class="section-body">
+                    <form action="{% url 'configuracoes_conta' %}" method="POST" autocomplete="off">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted fw-bold small">Senha Atual</label>
+                            <input type="password" name="old_password" class="form-control" placeholder="••••••••" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted fw-bold small">Nova Senha</label>
+                            <input type="password" name="new_password1" class="form-control" placeholder="Min. 8 caracteres" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted fw-bold small">Confirmar Nova Senha</label>
+                            <input type="password" name="new_password2" class="form-control" placeholder="Repita a nova senha" required>
+                        </div>
+                        <div class="text-end pt-2 border-top">
+                            <button type="submit" name="btn_alterar_senha" class="btn btn-warning rounded-pill px-4 shadow-sm text-dark fw-bold">
+                                <i class="ti ti-shield-check me-1"></i> Alterar Senha
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dados da Empresa -->
+        <div class="col-xl-4 col-lg-12">
+            <div class="section-card shadow-sm h-100">
+                <div class="section-header">
+                    <h5 class="fw-bold text-body mb-0"><i class="ti ti-building-store me-2 text-success"></i> Dados da Empresa</h5>
+                </div>
+                <div class="section-body">
                     <form action="{% url 'configuracoes_conta' %}" method="POST">
                         {% csrf_token %}
-                        <div class="mb-4">
+                        <div class="mb-3">
                             <label class="form-label text-muted fw-bold small">Nome da Organização</label>
                             <input type="text" name="nome_empresa" class="form-control" value="{{ empresa.nome }}" required>
                         </div>
-                        
-                        <h6 class="fw-bold text-dark mb-3"><i class="ti ti-target text-danger"></i> Parâmetros do Motor de Pricing</h6>
-                        
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label text-muted fw-bold small">Margem Mínima Padrão (%)</label>
+
+                        <p class="fw-bold text-muted small text-uppercase mb-2"><i class="ti ti-target text-danger me-1"></i> Parâmetros do Motor de Pricing</p>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label class="form-label text-muted fw-bold small">Margem Mínima (%)</label>
                                 <div class="input-group">
                                     <input type="number" step="0.01" name="margem_minima" class="form-control" value="{{ empresa.margem_minima_padrao|stringformat:'f' }}">
-                                    <span class="input-group-text bg-light">%</span>
+                                    <span class="input-group-text bg-body-tertiary">%</span>
                                 </div>
-                                <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Dispara o alerta vermelho no simulador caso a margem caia abaixo deste nível.</small>
+                                <small class="text-muted" style="font-size:0.72rem;">Alerta vermelho abaixo deste nível.</small>
                             </div>
-                            
-                            <div class="col-md-6">
-                                <label class="form-label text-muted fw-bold small">Limite Máx. de Oscilação (%)</label>
+                            <div class="col-6">
+                                <label class="form-label text-muted fw-bold small">Teto de Oscilação (%)</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light">±</span>
+                                    <span class="input-group-text bg-body-tertiary">±</span>
                                     <input type="number" step="0.01" name="limite_variacao" class="form-control" value="{{ empresa.limite_variacao_preco|stringformat:'f' }}">
-                                    <span class="input-group-text bg-light">%</span>
                                 </div>
-                                <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Trava de segurança da IA: impede que o sistema sugira preços muito fora da realidade atual.</small>
+                                <small class="text-muted" style="font-size:0.72rem;">Trava de segurança da IA.</small>
                             </div>
                         </div>
-
-                        
-
-                        <div class="mt-4 text-end pt-3 border-top">
+                        <div class="text-end pt-2 border-top">
                             <button type="submit" name="btn_salvar_empresa" class="btn btn-dark rounded-pill px-4 shadow-sm">
-                                Salvar Regras de Negócio
+                                <i class="ti ti-device-floppy me-1"></i> Salvar Regras
                             </button>
-                        </div>                        
-                    </form>                    
-                </div>                
+                        </div>
+                    </form>
+                </div>
             </div>
-        </div>        
+        </div>
     </div>
-    
+
 </div>
+
+<script>
+    let keyVisible = false;
+
+    function toggleApiKey() {
+        const display = document.getElementById('apiKeyValue');
+        const real = document.getElementById('apiKeyReal').value;
+        const icon = document.getElementById('eyeIcon');
+        keyVisible = !keyVisible;
+        if (keyVisible) {
+            display.textContent = real;
+            display.style.letterSpacing = '1px';
+            icon.className = 'ti ti-eye-off';
+        } else {
+            display.textContent = '••••••••-••••-••••-••••-••••••••••••';
+            display.style.letterSpacing = '3px';
+            icon.className = 'ti ti-eye';
+        }
+    }
+
+    function copiarApiKey() {
+        const val = document.getElementById('apiKeyReal').value;
+        navigator.clipboard.writeText(val).then(() => {
+            const icon = document.getElementById('copyIcon');
+            icon.className = 'ti ti-check text-success';
+            setTimeout(() => { icon.className = 'ti ti-copy'; }, 2000);
+        });
+    }
+</script>
 {% endblock page_content %}

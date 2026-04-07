@@ -1,0 +1,19 @@
+{% comment %}
+Partial: _insight_card.html
+Uso: {% include 'projects/_insight_card.html' with insight=insight %}
+{% endcomment %}
+<div class="insight-card">
+  <span class="cat-badge cat-{{ insight.categoria }}">{{ insight.categoria }}</span>
+
+  <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+    <div class="insight-title">{{ insight.titulo }}</div>
+    <span class="r-badge {% if insight.correlacao >= 0 %}r-pos{% else %}r-neg{% endif %} flex-shrink-0">
+      {% if insight.correlacao >= 0 %}▲{% else %}▼{% endif %}
+      {{ insight.correlacao|floatformat:2 }}
+    </span>
+  </div>
+
+  <div class="insight-desc">{{ insight.descricao }}</div>
+
+  <div class="insight-acao">{{ insight.acao }}</div>
+</div>

@@ -65,8 +65,16 @@ def sign_up(request):
                     )
                     
                     # 2. Cria o Tenant (A Empresa isolada)
-                    nome_empresa = form.cleaned_data['nome_empresa']
-                    empresa = Empresa.objects.create(nome=nome_empresa)
+                    empresa = Empresa.objects.create(
+                        nome=form.cleaned_data['nome_empresa'],
+                        cnpj=form.cleaned_data['cnpj'],
+                        cep=form.cleaned_data.get('cep') or '',
+                        numero=form.cleaned_data.get('numero') or None,
+                        municipio=form.cleaned_data.get('municipio') or '',
+                        uf=form.cleaned_data.get('uf') or '',
+                        codigo_ibge=form.cleaned_data.get('codigo_ibge') or '',
+                        email_contato=email,
+                    )
                     
                     # 3. Cria o Vínculo VIP (A ponte entre os dois)
                     UsuarioEmpresa.objects.create(usuario=user, empresa=empresa)
